@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "cvpl-tools"
+version = "0.1.0"
+description = "A Python package for utilities and classes related to the file I/O, dataset record keeping for image processing and computer vision."
+authors = ["Karl5766 <karl29029@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+numpy = "^2.0.0"
+nibabel = "^5.2.1"
+pillow = "^10.3.0"
+scipy = "^1.13.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
