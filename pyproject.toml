@@ -5,6 +5,7 @@ description = "A Python package for utilities and classes related to the file I/
 authors = ["Karl5766 <karl29029@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+repository = "https://github.com/khanlab/cvpl_tools"
 
 [tool.poetry.dependencies]
 python = ">=3.9"
