@@ -5,8 +5,7 @@ file. Note that many file format is a directory containing a single file, which 
 is unnecessary but this is to accommodate for the possible need to add more files to store information
 about the object class' instance.
 """
-
-
+import copy
 import shutil
 import json
 from cvpl_tools.fs import ensure_dir_exists
@@ -26,19 +25,23 @@ def read_dataset_reference(path: str) -> DatasetReference:
     return ref
 
 
-def write_cellseg3d_config(config, path: str, write_model=False):
+def write_dict(d, path: str, large_files=None):
+    if large_files is None:
+        large_files = {}
     ensure_dir_exists(path, True)
-    if write_model:
-        cur_path = config.model_weight_path
+    d = copy.copy(d)
+    for k in large_files:
+        cur_path = d[k]
+        target_path = large_files[k]
         if cur_path is None:
-            print('WARNING: cur_path is None while write_model is True!')
-            config.model_weight_path = f'{path}/wnet.pth'
-            shutil.copy(cur_path, config.model_weight_path)
+            raise ValueError(f'ERROR: Large file intended to be saved is not found from d[{k}]')
+        d[k] = target_path
+        shutil.copy(cur_path, target_path)
     with open(f'{path}/model_config.json', 'w') as outfile:
-        json.dump(config, outfile, cls=get_encoder(), indent=2)
+        json.dump(d, outfile, cls=get_encoder(), indent=2)
 
 
-def read_cellseg3d_config(path: str):
+def read_dict(path: str):
     with open(f'{path}/model_config.json', 'r') as infile:
-        config = json.load(infile, object_hook=get_decoder_hook())
-    return config
+        d = json.load(infile, object_hook=get_decoder_hook())
+    return d

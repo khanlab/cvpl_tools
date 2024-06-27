@@ -225,4 +225,4 @@ test = ["array-api-strict", "asv", "gmpy2", "hypothesis (>=6.30)", "mpmath", "po
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9"
-content-hash = "660ed66651afee8478140fae01741ee3df0220b24f72d176151d8c4e7523b8b8"
+content-hash = "9919fd456036813719f33340c1ac1a9a5c6cc75e1fdd369f9564668b6f7287d4"
