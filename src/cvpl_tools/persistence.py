@@ -26,6 +26,21 @@ def read_dataset_reference(path: str) -> DatasetReference:
 
 
 def write_dict(d, path: str, large_files=None):
+    """
+    Write a dictionary onto storage
+    Commonly, a config/setting file will have path references to large objects. These objects
+    can be copied to a nearby location to the config/setting file when the file is written, so
+    this function provides a list to do such copying in addition to writting the dictionary:
+
+    For each key, new_path in large_files, The object's corresponding path in dictionary, d[key]
+    will be modified to new_path before the dictionary itself is written, and then the object
+    will be copied to new_path. Then the dictionary will be written after all objects are copied.
+    Args:
+        d: The dictionary to be serialized
+        path: The path to which the file will be stored
+        large_files: A dictionary of large files to be written onto new locations
+    """
+
     if large_files is None:
         large_files = {}
     ensure_dir_exists(path, True)
@@ -42,6 +57,14 @@ def write_dict(d, path: str, large_files=None):
 
 
 def read_dict(path: str):
+    """
+    Read a dictionary written by write_dict(). This will not read any large objects associated with
+    the dictionary.
+    Args:
+        path: Path to the saved dictionary
+    Returns:
+        recovered dictionary object
+    """
     with open(f'{path}/model_config.json', 'r') as infile:
         d = json.load(infile, object_hook=get_decoder_hook())
     return d

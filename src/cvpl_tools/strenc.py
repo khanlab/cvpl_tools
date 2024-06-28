@@ -21,12 +21,22 @@ _decoder_hook = None
 
 
 def get_encoder():
+    """
+    Conforms to json interface json.dumps(o, cls=get_encoder())
+    Returns:
+        An Encoder classes
+    """
     if _Encoder is None:
         init()
     return _Encoder
 
 
 def get_decoder_hook():
+    """
+    Conforms to json interface json.loads(s, object_hook=get_decoder_hook())
+    Returns:
+        A decoder hook
+    """
     if _decoder_hook is None:
         init()
     return _decoder_hook

@@ -1,5 +1,4 @@
 import os
-import json
 
 
 class ArrayKeyDict(dict):
@@ -10,6 +9,7 @@ class ArrayKeyDict(dict):
     - Dictionary subsetting and merging
     - Modifying the key of an item while maintaining the position of the item in the dict
     - Looping over the keys in specific orders (may be different from the order they are inserted)
+    - Obtain the i-th key in the array in O(1) time, where i is the key's position starting from 0
 
     Example:
         d = ArrayKeyDict([(3, 'a'), (4, 'b')])
@@ -47,25 +47,35 @@ class ArrayKeyDict(dict):
             self._key_arr.append(key)
 
     def keys(self) -> list:
+        """
+        Returns:
+            A Python list, copy of the key array
+        """
         return list(self._key_arr)
 
     def values(self) -> list:
+        """
+        Returns:
+            A Python list, copy of the values in the order of the keys
+        """
         return [self[k] for k in self._key_arr]
 
     def key_at(self, idx):
+        """
+        Obtain the idx-th index of the key array; does not check for out-of-bound access
+        Args:
+            idx: The index of the key to retrieve, index starting at 0
+        Returns:
+            The key at the idx-th index.
+        """
         return self._key_arr[idx]
 
     def __iter__(self):
+        """
+        Returns:
+            An iterator over the keys of the dictionary
+        """
         return iter(self._key_arr)
-
-    def to_json(self):
-        pairs = {key: self[key] for key in self}
-        return json.dumps(pairs)
-
-    @classmethod
-    def from_json(cls, json_str):
-        pairs = json.loads(json_str)
-        return ArrayKeyDict((key, pairs[key]) for key in pairs)
 
     def pop(self, key, default=None):
         key_in_arr = key in self._key_arr
@@ -88,6 +98,12 @@ class ArrayKeyDict(dict):
         super().__delitem__(key)
 
     def rename_key(self, old_key, new_key):
+        """
+        Keeping the position and corresponding item of a key, but replacing itself with a different key.
+        Args:
+            old_key: The old key to be replaced
+            new_key: The new key to replace the old key with
+        """
         if new_key == old_key:
             return
         assert new_key not in self, f'ERROR: Attempt to rename to an existing key {new_key}'
@@ -98,6 +114,12 @@ class ArrayKeyDict(dict):
                 break
 
     def reorder_keys(self, ordered_key_arr):
+        """
+        Reorder the keys in the given order
+        Args:
+            ordered_key_arr: A list giving an ordering of the keys; all elements must appear exactly once
+                in the original key list
+        """
         # no new keys & length equal
         assert len(self._key_arr) == len(ordered_key_arr), f'ERROR: lengths of key arrays are different during reorder!'\
                                                            f' old {len(self._key_arr)} and new {len(ordered_key_arr)}'
@@ -111,6 +133,13 @@ class ArrayKeyDict(dict):
         self._key_arr = ordered_key_arr
 
     def subset_dict(self, subset_key_arr):
+        """
+        Similar to reorder_keys(), but with a smaller key array
+        Args:
+            subset_key_arr: A list of keys that specifies what are kept in the new ArrayKeyDict object
+        Returns:
+            a new ArrayKeyDict object containing only the items in the subset_key_arr, in the same order
+        """
         # no new keys & length smaller
         assert len(self._key_arr) >= len(subset_key_arr), f'ERROR: subset key arr has larger length {len(subset_key_arr)}'\
                                                             f' than the original {len(self._key_arr)}'
@@ -123,16 +152,31 @@ class ArrayKeyDict(dict):
         return ArrayKeyDict(pairs)
 
     def clear(self):
+        """
+        Clear all keys and items in the dictionary
+        """
         self._key_arr.clear()
         super().clear()
 
     def trim_key_prefix_and_suffix(self, trim_front=0, trim_end=0):
+        """
+        For each key (of type str), rename it to a new str with both ends trimmed
+        Args:
+            trim_front: Number of characters to trim in front
+            trim_end: Number of characters to trim in back
+        """
         for i in range(len(self)):
             old_key = self._key_arr[i]
             new_key = old_key[trim_front:len(old_key) - trim_end]
             self.rename_key(old_key, new_key)
 
     def trim_key_common_prefix_and_suffix(self):
+        """
+        Similar to trim_key_prefix_and_suffix, but trim the redundant parts. In many cases the beginning
+        and the end of keys are repetitive strings e.g. 'person1' and 'person2' the only identifiable part
+        is '1' and '2', so the prefix 'person' can be trimmed to keep the key short.
+        Among all keys, find common prefix and suffix and trim them off. This function modifies self.
+        """
         keys = [s for s in self._key_arr]
         rkeys = [s[::-1] for s in self._key_arr]
         cprefix = os.path.commonprefix(keys)
@@ -141,9 +185,11 @@ class ArrayKeyDict(dict):
 
     def common_keylist_with(self, dicts):
         """
-        return a Python list containing the common keys of this dictionary (self) and the provided other dictionary.
-        The order of which the keys will appear in the result is the same as they are in self.
-        :param dicts: either an ArrayKeyDict or a list of ArrayKeyDict
+        Args:
+            dicts: either an ArrayKeyDict or a list of ArrayKeyDict
+        Returns:
+            a Python list containing the common keys of this dictionary (self) and the provided other dictionary.
+            The order of which the keys will appear in the result is the same as they are in self.
         """
         if type(dicts) is ArrayKeyDict:
             dicts = [dicts]
