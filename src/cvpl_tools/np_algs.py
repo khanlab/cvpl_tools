@@ -1,4 +1,6 @@
 import enum
+from typing import Callable
+
 import skimage
 import skimage.morphology as morph
 import scipy.ndimage as ndimage
@@ -70,7 +72,7 @@ counting_method_dict = {item.name: item.value for item in CountingMethod}
 counting_method_inverse_dict = {item.value: item.name for item in CountingMethod}
 
 
-def get_counter(ty: int, seg):
+def get_counter(ty: int, get_mask: Callable):
     if ty == 0:
         counter = Count_SumIntensity(130., .4)
     elif ty <= 12:
@@ -79,7 +81,7 @@ def get_counter(ty: int, seg):
             s1 = Mask_Thres(.45)
         else:
             cellseg3d = True
-            s1 = Mask_CellSeg3D(seg)
+            s1 = Mask_CellSeg3D(get_mask)
 
         use_watershed = (ty - 1) % 6 >= 3
         if (ty - 1) % 3 == 2:
@@ -236,11 +238,11 @@ class Mask_Thres(MaskFromIntensityImage):
 
 
 class Mask_CellSeg3D(MaskFromIntensityImage):
-    def __init__(self, cellseg3d_output):
-        self.cellseg3d_output = cellseg3d_output
+    def __init__(self, get_mask):
+        self.get_mask = get_mask
 
     def mask(self, im: np.array):
-        return self.cellseg3d_output
+        return self.get_mask(im)
 
 
 """-------------------------Part 2: cell count from mask---------------------------------"""
