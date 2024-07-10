@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cvpl-tools"
-version = "0.2.2"
+version = "0.2.3"
 description = "A Python package for utilities and classes related to the file I/O, dataset record keeping for image processing and computer vision."
 authors = ["Karl5766 <karl29029@gmail.com>"]
 license = "MIT"

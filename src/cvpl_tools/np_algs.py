@@ -375,13 +375,13 @@ def watershed(seg_bin, dist_thres=1., remove_smaller_than=None):
     :return:
     """
     # reference: https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
-    fp_width = 2
-    fp = [(np.ones((fp_width, 1, 1)), 1), (np.ones((1, fp_width, 1)), 1), (np.ones((1, 1, fp_width)), 1)]
+    # fp_width = 2
+    # fp = [(np.ones((fp_width, 1, 1)), 1), (np.ones((1, fp_width, 1)), 1), (np.ones((1, 1, fp_width)), 1)]
     # sure_bg = morph.binary_dilation(seg_bin, fp)
     sure_bg = seg_bin
     # sure_fg = morph.binary_erosion(seg_bin, fp)
     dist_transform = ndimage.distance_transform_edt(seg_bin)
-    sure_fg = dist_transform >= dist_thres  # doesn't work well: pixel around dist_thres=1 either all get cut or all retain
+    sure_fg = dist_transform >= dist_thres
     unknown = sure_bg ^ sure_fg
     lbl_im = morph.label(sure_fg, connectivity=1)
 
