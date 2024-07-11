@@ -52,7 +52,7 @@ def grey_to_rgba(im_grey: np.array) -> np.array:
 
 
 class CountingMethod(enum.Enum):
-    SUM_INTENSITY = 0
+    BLOBDOG = 0
     THRES_COUNT = 1
     THRES_BYSIZE = 2
     THRES_VOLUME = 3
@@ -65,7 +65,7 @@ class CountingMethod(enum.Enum):
     CELLSEG3D_WATERSHED_COUNT = 10
     CELLSEG3D_WATERSHED_BYSIZE = 11
     CELLSEG3D_WATERSHED_VOLUME = 12
-    BLOBDOG = 13
+    SUM_INTENSITY = 13
 
 
 counting_method_dict = {item.name: item.value for item in CountingMethod}
@@ -73,9 +73,9 @@ counting_method_inverse_dict = {item.value: item.name for item in CountingMethod
 
 
 def get_counter(ty: int, get_mask: Callable):
-    if ty == 0:
+    if ty == CountingMethod.SUM_INTENSITY:
         counter = Count_SumIntensity(130., .4)
-    elif ty <= 12:
+    elif 1 <= ty <= 12:
         if ty <= 6:
             cellseg3d = False
             s1 = Mask_Thres(.45)
@@ -122,7 +122,7 @@ def get_counter(ty: int, get_mask: Callable):
 
         counter = Count_TwoStage(s1, s2)
     else:
-        counter = Count_BlobDog(min_sigma=1., max_sigma=50., threshold=.4, exclude_border=False)
+        counter = Count_BlobDog(max_sigma=2, threshold=0.1)
     return counter
 
 
@@ -174,11 +174,16 @@ class Count_BlobDog(CountFromIntensityImage):
         self.args = args
 
     def count(self, im_cube: np.array) -> float:
-        blobs_dog = skimage.feature.blob_dog(np.array(im_cube * 255, dtype=np.float32), **self.args)
-        return blobs_dog.shape[0]
+        blobs_dog = skimage.feature.blob_dog(np.array(im_cube * 255, dtype=np.uint8), **self.args)
+        width = im_cube.shape[0]
+        assert width == im_cube.shape[1] and width == im_cube.shape[2]
+        border_dists = np.abs((blobs_dog[:, :3] + 16) % 32 - 15.5)  # compute border distances in z, y, x directions
+        mults = 1 / np.clip(3. - border_dists * .5, 1., 2.)
+        count = np.prod(mults, axis=1).sum()
+        return count
 
     def interpretable(self, im_cube: np.array) -> np.array:
-        blobs_dog = skimage.feature.blob_dog(np.array(im_cube * 255, dtype=np.float32), **self.args)
+        blobs_dog = skimage.feature.blob_dog(np.array(im_cube * 255, dtype=np.uint8), **self.args)
         blobs_dog[:, 3:] = blobs_dog[:, 3:] * np.sqrt(3)  # adjust each sigma to get radius (this is still in pixels)
 
         blobs_img = np.zeros(im_cube.shape + (4, ), dtype=np.float32)
