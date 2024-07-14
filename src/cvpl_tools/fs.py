@@ -1,3 +1,17 @@
+"""
+fs.py
+This is a file that provides methods to interface with image files.
+
+Stored Numpy arrays in computer vision can be represented in .npy, .tif, .png, .jpg etc.
+And when reading and writing files, the axis order and pixel format (grey vs. RGB vs RGBA)
+often complicate the code.
+
+This file aims to provide a unified way to manipulate, read and write np arrays based on a
+file path pattern e.g. "./dataset1/dog_*.png" and a few settings specifying the reading
+axis order and underlying data arrangement formats
+"""
+
+
 import os
 import shutil
 import glob
@@ -8,13 +22,16 @@ import scipy
 from dataclasses import dataclass, field
 from cvpl_tools.array_key_dict import ArrayKeyDict
 
-"""
-fs.py
-This is a file that provides methods to query and modify files in the file system
-"""
-
 
 def ensure_dir_exists(dir_path, remove_if_already_exists):
+    """
+    If a directory does not exist, make a new directory with the name.
+    This assumes the parent directory must exists; otherwise a path not
+    found error will be thrown.
+    Args:
+        dir_path: The path of folder
+        remove_if_already_exists: if True and the folder already exists, then remove it and make a new one.
+    """
     if os.path.exists(dir_path):
         if remove_if_already_exists:
             shutil.rmtree(dir_path)
@@ -24,6 +41,9 @@ def ensure_dir_exists(dir_path, remove_if_already_exists):
 
 
 class ImFileType:
+    """
+    Represents different file types that can be read and written by fs.py
+    """
     FTYPE_UNKNOWN = -1
     FTYPE_JPX = 0
     FTYPE_JPG = 1

@@ -1,3 +1,12 @@
+"""
+This files define methods that are used to segment or post-processing a segmentation output
+of image segmentation models. The get_counter() function in this folder selects a method
+for segmenting images this way, and the returned method instance can be used to make predictions
+on image cubes (W * W * W) to output a segmentation mask from 0 to N, where 0 is the background
+class.
+"""
+
+
 import enum
 from typing import Callable
 
@@ -374,10 +383,10 @@ def instance_to_binary(seg_inst):
 def watershed(seg_bin, dist_thres=1., remove_smaller_than=None):
     """
     Run Watershed algorithm to perform instance segmentation. The result is a index labeled int64 mask
-    :param dist_thres:
-    :param seg_bin:
-    :param remove_smaller_than:
-    :return:
+    :param seg_bin: The binary [0, 1] 3d mask to run watershed on to separate blobs into instances.
+    :param dist_thres: Only pixels this much into the contours are retained; pixels on contours surface are removed
+    :param remove_smaller_than: Contours smaller than this value are added as part of neighboring contours (once)
+    :return: The instance segmented int64 mask from 0 to N, where N is number of objects
     """
     # reference: https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
     # fp_width = 2

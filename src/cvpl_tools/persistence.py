@@ -14,12 +14,25 @@ from cvpl_tools.dataset_reference import DatasetReference
 
 
 def write_dataset_reference(ref: DatasetReference, path: str):
+    """
+    Write a directory to save the dataset reference
+    Args:
+        ref: The DatasetReference object to be saved
+        path: the path to the directory to create
+    """
     ensure_dir_exists(path, True)
     with open(f'{path}/dataset.json', 'w') as outfile:
         json.dump(ref, outfile, cls=get_encoder(), indent=2)
 
 
 def read_dataset_reference(path: str) -> DatasetReference:
+    """
+    Read a directory to re-create the dataset reference object written by write_dataset_reference()
+    Args:
+        path: Path to the directory to read from
+    Returns:
+        The DatasetReference object created
+    """
     with open(f'{path}/dataset.json', 'r') as infile:
         ref = json.load(infile, object_hook=get_decoder_hook())
     return ref

@@ -1,3 +1,14 @@
+"""
+This file defines DatapointReference and DatasetReference
+
+A dataset reference consists of many data point references. Its job is to make
+clear what data files are in the dataset and how they should be read into the
+memory (when the dataset is used). A dataset reference can therefore be used
+to pass data into a workload, and the reference can be stored as a file afterward
+to make the workload reproducible.
+"""
+
+
 from datetime import datetime
 from cvpl_tools.array_key_dict import ArrayKeyDict
 import cvpl_tools.fs as fs
@@ -9,24 +20,53 @@ from dataclasses import dataclass
 class DatapointReference:
     """
     Represents a pointer to location of data.
-    The data is either an image or a chunk (data point) in the dataset.
+    The data is either an image or a chunk (data point) in the dataset, and one such
+    datapoint can always be represented as a single numpy array.
     """
     data_ref: str | list
 
     def __init__(self, data_ref: str | list):
+        """
+        Create a DatapointReference object
+        Args:
+            data_ref: A list of strings OR a single string containing link to one or more files referred to by
+                this datapoint reference
+        """
         assert isinstance(data_ref, (str, list)), 'ERROR: Datapoint reference should be either a string or a list!'
         self.data_ref = data_ref
 
     def __str__(self):
+        """
+        Returns:
+            A readable string representation of the link(s)
+        """
         return str(self.data_ref)
 
     def ref(self):
+        """
+        Returns:
+            A list of strings OR a single string containing link to one or more files referred to by
+            this datapoint reference
+        """
         return self.data_ref
 
     def has_multiple_images(self):
+        """
+        Returns:
+            True if the datapoint is described by multiple images (in which case there is a list of
+            links pointing to these images)
+        """
         return isinstance(self.data_ref, list)
 
     def read_as_np(self, read_setting: fs.ImReadSetting) -> np.ndarray:
+        """
+        Reads the datapoint as a numpy array
+        Args:
+            read_setting: An cvpl_tools.fs.ImReadSetting object that describes how an image file is
+            readed into memory into a numpy array
+        Returns:
+            The readed numpy array
+        """
         return fs.ImIO.read_single_image(read_setting, self.data_ref)[0]
 
 
@@ -44,10 +84,20 @@ class DatasetReference:
 
     @classmethod
     def new(self, datapoint_refs: ArrayKeyDict[str, DatapointReference],
-                 dataset_name,
-                 creation_info,
-                 im_read_setting: fs.ImReadSetting):
-        # create an empty dataset
+                 dataset_name: str,
+                 creation_info: str = '',
+                 im_read_setting: fs.ImReadSetting = None):
+        """
+        The recommended interface to create a DatasetReference object.
+        Args:
+            datapoint_refs: Mapping datapoint ids (imids) to DatapointReference objects
+            dataset_name: Name of the dataset
+            creation_info: A description of how the dataset is created; for better reproducibility archiving
+            im_read_setting: A setting object that will be used to read images into memory (if needed)
+
+        Returns:
+
+        """
         return DatasetReference(
             datapoint_refs=datapoint_refs,
             creation_date=datetime.now(),
@@ -58,6 +108,11 @@ class DatasetReference:
 
     @classmethod
     def empty(cls):
+        """
+        Create an empty DatasetReference object
+        Returns:
+            The created DatasetReference object
+        """
         return DatasetReference.new(ArrayKeyDict(),
                                 'Empty Dataset',
                                 'This dataset is created as an empty dataset.',
