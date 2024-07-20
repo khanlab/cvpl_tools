@@ -3,13 +3,12 @@ This file provides visualization utilities for ome-zarr file, similar to napari-
 but includes features like displaying zip ome zarr files
 """
 
-
 import napari
 import zarr
 import dask.array as da
 
 
-def load_zarr_group_from_path(path: str, mode=None, use_zip: bool | None=None):
+def load_zarr_group_from_path(path: str, mode=None, use_zip: bool | None = None):
     """Loads either a zarr folder or zarr zip file into a zarr group.
 
     Args:
@@ -34,41 +33,46 @@ def load_zarr_group_from_path(path: str, mode=None, use_zip: bool | None=None):
 # -------------Part 1: convenience functions, for adding ome zarr images using paths--------------
 
 
-def add_ome_zarr_group_from_path(viewer: napari.Viewer, path: str, use_zip: bool | None=None):
+def add_ome_zarr_group_from_path(viewer: napari.Viewer, path: str, use_zip: bool | None = None, kwargs=None):
     """Add an ome zarr group to napari viewer from given group path.
 
     A combination of load_zarr_group_from_path() and add_ome_zarr_group() functions.
     """
     zarr_group = load_zarr_group_from_path(path, 'r', use_zip)
-    add_ome_zarr_group(viewer, zarr_group)
+    add_ome_zarr_group(viewer, zarr_group, kwargs)
 
 
-def add_ome_zarr_array_from_path(viewer: napari.Viewer, path: str, use_zip: bool | None=None):
+def add_ome_zarr_array_from_path(viewer: napari.Viewer, path: str, use_zip: bool | None = None, kwargs=None):
     """Add an ome zarr array to napari viewer from given array path.
 
     A combination of load_zarr_array_from_path() and add_ome_zarr_group() functions.
     """
+    if kwargs is None:
+        kwargs = {}
     zarr_group = load_zarr_group_from_path(path, 'r', use_zip)
-    add_ome_zarr_array(viewer, zarr_group)
+    add_ome_zarr_array(viewer, zarr_group, **kwargs)
 
 
 # ------------------------Part 2:adding ome zarr files using zarr group---------------------------
 
 
-def add_ome_zarr_group(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group):  # TODO: add kwargs
+def add_ome_zarr_group(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group, kwargs=None):
     """Add an ome zarr image (if exists) along with its labels (if exist) to viewer.
 
     Args
         viewer: Napari viewer object to attach image to
         zarr_group: The zarr group that contains the ome zarr file
+        kwargs: dictionary, keyword arguments to be passed to viewer.add_image for root image
     """
+    if kwargs is None:
+        kwargs = {}
     if '0' in zarr_group:
-        add_ome_zarr_array(viewer, zarr_group)
+        add_ome_zarr_array(viewer, zarr_group, **kwargs)
     if 'labels' in zarr_group:
         lbls_group = zarr_group['labels']
-        for array_key in lbls_group.array_keys():
-            lbl_group = lbls_group[array_key]
-            add_ome_zarr_array(viewer, lbl_group)
+        for group_key in lbls_group.group_keys():
+            lbl_group = lbls_group[group_key]
+            add_ome_zarr_array(viewer, lbl_group, name=group_key)
 
 
 def add_ome_zarr_array(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group, **kwargs):
@@ -77,6 +81,7 @@ def add_ome_zarr_array(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group, 
     Args
         viewer: Napari viewer object to attach image to
         zarr_group: The zarr group that contains the ome zarr file
+        **kwargs: keyword arguments to be passed to viewer.add_image for root image
     """
     multiscale = []
     while True:
