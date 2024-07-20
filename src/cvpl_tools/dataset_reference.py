@@ -75,6 +75,9 @@ class DatasetReference:
     """
     This class' instance represents a dataset, and whose attributes include information on what data is in the dataset
     and when and how this reference is created.
+
+    The datapoints in a dataset should be homogeneous - meaning they can be processed in the same way, and images
+    should be stored in a separate dataset as its corresponding labels
     """
     datapoint_refs: ArrayKeyDict[str, DatapointReference]
     im_read_setting: fs.ImReadSetting
