@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cvpl-tools"
-version = "0.3.0"
+version = "0.3.1"
 description = "A Python package for utilities and classes related to the file I/O, dataset record keeping and visualization for image processing and computer vision."
 authors = ["Karl5766 <karl29029@gmail.com>"]
 license = "MIT"
@@ -15,7 +15,7 @@ pillow = ">=7.1.0"
 scipy = ">=1.12.0"
 matplotlib = ">=3.9"
 scikit-image = ">=0.22.0"
-napari = {extras = ["all"], version = ">=0.4.19"}
+napari = ">=0.4.19"
 zarr = ">=2.17.0"
 dask = ">=2024.2.0"
 ome-zarr = ">=0.9.0"
