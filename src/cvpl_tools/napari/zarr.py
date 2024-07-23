@@ -76,12 +76,12 @@ def add_ome_zarr_group(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group, 
 
 
 def add_ome_zarr_array(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group, **kwargs):
-    """Add a multi-scale ome zarr image or label to viewer.
+    """Add a multiscale ome zarr image or label to viewer.
 
-    Args
-        viewer: Napari viewer object to attach image to
-        zarr_group: The zarr group that contains the ome zarr file
-        **kwargs: keyword arguments to be passed to viewer.add_image for root image
+    Args:
+        viewer (napari.Viewer): Napari viewer object to attach image to.
+        zarr_group (zarr.hierarchy.Group): The zarr group that contains the ome zarr file.
+        ``**kwargs``: Keyword arguments to be passed to viewer.add_image for root image.
     """
     multiscale = []
     while True:
