@@ -41,4 +41,4 @@ To view an ome-zarr file this way with `cvpl_tools`, use the command
     zarr_group = zarr.open(store, mode='r')
     cvpl_zarr.add_ome_zarr_group(viewer, zarr_group, dict(name="displayed_name_in_ui"))
 
-  Similarly, you can open a zip, or an image with multiple labels this way.
+Similarly, you can open a zip, or an image with multiple labels this way.
