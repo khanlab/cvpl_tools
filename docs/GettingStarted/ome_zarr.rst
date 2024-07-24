@@ -19,16 +19,12 @@ To view an ome-zarr file this way with `cvpl_tools`, use the command
 
 - This will create a new layer named `displayed_name_in_ui` which displays your ome zarr array.
   The underlying implementation uses Napari add_image's multiscale array display
-  |
 - To open a `.zip` file, specify ome.zarr.zip in the path (and optionally set use_zip=True to
   open the file as zip regardless of its suffix)
-  |
 - To open both the `ome.zarr` file and any label files located at `ome.zarr/labels/label_name`
   as specified by the ome zarr standard, use cvpl_zarr.add_ome_zarr_group_from_path instead.
-  |
 - To specify additional arguments passed to Napari's add_image function, pass your arguments in
   the kwargs as a dictionary.
-  |
 - To open an OME ZARR image on Google cloud storage, use the following code instead
 
 ::
