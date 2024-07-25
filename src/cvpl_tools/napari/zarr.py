@@ -6,28 +6,7 @@ but includes features like displaying zip ome zarr files
 import napari
 import zarr
 import dask.array as da
-
-
-def load_zarr_group_from_path(path: str, mode=None, use_zip: bool | None = None):
-    """Loads either a zarr folder or zarr zip file into a zarr group.
-
-    Args:
-        path: path to the zarr folder or zip to be opened
-        mode: file open mode e.g. 'r', only pass this if the file is a zip file
-        use_zip: if True, treat path as a zip; if False, treat path as a folder; if None,
-            use path to determine file type
-    Returns:
-        the opened zarr group
-    """
-    if use_zip is None:
-        use_zip = path.endswith('.zip')
-    if use_zip:
-        store = zarr.ZipStore(path, mode=mode)
-        zarr_group = zarr.open(store, mode=mode)
-    else:
-        store = zarr.DirectoryStore(path)
-        zarr_group = zarr.open(store, mode=mode)
-    return zarr_group
+from cvpl_tools.ome_zarr.io import load_zarr_group_from_path
 
 
 # -------------Part 1: convenience functions, for adding ome zarr images using paths--------------
