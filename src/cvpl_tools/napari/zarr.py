@@ -49,7 +49,7 @@ def add_ome_zarr_group(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group, 
         add_ome_zarr_array(viewer, zarr_group, **kwargs)
     if 'labels' in zarr_group:
         lbls_group = zarr_group['labels']
-        for group_key in lbls_group.group_keys():
+        for group_key in lbls_group.group_ordered_keys():
             lbl_group = lbls_group[group_key]
             add_ome_zarr_array(viewer, lbl_group, name=group_key)
 

@@ -21,6 +21,7 @@ from PIL import Image
 import scipy
 from dataclasses import dataclass, field
 from cvpl_tools.array_key_dict import ArrayKeyDict
+from nibabel import load as nib_load
 
 
 def ensure_dir_exists(dir_path, remove_if_already_exists):
@@ -144,7 +145,7 @@ class ImFileType:
                     im = im.item()['masks']
                 im_meta = [ftype, im.shape, None, path, None]
             elif ftype == ImFileType.FTYPE_NIB:
-                nii_im = nib.load(path)
+                nii_im = nib_load(path)
                 im = np.array(nii_im.get_fdata(), dtype=ImFileType.format_to_np_dtype[im_format])
                 im_meta = [ftype, im.shape, None, path, nii_im.affine]
             else:
@@ -198,7 +199,7 @@ class ImFileType:
             return im, im_meta
 
     @classmethod
-    def save_np_as_im(cls, target_path: str, im: np.ndarray, ftype=None, write_axis_order=None, stack_axis=None,
+    def save_np_as_im(cls, target_path: str, im: np.ndarray, ftype=None, stack_axis=None,
                       concat_instead=False, ftype_meta=None, allow_pickle=False, im_format=None):
         """
         If ftype is None (default), it will be inferred from path
@@ -243,7 +244,6 @@ class ImFileType:
                     target_path=target,
                     im=im_slice,
                     ftype=ftype,
-                    write_axis_order=write_axis_order,
                     stack_axis=stack_axis,
                     concat_instead=False,
                     ftype_meta=cur_ftype_meta,
@@ -261,7 +261,7 @@ class ImReadSetting:
     imid_keep_dirpath (bool) - keeping the directory path when extracting imid from paths; default to False
     """
     im_format: int = ImFileType.FORMAT_UINT8
-    stack_axis: int = None
+    stack_axis: int | None = None
     concat_instead: bool = False
     true_im_ndim: int = 3
     allow_pickle: bool = False
@@ -278,10 +278,10 @@ class ImWriteSetting:
     ftype (int) - file type to write e.g. ImFileType.FTYPE_NPZ
     """
     im_format: int = ImFileType.FORMAT_UINT8
-    stack_axis: int = None
+    stack_axis: int | None = None
     concat_instead: bool = False
     allow_pickle: bool = False
-    ftype: int = None
+    ftype: int | None = None
 
 
 class ImIO:
@@ -297,14 +297,13 @@ class ImIO:
     @classmethod
     def write_single_image(cls, write_setting: ImWriteSetting, path, im, im_meta):
         ImFileType.save_np_as_im(path, im=im, ftype=write_setting.ftype,
-                                 write_axis_order=write_setting.write_axis_order,
                                  stack_axis=write_setting.stack_axis,
                                  concat_instead=write_setting.concat_instead,
                                  ftype_meta=im_meta[-1],
                                  allow_pickle=write_setting.allow_pickle)
 
     @classmethod
-    def read_filenames(cls, read_setting: ImReadSetting, pattern: str = None, path=None):
+    def read_filenames(cls, read_setting: ImReadSetting, pattern: str | None = None, path: list | None = None):
         """
         The keys (imids) of the ArrayKeyDict returned by this function will be sorted alphabetically
         Parameters
@@ -314,7 +313,7 @@ class ImIO:
                 The keys of this dictionary is a sorted list of image imids, act as unique ids of images, sorted alphabetically
         """
         imid_to_path = ImIO._get_imid_to_path_mapping(read_setting, path, pattern)
-        imid_to_path.reorder_keys(sorted(imid_to_path.keys()))
+        imid_to_path.reorder_keys(sorted(imid_to_path.ordered_keys()))
         return imid_to_path
 
     @classmethod
@@ -345,7 +344,7 @@ class ImIO:
 
     @classmethod
     def _get_imid_to_path_mapping(cls, read_setting: ImReadSetting,
-                                  paths: list[str] = None, pattern: str = None):
+                                  paths: list[str] | None = None, pattern: str | None = None):
         if paths is None:
             paths = glob.glob(pattern)
         elif pattern is not None:
@@ -366,7 +365,7 @@ class ImIO:
                     imid_to_path[imid] = [tup]
                 else:
                     imid_to_path[imid].append(tup)
-        for k in list(imid_to_path.keys()):
+        for k in list(imid_to_path.ordered_keys()):
             v = imid_to_path[k]
             if type(v) is list:
                 imid_to_path[k] = [tup[1] for tup in sorted(v)]

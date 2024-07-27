@@ -23,7 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 ZOOM_FACTOR = 4
 
 
-def draw_ncells_text_on_im_cube(im_cube: np.array, pos_list: np.array, ncell_list: np.array) -> np.array:
+def draw_ncells_text_on_im_cube(im_cube: np.ndarray, pos_list: np.ndarray, ncell_list: np.array) -> np.array:
     sz = (im_cube.shape[0], im_cube.shape[1] * ZOOM_FACTOR, im_cube.shape[2] * ZOOM_FACTOR) + (4,)
     out_cube = np.zeros(sz, dtype=np.uint8)
     out_cube[:, :, :, 3] = 255

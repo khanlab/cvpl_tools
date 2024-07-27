@@ -46,14 +46,14 @@ class ArrayKeyDict(dict):
         if not flag:
             self._key_arr.append(key)
 
-    def keys(self) -> list:
+    def ordered_keys(self) -> list:
         """
         Returns:
             A Python list, copy of the key array
         """
         return list(self._key_arr)
 
-    def values(self) -> list:
+    def ordered_values(self) -> list:
         """
         Returns:
             A Python list, copy of the values in the order of the keys
@@ -212,16 +212,16 @@ def test():
     test_dict2['file2'] = 4
     assert len(test_dict2) == 3 and test_dict2['file2'] == 4
     test_dict2['file4'] = 2
-    assert test_dict2.keys() == ['file1', 'file2', 'file3', 'file4'] and len(test_dict2) == 4
+    assert test_dict2.ordered_keys() == ['file1', 'file2', 'file3', 'file4'] and len(test_dict2) == 4
     assert test_dict2.key_at(2) == 'file3'
 
     for key in reversed(test_dict2):
         test_dict1[key] = test_dict2[key]
-    assert test_dict1.keys() == ['file4', 'file3', 'file2', 'file1']
+    assert test_dict1.ordered_keys() == ['file4', 'file3', 'file2', 'file1']
     test_dict1.rename_key('file1', 'f1')
     assert test_dict1.key_at(3) == 'f1' and test_dict1['f1'] == 1
     test_dict1.reorder_keys(['f1', 'file4', 'file2', 'file3'])
-    assert test_dict1.key_at(1) == 'file4' and test_dict1.keys() == ['f1', 'file4', 'file2', 'file3']
+    assert test_dict1.key_at(1) == 'file4' and test_dict1.ordered_keys() == ['f1', 'file4', 'file2', 'file3']
 
     # prevent regression where rename_key() incorrectly push the renamed key to end of array
     test_dict1.rename_key('file2', 'f2')
@@ -230,9 +230,9 @@ def test():
 
     test_dict3 = ArrayKeyDict([['file1', 1], ['file2', 3], ['file3', 2]])
     assert test_dict1.common_keylist_with([test_dict2, test_dict3]) == ['file3']
-    assert test_dict3.subset_dict(['file3', 'file1']).keys() == ['file3', 'file1']
+    assert test_dict3.subset_dict(['file3', 'file1']).ordered_keys() == ['file3', 'file1']
 
-    assert test_dict1.keys() == ['f1', 'file4', 'f2', 'file3']
+    assert test_dict1.ordered_keys() == ['f1', 'file4', 'f2', 'file3']
     test_dict1.trim_key_common_prefix_and_suffix()
     assert test_dict1.key_at(0) == '1' and test_dict1.key_at(1) == 'ile4'
 

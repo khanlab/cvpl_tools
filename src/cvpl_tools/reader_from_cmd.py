@@ -1,7 +1,7 @@
 from cvpl_tools.fs import ImFileType, ImReadSetting, ImIO
 
 
-def reader_from_cmd(cmd: list, true_im_dim, uint8_only=False):
+def reader_from_cmd(cmd: list, true_im_ndim, uint8_only=False):
     fm = ImFileType.FORMAT_UINT8
     stack_axis = None
     concat_instead = False
@@ -36,7 +36,7 @@ def reader_from_cmd(cmd: list, true_im_dim, uint8_only=False):
             trim_common = True
     im_read_setting = ImReadSetting(
         im_format=fm,
-        true_im_dim=true_im_dim,
+        true_im_ndim=true_im_ndim,
         stack_axis=stack_axis,
         concat_instead=concat_instead,
         allow_pickle=True)

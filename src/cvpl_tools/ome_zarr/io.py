@@ -4,6 +4,7 @@ discussed in https://github.com/ome/ome-zarr-py/issues/392
 """
 
 import ome_zarr
+import ome_zarr.io
 import cvpl_tools.ome_zarr.ome_zarr_writer_patched as writer
 import os
 import shutil
@@ -70,7 +71,15 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
                                 lbl_arr: da.Array | None = None,
                                 lbl_name: str | None = None,
                                 MAX_LAYER: int = 3):
-    """Direct write of dask array to target ome zarr group."""
+    """Direct write of dask array to target ome zarr group (can not be a zip)
+
+    Args:
+        zarr_group: The output zarr group which we will write an ome zarr image to
+        da_arr: (dask array) The content of the image to write
+        lbl_arr - If provided, this is the array to write at zarr_group['labels'][lbl_name]
+        lbl_name - name of the label array subgroup
+        MAX_LAYER - The maximum layer of down sampling; starting at layer=0
+    """
     if da_arr is not None:
         # assert the group is empty, since we are writing a new group
         for mem in zarr_group:
@@ -120,6 +129,9 @@ def write_ome_zarr_image(ome_zarr_path: str,
                          MAX_LAYER=3,
                          logging=False):
     """Write dask array as an ome zarr
+
+    For writing to zip file: due to dask does not directly support write to zip file, we instead create a temp ome zarr
+    output and copy it into a zip after done. This is why tmp_path is required if make_zip=True
 
     Args
         ome_zarr_path - The path to target ome zarr folder, or ome zarr zip folder if make_zip is True
@@ -174,7 +186,20 @@ def generate_synthetic_dataset(ome_zarr_path: str,
                                arr_sz: tuple = (2, 224, 1600, 2048),
                                chunks: tuple = (1, 1, 1024, 1024),
                                make_zip: bool | None = None,
-                               MAX_LAYER=0):
+                               MAX_LAYER=0) -> zarr.Group:
+    """Generate a 4d synthetic test ome zarr image physically stored in ome_zarr_path.
+
+    Args:
+        ome_zarr_path: Where to store the generated test image
+        tmp_path: The temporary path for write if making a zip file image
+        arr_sz: The size of the synthetic image
+        chunks: The chunk size of the image
+        make_zip: If True, make a physical zip storage of instead of a directory of ome zarr image
+        MAX_LAYER: The maximum down sampling layer
+
+    Returns:
+        An opened zarr group of the newly generated synthetic image
+    """
     arr: da.Array = da.zeros(arr_sz, dtype=np.uint16, chunks=chunks)
 
     def process_block(block, block_info=None):
