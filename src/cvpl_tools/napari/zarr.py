@@ -15,7 +15,7 @@ from cvpl_tools.ome_zarr.io import load_zarr_group_from_path
 def add_ome_zarr_group_from_path(viewer: napari.Viewer, path: str, use_zip: bool | None = None, kwargs=None):
     """Add an ome zarr group to napari viewer from given group path.
 
-    A combination of load_zarr_group_from_path() and add_ome_zarr_group() functions.
+    This is a combination of load_zarr_group_from_path() and add_ome_zarr_group() functions.
     """
     zarr_group = load_zarr_group_from_path(path, 'r', use_zip)
     add_ome_zarr_group(viewer, zarr_group, kwargs)
@@ -24,7 +24,7 @@ def add_ome_zarr_group_from_path(viewer: napari.Viewer, path: str, use_zip: bool
 def add_ome_zarr_array_from_path(viewer: napari.Viewer, path: str, use_zip: bool | None = None, kwargs=None):
     """Add an ome zarr array to napari viewer from given array path.
 
-    A combination of load_zarr_array_from_path() and add_ome_zarr_group() functions.
+    This is a combination of load_zarr_array_from_path() and add_ome_zarr_group() functions.
     """
     if kwargs is None:
         kwargs = {}

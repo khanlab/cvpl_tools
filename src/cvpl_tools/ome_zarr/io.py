@@ -66,6 +66,21 @@ def cache_image(arr: da.Array, location: str):
 # --------------------------------Part 2: write image-------------------------------------
 
 
+def _get_coord_transform_yx_for_write(ndim, MAX_LAYER) -> list:  # down sampling by 2 each layer
+    assert ndim >= 2, 'Can not 2d down sample an image of dimension less than 2d!'
+    coordinate_transformations = []
+    for layer in range(MAX_LAYER + 1):
+        coordinate_transformations.append(
+            [{'scale': [1.] * (ndim - 2) + [(2 ** layer) * 1., (2 ** layer) * 1.],  # image-pyramids in XY only
+              'type': 'scale'}])
+    return coordinate_transformations
+
+
+def _get_axes_for_write(ndim: int) -> list:
+    axes = ['x', 'y', 'z', 'c']  # usually ['x', 'y', 'z', 'c', 't'] but we don't need that for our use
+    return list(reversed(axes[:ndim]))
+
+
 def write_ome_zarr_image_direct(zarr_group: zarr.Group,
                                 da_arr: da.Array | None = None,
                                 lbl_arr: da.Array | None = None,
@@ -76,9 +91,9 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
     Args:
         zarr_group: The output zarr group which we will write an ome zarr image to
         da_arr: (dask array) The content of the image to write
-        lbl_arr - If provided, this is the array to write at zarr_group['labels'][lbl_name]
-        lbl_name - name of the label array subgroup
-        MAX_LAYER - The maximum layer of down sampling; starting at layer=0
+        lbl_arr: If provided, this is the array to write at zarr_group['labels'][lbl_name]
+        lbl_name: name of the label array subgroup
+        MAX_LAYER: The maximum layer of down sampling; starting at layer=0
     """
     if da_arr is not None:
         # assert the group is empty, since we are writing a new group
@@ -87,32 +102,29 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
                              f'create synthetic data. ZARR group: {zarr_group}')
 
     scaler = ome_zarr.scale.Scaler(max_layer=MAX_LAYER, method='nearest')
-    coordinate_transformations = []
-    for layer in range(MAX_LAYER + 1):
-        coordinate_transformations.append(
-            [{'scale': [1., 1., (2 ** layer) * 1., (2 ** layer) * 1.],  # image-pyramids in XY only
-              'type': 'scale'}])
     if da_arr is not None:
         writer.write_image(image=da_arr,
                            group=zarr_group,
                            scaler=scaler,
-                           coordinate_transformations=coordinate_transformations,
+                           coordinate_transformations=_get_coord_transform_yx_for_write(da_arr.ndim, MAX_LAYER),
                            storage_options={'dimension_separator': '/'},
-                           axes=['c', 'z', 'y', 'x'])
+                           axes=_get_axes_for_write(da_arr.ndim))
 
-    # we could just use ['c', 'z', 'y', 'x'], however, napari ome zarr can't handle channel types but only space
-    # type axes. So we need to fall back to manual definition, avoid 'c' which defaults to a channel type
-    lbl_axes = [{'name': ch, 'type': 'space'} for ch in ['c', 'z', 'y', 'x']]
     if lbl_arr is not None:
         assert lbl_name is not None, ('ERROR: Please provide lbl_name along when writing labels '
                                       '(lbl_arr is not None)')
+
+        # we could just use ['c', 'z', 'y', 'x'], however, napari ome zarr can't handle channel types but only space
+        # type axes. So we need to fall back to manual definition, avoid 'c' which defaults to a channel type
+        lbl_axes = [{'name': ch, 'type': 'space'} for ch in _get_axes_for_write(lbl_arr.ndim)]
+
         import numcodecs
         compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
         writer.write_labels(labels=lbl_arr,
                             group=zarr_group,
                             scaler=scaler,
                             name=lbl_name,
-                            coordinate_transformations=coordinate_transformations,
+                            coordinate_transformations=_get_coord_transform_yx_for_write(lbl_arr.ndim, MAX_LAYER),
                             storage_options=dict(compressor=compressor),
                             axes=lbl_axes)
         # ome_zarr.writer.write_label_metadata(group=g,

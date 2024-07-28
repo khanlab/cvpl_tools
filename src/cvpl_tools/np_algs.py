@@ -1,4 +1,6 @@
 """
+DEPRECATED
+
 This files define methods that are used to segment or post-processing a segmentation output
 of image segmentation models. The get_counter() function in this folder selects a method
 for segmenting images this way, and the returned method instance can be used to make predictions
