@@ -1,3 +1,4 @@
+cvpl_tools
 sphinx-rtd-theme==2.0.0
 myst-parser==3.0.1
 furo

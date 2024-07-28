@@ -466,3 +466,4 @@ class CountOSNContour(SegProcess):
         centroids = np.array(centroids, dtype=np.float32)
         ncell += ps.forward(centroids)
         return ncell
+    # TODO: better napari viewing
