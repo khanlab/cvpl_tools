@@ -85,11 +85,11 @@ class DatasetReference:
     creation_info: str  # a description of how this dataset is created
     name: str  # name of the dataset reference
 
-    @classmethod
-    def new(self, datapoint_refs: ArrayKeyDict[str, DatapointReference],
-                 dataset_name: str,
-                 creation_info: str = '',
-                 im_read_setting: fs.ImReadSetting = None):
+    @staticmethod
+    def new(datapoint_refs: ArrayKeyDict[str, DatapointReference],
+            dataset_name: str,
+            creation_info: str = '',
+            im_read_setting: fs.ImReadSetting = None):
         """
         The recommended interface to create a DatasetReference object.
         Args:
@@ -109,8 +109,8 @@ class DatasetReference:
             im_read_setting=im_read_setting
         )
 
-    @classmethod
-    def empty(cls):
+    @staticmethod
+    def empty():
         """
         Create an empty DatasetReference object
         Returns:

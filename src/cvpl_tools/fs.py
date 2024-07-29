@@ -71,8 +71,8 @@ class ImFileType:
     FORMAT_FLOAT32 = 3
     format_to_np_dtype = [np.uint8, np.uint16, np.int32, np.float32]
 
-    @classmethod
-    def ftype_from_im_path(cls, im_path: str) -> int:
+    @staticmethod
+    def ftype_from_im_path(im_path: str) -> int:
         """
         Infer the ftype from image path;
         The path can contain wildcards like "*"
@@ -91,8 +91,8 @@ class ImFileType:
         else:
             return ImFileType.FTYPE_UNKNOWN
 
-    @classmethod
-    def get_imid_and_zstack(cls, im_path: str, is_stack=False, keep_dirpath=False) -> tuple[str, str]:
+    @staticmethod
+    def get_imid_and_zstack(im_path: str, is_stack=False, keep_dirpath=False) -> tuple[str, str]:
         """
         Get the path stem as the unique image id from the path of the file;
         Second return value is the zstack number as a string
@@ -118,12 +118,12 @@ class ImFileType:
         else:
             return imid, ''
 
-    @classmethod
-    def get_imid(cls, im_path: str, is_stack=False, keep_dirpath=False) -> str:
+    @staticmethod
+    def get_imid(im_path: str, is_stack=False, keep_dirpath=False) -> str:
         return ImFileType.get_imid_and_zstack(im_path, is_stack, keep_dirpath)[0]
 
-    @classmethod
-    def load_im_as_np(cls, im_format, path, true_im_ndim: int, stack_axis=None,
+    @staticmethod
+    def load_im_as_np(im_format, path, true_im_ndim: int, stack_axis=None,
                       concat_instead=False, allow_pickle=False) -> tuple:
         """
         Load individual file as a np array, or a stack of images as a np array if a list of path is given
@@ -198,8 +198,8 @@ class ImFileType:
 
             return im, im_meta
 
-    @classmethod
-    def save_np_as_im(cls, target_path: str, im: np.ndarray, ftype=None, stack_axis=None,
+    @staticmethod
+    def save_np_as_im(target_path: str, im: np.ndarray, ftype=None, stack_axis=None,
                       concat_instead=False, ftype_meta=None, allow_pickle=False, im_format=None):
         """
         If ftype is None (default), it will be inferred from path
@@ -285,8 +285,8 @@ class ImWriteSetting:
 
 
 class ImIO:
-    @classmethod
-    def read_single_image(cls, read_setting: ImReadSetting, path):
+    @staticmethod
+    def read_single_image(read_setting: ImReadSetting, path):
         im, im_meta = ImFileType.load_im_as_np(read_setting.im_format, path,
                                                true_im_ndim=read_setting.true_im_ndim,
                                                stack_axis=read_setting.stack_axis,
@@ -294,16 +294,16 @@ class ImIO:
                                                allow_pickle=read_setting.allow_pickle)
         return im, im_meta
 
-    @classmethod
-    def write_single_image(cls, write_setting: ImWriteSetting, path, im, im_meta):
+    @staticmethod
+    def write_single_image(write_setting: ImWriteSetting, path, im, im_meta):
         ImFileType.save_np_as_im(path, im=im, ftype=write_setting.ftype,
                                  stack_axis=write_setting.stack_axis,
                                  concat_instead=write_setting.concat_instead,
                                  ftype_meta=im_meta[-1],
                                  allow_pickle=write_setting.allow_pickle)
 
-    @classmethod
-    def read_filenames(cls, read_setting: ImReadSetting, pattern: str | None = None, path: list | None = None):
+    @staticmethod
+    def read_filenames(read_setting: ImReadSetting, pattern: str | None = None, path: list | None = None):
         """
         The keys (imids) of the ArrayKeyDict returned by this function will be sorted alphabetically
         Parameters
@@ -316,8 +316,8 @@ class ImIO:
         imid_to_path.reorder_keys(sorted(imid_to_path.ordered_keys()))
         return imid_to_path
 
-    @classmethod
-    def read_image(cls, read_setting: ImReadSetting, paths: list):
+    @staticmethod
+    def read_image(read_setting: ImReadSetting, paths: list):
         """
         Parameter
             paths (list) - can be nested in case of stacked images
@@ -330,8 +330,8 @@ class ImIO:
             im, im_meta = ImIO.read_single_image(read_setting, path)
             yield im, im_meta
 
-    @classmethod
-    def write_image(cls, write_setting: ImWriteSetting, paths: list, im_iter: iter):
+    @staticmethod
+    def write_image(write_setting: ImWriteSetting, paths: list, im_iter: iter):
         """
         Parameter
             paths (list) - can be nested in case of stacked images
@@ -342,8 +342,8 @@ class ImIO:
             im, im_meta = next(im_iter)
             ImIO.write_single_image(write_setting, path, im, im_meta)
 
-    @classmethod
-    def _get_imid_to_path_mapping(cls, read_setting: ImReadSetting,
+    @staticmethod
+    def _get_imid_to_path_mapping(read_setting: ImReadSetting,
                                   paths: list[str] | None = None, pattern: str | None = None):
         if paths is None:
             paths = glob.glob(pattern)
