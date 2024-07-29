@@ -41,19 +41,16 @@ e.g. direct_bs_to_os, watershed
 binary_and_centroids_to_inst: (BS, LC) -> OS
 e.g. in_contour_voronoi
 
+os_to_lc: OS -> LC
+e.g. direct_os_to_centroids
+
 count_from_lc: LC -> CC
 e.g. count_lc_ncentroid, count_edge_penalized_lc_ncentroid
 
 count_from_os: OS -> CC
 e.g. count_os_ncontour, count_edge_penalized_os_ncontour, count_os_byvolume
 
-os_to_lc: OS -> LC
-e.g. direct_os_to_centroids
-
-count_to_cd: CC -> CD
-e.g. count_to_density
-
-cd_to_atlas: (ATLAS_MAP, CD) -> ATLAS_CD
+count_to_atlas_cell_density: CC -> ATLAS_CD
 e.g. average_by_region
 
 Each method is an object implementing the SegStage interface that has the following methods:
@@ -62,6 +59,7 @@ Each method is an object implementing the SegStage interface that has the follow
 - forward(*args) -> out, this is the forward stage
 - interpretable_napari(viewer, *args) -> None, this adds the appropriate human-interpretable debugging-purpose outputs to viewer
 """
+
 
 import enum
 import abc
@@ -276,7 +274,6 @@ class ScaledSumIntensity(SegProcess):
             'size': 9,
             'color': 'green',
             'anchor': 'center',
-            # 'translation': [-3, 0],
         }
         viewer.add_points(coords,
                           ndim=im.ndim,
@@ -387,6 +384,24 @@ class BinaryAndCentroidListToInstance(SegProcess):
         return lbl_im
 
 
+# ---------------------------Ordinal Segmentation to List of Centroids-------------------------
+
+
+class DirectOSToLC(SegProcess):
+    """Convert a 0-N contour mask to a list of N centroids, one for each contour
+
+    The converted list of centroids is in the same order as the original contour order (The contour labeled
+    1 will come first and before contour labeled 2, 3 and so on)"""
+    def __init__(self):
+        super().__init__(DatType.OS, DatType.LC)
+
+    def forward(self, os: np.ndarray[np.int32]) -> np.ndarray[np.float32]:
+        contours_np3d = algorithms.find_np3d_from_os(os)
+        centroids = [contour.astype(np.float32).mean(axis=0) for contour in contours_np3d]
+        centroids = np.array(centroids, dtype=np.float32)
+        return centroids
+
+
 # -----------------------Convert List of Centroids to Cell Count Estimate----------------------
 
 
@@ -411,7 +426,15 @@ class CountLCEdgePenalized(SegProcess):
                                   f'from the edge')
         assert div_max >= 1., f'The divisor is >= 1, but got div_max < 1! (div_max={div_max})'
 
-    def forward(self, lc: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
+    def cc_list(self, lc: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
+        """Returns a cell count estimate for each contour in the list of centroids
+
+        Args:
+            lc: The list of centroids to be given cell estimates for
+
+        Returns:
+            A 1-d list, each element is a scalar cell count for the corresponding contour centroid in lc
+        """
         midpoint = (self.im_shape * .5)[None, :]
 
         # compute border distances in each axis direction
@@ -419,8 +442,11 @@ class CountLCEdgePenalized(SegProcess):
 
         intercept, dist_coeff, div_max = self.border_params
         mults = 1 / np.clip(intercept - border_dists * dist_coeff, 1., div_max)
-        count = np.prod(mults, axis=1).sum()
-        return count
+        cc_list = np.prod(mults, axis=1)
+        return cc_list
+
+    def forward(self, lc: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
+        return self.cc_list(lc).sum()
 
 
 # --------------------------Convert Ordinal Mask to Cell Count Estimate------------------------
@@ -450,20 +476,50 @@ class CountOSNContour(SegProcess):
         self.border_params = border_params
         self.min_size = min_size
 
-    def forward(self, os: np.ndarray[np.int32]) -> np.ndarray[np.float32]:
+    def cc_list(self, os: np.ndarray[np.int32]) -> np.ndarray[np.float32]:
         contours_np3d = algorithms.find_np3d_from_os(os)
-        ncell = np.array(0., dtype=np.float32)
-        centroids = []
-        for contour_np3d in contours_np3d:
-            nvoxel = contour_np3d.shape[0]
+        ncells = {}
+        dc = []
+        dc_idx_to_centroid_idx = {}
+        for i in range(len(contours_np3d)):
+            contour = contours_np3d[i]
+            nvoxel = contour.shape[0]
             if nvoxel <= self.min_size:
-                continue
+                ncells[i] = 0.
             elif nvoxel <= self.size_threshold:
-                centroids.append(contour_np3d.astype(np.float32).mean(axis=0))
+                dc_idx_to_centroid_idx[len(dc)] = i
+                dc.append(contour.astype(np.float32).mean(axis=0))
             else:
-                ncell += nvoxel * self.volume_weight
+                ncells[i] = nvoxel * self.volume_weight
         ps = CountLCEdgePenalized(os.shape, self.border_params)
-        centroids = np.array(centroids, dtype=np.float32)
-        ncell += ps.forward(centroids)
+        dc_centroids = np.array(dc, dtype=np.float32)
+        dc_ncells = ps.cc_list(dc_centroids)
+        for dc_idx in dc_idx_to_centroid_idx:
+            i = dc_idx_to_centroid_idx[dc_idx]
+            ncells[i] = dc_ncells[dc_idx]
+        ncells = np.array([ncells[i] for i in range(len(ncells))], dtype=np.float32)
+        return ncells
+
+    def forward(self, os: np.ndarray[np.int32]) -> np.ndarray[np.float32]:
+        ncell = self.cc_list(os).sum()  # total number of cells in the image (scalar)
         return ncell
-    # TODO: better napari viewing
+
+    def interpretable_napari(self, viewer: napari.Viewer, os: np.ndarray[np.int32]):
+        ps = DirectOSToLC()
+        lc = ps.forward(os)
+        ncells = self.cc_list(os)
+        features = {
+            'ncell': ncells
+        }
+
+        text_parameters = {
+            'string': 'Ncell=\n{ncell:.2f}',
+            'size': 9,
+            'color': 'green',
+            'anchor': 'center',
+        }
+        viewer.add_points(lc,
+                          ndim=os.ndim,
+                          size=1.,
+                          features=features,
+                          text=text_parameters)
