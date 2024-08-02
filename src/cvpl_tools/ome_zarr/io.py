@@ -23,14 +23,19 @@ def encode_path_as_filename(path):
     return encoded_path
 
 
-def load_zarr_group_from_path(path: str, mode=None, use_zip: bool | None = None) -> zarr.Group:
+def load_zarr_group_from_path(path: str,
+                              mode=None,
+                              use_zip: bool | None = None,
+                              level: int | None = None) -> zarr.Group:
     """Loads either a zarr folder or zarr zip file into a zarr group.
 
     Args:
         path: path to the zarr folder or zip to be opened
         mode: file open mode e.g. 'r', only pass this if the file is a zip file
-        use_zip: if True, treat path as a zip; if False, treat path as a folder; if None,
-            use path to determine file type
+        use_zip: if True, treat path as a zip; if False, treat path as a folder; if None, use path to determine
+            file type
+        level: If None (default), load the entire ome zarr; if an int is provided, load the corresponding level
+            in the ome zarr array
     Returns:
         the opened zarr group
     """
@@ -41,6 +46,9 @@ def load_zarr_group_from_path(path: str, mode=None, use_zip: bool | None = None)
     else:
         store = zarr.DirectoryStore(path)
     zarr_group = zarr.open(store, mode=mode)
+    if level is not None:
+        assert isinstance(level, int)
+        zarr_group = zarr_group[str(level)]
     return zarr_group
 
 
@@ -50,7 +58,6 @@ def cache_image(arr: da.Array, location: str):
     Args:
         arr: the dask array to save
         location: the location to save the dask array (new folder to be created)
-
     Returns:
         A dask.Array object read from the saved location; array with the same content as the input
     """
@@ -155,6 +162,9 @@ def write_ome_zarr_image(ome_zarr_path: str,
         MAX_LAYER - The maximum layer of down sampling; starting at layer=0
         logging - If true, print message when job starts and ends
     """
+    if tmp_path is not None:
+        os.makedirs(tmp_path, exist_ok=True)
+
     if make_zip is None:
         make_zip = ome_zarr_path.endswith('.zip')
     if logging:
@@ -194,7 +204,7 @@ def write_ome_zarr_image(ome_zarr_path: str,
 
 
 def generate_synthetic_dataset(ome_zarr_path: str,
-                               tmp_path: str,
+                               tmp_path: str = None,
                                arr_sz: tuple = (2, 224, 1600, 2048),
                                chunks: tuple = (1, 1, 1024, 1024),
                                make_zip: bool | None = None,
@@ -208,7 +218,6 @@ def generate_synthetic_dataset(ome_zarr_path: str,
         chunks: The chunk size of the image
         make_zip: If True, make a physical zip storage of instead of a directory of ome zarr image
         MAX_LAYER: The maximum down sampling layer
-
     Returns:
         An opened zarr group of the newly generated synthetic image
     """
@@ -234,7 +243,6 @@ def generate_synthetic_dataset(ome_zarr_path: str,
         return im
 
     arr = arr.map_blocks(process_block, dtype=np.uint16)
-    os.makedirs(tmp_path, exist_ok=True)
     write_ome_zarr_image(ome_zarr_path, tmp_path, da_arr=arr, make_zip=make_zip, MAX_LAYER=MAX_LAYER)
-    group = load_zarr_group_from_path(f'{ome_zarr_path}/0', mode='r', use_zip=make_zip)
+    group = load_zarr_group_from_path(ome_zarr_path, mode='r', use_zip=make_zip)
     return group

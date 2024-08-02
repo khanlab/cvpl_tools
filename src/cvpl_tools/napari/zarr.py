@@ -54,17 +54,18 @@ def add_ome_zarr_group(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group, 
             add_ome_zarr_array(viewer, lbl_group, name=group_key)
 
 
-def add_ome_zarr_array(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group, **kwargs):
+def add_ome_zarr_array(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group, start_level: int = 0, **kwargs):
     """Add a multiscale ome zarr image or label to viewer.
 
     Args:
         viewer (napari.Viewer): Napari viewer object to attach image to.
         zarr_group (zarr.hierarchy.Group): The zarr group that contains the ome zarr file.
+        start_level (int): The lowest level (highest resolution) to be added, default to 0
         ``**kwargs``: Keyword arguments to be passed to viewer.add_image for root image.
     """
     multiscale = []
     while True:
-        i = len(multiscale)
+        i = len(multiscale) + start_level
         i_str = str(i)
         if i_str in zarr_group:  # by ome zarr standard, image pyramid starts from 0 to NLEVEL - 1
             multiscale.append(da.from_zarr(zarr_group[i_str]))
