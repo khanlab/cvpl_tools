@@ -17,9 +17,11 @@ def coord_map(im_shape: tuple, map_fn: Callable) -> np.ndarray:
     """
     Take a function mapping coordinates to pixel values and generate the specified image; np.indices
     is used in the underlying implementation.
+
     Args:
         im_shape: The shape of the image
         map_fn: The function that maps (numpy arrays of) indices to pixel values
+
     Returns:
         The image whose pixel values are specified by the function
 
@@ -62,6 +64,30 @@ def np_map_block(im: np.ndarray, block_sz) -> np.ndarray:
     return expanded_im.transpose(ax_order)
 
 
+def pad_to_multiple(arr: np.ndarray, n: int) -> np.ndarray:
+    """Numpy, pad an array on each axis to a multiple of n.
+
+    This function ensures no operation is done and original array is returned if the shape is already
+    a multiple for each dimension. Other-wise a new array will be created with minimum shape matching
+    the requirement and it will be returned.
+
+    Args:
+        arr: The array to be padded
+        n: Each axis should be padded to a multiple of this number
+
+    Returns:
+        The padded array
+    """
+    pad_width = tuple((0, (n - dim % n) % n) for dim in arr.shape)
+    for tup in pad_width:
+        if tup != (0, 0):
+            break
+        return arr
+    return np.pad(array=arr,
+                  pad_width=pad_width,
+                  mode='constant')
+
+
 # ----------------------------Specific Image Processing Algorithms-----------------------------
 
 
@@ -84,10 +110,10 @@ def find_np3d_from_bs(mask: np.ndarray[np.uint8]) -> list[np.ndarray[np.int64]]:
         be None. This function will not label lbl_im == 0 (which is assumed to be the background class)
     """
     lbl_im = instance_label(mask)[0]
-    return find_np3d_from_os(lbl_im)
+    return npindices_from_os(lbl_im)
 
 
-def find_np3d_from_os(lbl_im: np.ndarray[np.int32]) -> list[np.ndarray[np.int64]]:
+def npindices_from_os(lbl_im: np.ndarray[np.int32]) -> list[np.ndarray[np.int64]]:
     """Find sparse representation of the contour locations for a contour mask.
 
     "os"=ordinal segmentation mask
@@ -122,12 +148,17 @@ def find_np3d_from_os(lbl_im: np.ndarray[np.int32]) -> list[np.ndarray[np.int64]
 
 
 def watershed(seg_bin, dist_thres=1., remove_smaller_than=None):
-    """
-    Run Watershed algorithm to perform instance segmentation. The result is a index labeled int64 mask
-    :param seg_bin: The binary [0, 1] 3d mask to run watershed on to separate blobs into instances.
-    :param dist_thres: Only pixels this much into the contours are retained; pixels on contours surface are removed
-    :param remove_smaller_than: Contours smaller than this value are added as part of neighboring contours (once)
-    :return: The instance segmented int64 mask from 0 to N, where N is number of objects
+    """Run Watershed algorithm to perform instance segmentation.
+
+    The result is an index labeled int64 mask
+
+    Args:
+        seg_bin: The binary [0, 1] 3d mask to run watershed on to separate blobs into instances.
+        dist_thres: Only pixels this much into the contours are retained; pixels on contours surface are removed
+        remove_smaller_than: Contours smaller than this value are added as part of neighboring contours (once)
+
+    Returns:
+        The instance segmented int64 mask from 0 to N, where N is number of objects
     """
     # reference: https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
     # fp_width = 2

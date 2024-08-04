@@ -380,6 +380,32 @@ def im_resize(target_size: tuple, im: np.ndarray, order: int = 0) -> np.ndarray:
     return resized_im
 
 
+class TmpDirectory:
+    def __init__(self, dirpath: str):
+        self.cur_idx = 0
+        self.dirpath = dirpath
+
+    def __enter__(self):
+        if os.path.exists(self.dirpath):
+            for _ in os.listdir():
+                raise FileExistsError('Temporary directory path must not contain existing files, please check if any '
+                                      'file exists.')
+        ensure_dir_exists(self.dirpath, remove_if_already_exists=True)
+        return self
+
+    def assign_tmpdir(self):
+        """Return a path prefix that is guaranteed to be empty within the temporary directory
+
+        Files and directories with this prefix can be created then
+        """
+        tmppath = f'{self.dirpath}/{self.cur_idx}_'
+        self.cur_idx += 1
+        return tmppath
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        shutil.rmtree(self.dirpath)
+
+
 def test():
     assert ImFileType.ftype_from_im_path('./some_root/hello.nii.gz') == ImFileType.FTYPE_NIB
     assert ImFileType.ftype_from_im_path('./some_root/hello_0001.JPG') == ImFileType.FTYPE_JPG
