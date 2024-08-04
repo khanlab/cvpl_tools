@@ -104,11 +104,11 @@ kwargs: dictionary, keyword arguments to be passed to viewer.add_image for root 
 <dl class="py function">
 <dt class="sig sig-object py" id="cvpl_tools.napari.zarr.add_ome_zarr_array">
 <span class="sig-prename descclassname"><span class="pre">cvpl_tools.napari.zarr.</span></span><span class="sig-name descname"><span class="pre">add_ome_zarr_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zarr_group</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Group</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.napari.zarr.add_ome_zarr_array" title="Permalink to this definition"></a></dt>
-<dd><p>Add a multi-scale ome zarr image or label to viewer.</p>
+<dd><p>Add a multiscale ome zarr image or label to viewer.</p>
 <dl class="simple">
-<dt>Args</dt><dd><p>viewer: Napari viewer object to attach image to
-zarr_group: The zarr group that contains the ome zarr file
-<a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs: keyword arguments to be passed to viewer.add_image for root image</p>
+<dt>Args:</dt><dd><p>viewer (napari.Viewer): Napari viewer object to attach image to.
+zarr_group (zarr.hierarchy.Group): The zarr group that contains the ome zarr file.
+<code class="docutils literal notranslate"><span class="pre">**kwargs</span></code>: Keyword arguments to be passed to viewer.add_image for root image.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -117,14 +117,14 @@ zarr_group: The zarr group that contains the ome zarr file
 <dt class="sig sig-object py" id="cvpl_tools.napari.zarr.add_ome_zarr_group_from_path">
 <span class="sig-prename descclassname"><span class="pre">cvpl_tools.napari.zarr.</span></span><span class="sig-name descname"><span class="pre">add_ome_zarr_group_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_zip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.napari.zarr.add_ome_zarr_group_from_path" title="Permalink to this definition"></a></dt>
 <dd><p>Add an ome zarr group to napari viewer from given group path.</p>
-<p>A combination of load_zarr_group_from_path() and add_ome_zarr_group() functions.</p>
+<p>This is a combination of load_zarr_group_from_path() and add_ome_zarr_group() functions.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="cvpl_tools.napari.zarr.add_ome_zarr_array_from_path">
 <span class="sig-prename descclassname"><span class="pre">cvpl_tools.napari.zarr.</span></span><span class="sig-name descname"><span class="pre">add_ome_zarr_array_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_zip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.napari.zarr.add_ome_zarr_array_from_path" title="Permalink to this definition"></a></dt>
 <dd><p>Add an ome zarr array to napari viewer from given array path.</p>
-<p>A combination of load_zarr_array_from_path() and add_ome_zarr_group() functions.</p>
+<p>This is a combination of load_zarr_array_from_path() and add_ome_zarr_group() functions.</p>
 </dd></dl>
 
 </section>
