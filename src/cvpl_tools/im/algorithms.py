@@ -1,9 +1,8 @@
 """
 This file is for cv algorithms
 """
-
-
-from typing import Callable
+import enum
+from typing import Callable, Type
 import numpy as np
 import skimage
 from scipy.ndimage import (
@@ -239,3 +238,44 @@ def round_object_detection_3sizes(seg, size_thres, dist_thres, rst, size_thres2,
     # lbl_im = (lbl_im2 > 0) * 1 + (lbl_im > 0) * 2 + small_mask * 3
 
     return lbl_im
+
+
+# --------------------------------Statistical Analysis-------------------------------------
+
+
+def Stats_MAE(counted, gt):
+    """
+    Params
+        counted (list) - the counted cells in each image
+        gt (Iterable[float]) - the ground truth number of cells in each image
+    Returns
+        the mean absolute difference between counted and gt
+    """
+    return np.abs(np.array(counted, dtype=np.float32) - np.array(gt, dtype=np.float32)).mean().item()
+
+
+def Stats_ShowScatterPairComparisons(counted: np.array, gt, enumType: Type[enum.Enum]) -> None:
+    """Show comparison between different algorithms counting results to the gt
+
+    Args:
+        counted: (a NCounter * NImages np.ndarray) The counted cells in each image, by each counter
+        gt: (Iterable[float]) The ground truth number of cells in each image
+        enumType: The enum class defined for counting
+    """
+    import matplotlib.pyplot as plt
+    counting_method_inverse_dict = {item.value: item.name for item in enumType}
+    nrow = int((len(counting_method_inverse_dict) - 1) / 6) + 1
+    fig, axes = plt.subplots(nrow, 6, figsize=(24, nrow * 4), sharex=True, sharey=True)
+
+    gt_arr = np.array(gt, dtype=np.float32)
+    for i in range(counted.shape[0]):
+        X, Y = gt_arr, counted[i]
+
+        iax, jax = i // 6, i % 6
+        ax: plt.Axes = axes[iax, jax]
+        ax.set_box_aspect(1)
+        ax.set_title(counting_method_inverse_dict[i])
+        ax.scatter(X, Y)
+
+    plt.show()
+

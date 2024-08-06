@@ -340,7 +340,8 @@ class BlobDog(SegProcess):
         self.threshold = threshold
         self.reduce = reduce
 
-    def np_features(self, block: np.ndarray, block_idx: tuple | None = None, slices: tuple | None = None):
+    def np_features(self, block: np.ndarray[np.float32], block_idx: tuple | None = None, slices: tuple | None = None)\
+            -> np.ndarray[np.float32]:
         lc = skimage.feature.blob_dog(np.array(block * 255, dtype=np.uint8),
                                       max_sigma=self.max_sigma,
                                       threshold=self.threshold).astype(np.float32)  # N * (ndim + 1) ndarray
@@ -349,8 +350,8 @@ class BlobDog(SegProcess):
             lc[:, :block.ndim] += start_pos[None, :]
         return lc
 
-    def feature_forward(self, im: np.ndarray | da.Array, reduce: bool) \
-            -> Iterator[tuple] | np.ndarray:
+    def feature_forward(self, im: np.ndarray[np.float32] | da.Array, reduce: bool) \
+            -> Iterator[tuple] | np.ndarray[np.float32]:
         return dask_algorithms.map_da_to_rows(im=im,
                                               fn=self.np_features,
                                               return_dim=im.ndim,
@@ -358,8 +359,8 @@ class BlobDog(SegProcess):
                                               return_dask=False,
                                               reduce=reduce)
 
-    def forward(self, im: np.ndarray | da.Array) \
-            -> Iterator[tuple] | np.ndarray:
+    def forward(self, im: np.ndarray[np.float32] | da.Array) \
+            -> Iterator[tuple] | np.ndarray[np.float32]:
         return select_feature_columns(self.feature_forward(im, reduce=self.reduce), slice(im.ndim), self.reduce)
 
     def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32]):
@@ -489,6 +490,13 @@ class Watershed3SizesBSToOS(BlockToBlockProcess):
 
 
 class BinaryAndCentroidListToInstance(SegProcess):
+    """Defines a SegProcess
+
+    This class' instance forward() takes two inputs: The binary mask segmenting objects, and centroids
+    detected by the blobdog algorithm. Then it splits the pixels in the binary mask into instance
+    segmentation based on the centroids found by blobdog. The result is a more finely segmented mask
+    where objects closer together are more likely to be correctly segmented as two
+    """
     def __init__(self):
         super().__init__(DatType.OTHER, DatType.OS)
 
@@ -588,7 +596,8 @@ class DirectOSToLC(SegProcess):
         super().__init__(DatType.OS, DatType.LC)
         self.reduce = reduce
 
-    def np_features(self, block: np.ndarray, block_idx: tuple | None = None, slices: tuple | None = None):
+    def np_features(self, block: np.ndarray[np.int32], block_idx: tuple | None = None, slices: tuple | None = None)\
+            -> np.ndarray[np.float32]:
         contours_np3d = algorithms.npindices_from_os(block)
         lc = [contour.astype(np.float32).mean(axis=0) for contour in contours_np3d]
         lc = np.array(lc, dtype=np.float32)
@@ -597,8 +606,8 @@ class DirectOSToLC(SegProcess):
             lc[:, :block.ndim] += start_pos[None, :]
         return lc
 
-    def feature_forward(self, im: np.ndarray | da.Array, reduce: bool) \
-            -> list[np.ndarray] | np.ndarray:
+    def feature_forward(self, im: np.ndarray[np.int32] | da.Array, reduce: bool) \
+            -> Iterator[tuple] | np.ndarray[np.float32]:
         return dask_algorithms.map_da_to_rows(im=im,
                                               fn=self.np_features,
                                               return_dim=im.ndim,
@@ -606,11 +615,11 @@ class DirectOSToLC(SegProcess):
                                               return_dask=False,
                                               reduce=reduce)
 
-    def forward(self, im: np.ndarray | da.Array) \
-            -> np.ndarray:
+    def forward(self, im: np.ndarray[np.int32] | da.Array) \
+            -> np.ndarray[np.float32]:
         return self.feature_forward(im, reduce=self.reduce)
 
-    def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32]):
+    def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.int32] | da.Array):
         features = self.feature_forward(im, reduce=True)
         lc_interpretable_napari('os_to_lc_centroids', features, viewer, im.ndim, [])
 
@@ -620,16 +629,30 @@ class DirectOSToLC(SegProcess):
 
 class CountLCEdgePenalized(SegProcess):
     """From a list of cell centroid locations, calculate a cell count estimate
+    
+    You need to provide an image_shape parameter due to the fact that lc does not contain
+    information about input image shape
 
-    Each centroid is simply treated as 1 cell when they are sufficiently far from the edge, but as they
-    get closer to the edge the divisor becomes >1. and their estimate decreases towards 0, since cells
-    near the edge may be double-counted (or triple or more counted if at a corner etc.)
+    Each centroid is simply treated as 1 cell when they are sufficiently far from the edge,
+    but as they get closer to the edge the divisor becomes >1. and their estimate decreases
+    towards 0, since cells near the edge may be double-counted (or triple or more counted
+    if at a corner etc.)
     """
 
     def __init__(self,
                  im_shape: np.ndarray | tuple[int],
                  border_params: tuple[float, float, float] = (3., -.5, 2.),
                  reduce: bool = False):
+        """Initialize a CountLCEdgePenalized object
+
+        Args:
+            im_shape: Shape of the blocks where rows in list of centroids locate in
+            border_params: Specify how the cells on the border gets discounted. Formula is:
+                intercept, dist_coeff, div_max = self.border_params
+                mults = 1 / np.clip(intercept - border_dists * dist_coeff, 1., div_max)
+                cc_list = np.prod(mults, axis=1)
+            reduce: If True, reduce the results into a Numpy 2d array calling forward()
+        """
         super().__init__(DatType.LC, DatType.CC)
         self.im_shape = np.array(im_shape, dtype=np.float32)
         self.border_params = border_params
@@ -661,27 +684,27 @@ class CountLCEdgePenalized(SegProcess):
         return cc_list
 
     def np_features(self, lc: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
+        """Calculate cell counts, then concat centroid locations to the left of cell counts"""
         cc_list = self.cc_list(lc)
         features = np.concat((lc, cc_list[:, None]), axis=1)
         return features
 
-    def feature_forward(self, im: np.ndarray | da.Array, reduce: bool) \
-            -> list[np.ndarray] | np.ndarray:
-        return dask_algorithms.map_da_to_rows(im=im,
-                                              fn=self.np_features,
-                                              return_dim=im.ndim + 1,
-                                              return_dtype=np.float32,
-                                              return_dask=False,
-                                              reduce=reduce)
+    def feature_forward(self, lc: Iterator[tuple] | np.ndarray[np.float32], reduce: bool) \
+            -> Iterator[tuple] | np.ndarray[np.float32]:
+        if isinstance(lc, np.ndarray):
+            return self.np_features(lc)
+        else:
+            return dask_algorithms.map_rows_to_rows(lc, self.np_features, self.reduce)
 
-    def forward(self, im: np.ndarray | da.Array) \
-            -> np.ndarray:
-        features = select_feature_columns(self.feature_forward(im, self.reduce), [-1], self.reduce)
+    def forward(self, lc: Iterator[tuple] | np.ndarray[np.float32]) \
+            -> Iterator[tuple] | np.ndarray[np.float32]:
+        features = select_feature_columns(self.feature_forward(lc, self.reduce), [-1], self.reduce)
         return sum_feature_columns(features, self.reduce)
 
-    def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32]):
-        features = self.feature_forward(im, reduce=True)
-        lc_interpretable_napari('edge_penalized_centroids', features, viewer, im.ndim, ['ncells'])
+    def interpretable_napari(self, viewer: napari.Viewer, lc: Iterator[tuple] | np.ndarray[np.float32]):
+        features = self.feature_forward(lc, reduce=True)
+        lc_interpretable_napari('edge_penalized_centroids', features, viewer,
+                                len(self.im_shape), ['ncells'])
 
 
 # --------------------------Convert Ordinal Mask to Cell Count Estimate------------------------

@@ -71,3 +71,15 @@ def map_da_to_rows(im: da.Array | np.ndarray,
             block_index,
             slices_iter
         )
+
+
+def map_rows_to_rows(rows: Iterator[tuple], block_map: Callable, reduce: bool = False):
+    """Input rows ('s elements) should be of type np.ndarray"""
+    rows = [(block_map(r), block_index, slices) for r, block_index, slices in rows]
+    if reduce:
+        rows = np.concat([r[0] for r in rows], axis=0)
+    return rows
+
+
+def reduce_numpy_rows(rows: Iterator[tuple]) -> np.ndarray:
+    return np.concat([r[0] for r in rows], axis=0)
