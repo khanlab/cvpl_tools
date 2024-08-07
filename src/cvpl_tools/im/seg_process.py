@@ -136,21 +136,19 @@ def lc_interpretable_napari(layer_name: str,
                       text=text_parameters)
 
 
-def select_feature_columns(features,
-                           cols: slice | Sequence[int] | int,
-                           reduced: bool) -> Iterator[tuple] | np.ndarray:
+def select_feature_columns(features: Iterator[tuple] | np.ndarray,
+                           cols: slice | Sequence[int] | int) -> Iterator[tuple] | np.ndarray:
     """Performs selection on result returned by map_da_to_rows()"""
-    if reduced:
+    if isinstance(features, np.ndarray):
         return features[:, cols]
     else:
         features_iter = ((block[:, cols], block_idx, slices) for (block, block_idx, slices) in features)
         return features_iter
 
 
-def sum_feature_columns(features,
-                        reduced: bool) -> Iterator[tuple] | np.ndarray:
+def sum_feature_columns(features) -> Iterator[tuple] | np.ndarray:
     """Performs selection on result returned by map_da_to_rows()"""
-    if reduced:
+    if isinstance(features, np.ndarray):
         return features.sum(keepdims=True)
     else:
         return ((block.sum(keepdims=True), block_idx, slices)
@@ -351,7 +349,7 @@ class BlobDog(SegProcess):
             lc[:, :block.ndim] += start_pos[None, :]
         return lc
 
-    def feature_forward(self, im: np.ndarray[np.float32] | da.Array, reduce: bool) \
+    def feature_forward(self, im: np.ndarray[np.float32] | da.Array, reduce: bool = False) \
             -> Iterator[tuple] | np.ndarray[np.float32]:
         return dask_algorithms.map_da_to_rows(im=im,
                                               fn=self.np_features,
@@ -362,7 +360,7 @@ class BlobDog(SegProcess):
 
     def forward(self, im: np.ndarray[np.float32] | da.Array) \
             -> Iterator[tuple] | np.ndarray[np.float32]:
-        return select_feature_columns(self.feature_forward(im, reduce=self.reduce), slice(im.ndim), self.reduce)
+        return select_feature_columns(self.feature_forward(im, reduce=self.reduce), slice(im.ndim))
 
     def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32]):
         blobdog = self.feature_forward(im, reduce=True)
@@ -436,7 +434,7 @@ class ScaledSumIntensity(SegProcess):
     def forward(self, im: np.ndarray | da.Array) \
             -> Iterator[tuple] | np.ndarray:
         features = self.feature_forward(im, reduce=self.reduce)
-        return select_feature_columns(features, [-1], self.reduce)
+        return select_feature_columns(features, [-1])
 
     def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32] | da.Array):
         # see what has been completely masked off
@@ -699,7 +697,7 @@ class CountLCEdgePenalized(SegProcess):
         border_dists = np.abs((lc + midpoint) % self.im_shape - (midpoint - .5))
 
         intercept, dist_coeff, div_max = self.border_params
-        mults = 1 / np.clip(intercept - border_dists * dist_coeff, 1., div_max)
+        mults = 1 / np.clip(intercept + border_dists * dist_coeff, 1., div_max)
         cc_list = np.prod(mults, axis=1)
         return cc_list
 
@@ -714,12 +712,12 @@ class CountLCEdgePenalized(SegProcess):
         if isinstance(lc, np.ndarray):
             return self.np_features(lc)
         else:
-            return dask_algorithms.map_rows_to_rows(lc, self.np_features, self.reduce)
+            return dask_algorithms.map_rows_to_rows(lc, self.np_features, reduce)
 
     def forward(self, lc: Iterator[tuple] | np.ndarray[np.float32]) \
             -> Iterator[tuple] | np.ndarray[np.float32]:
-        features = select_feature_columns(self.feature_forward(lc, self.reduce), [-1], self.reduce)
-        return sum_feature_columns(features, self.reduce)
+        features = select_feature_columns(self.feature_forward(lc, self.reduce), [-1])
+        return sum_feature_columns(features)
 
     def interpretable_napari(self, viewer: napari.Viewer, lc: Iterator[tuple] | np.ndarray[np.float32]):
         features = self.feature_forward(lc, reduce=True)
@@ -730,7 +728,7 @@ class CountLCEdgePenalized(SegProcess):
 # --------------------------Convert Ordinal Mask to Cell Count Estimate------------------------
 
 
-class CountOSNContour(SegProcess):
+class CountOSBySize(SegProcess):
     """Counting ordinal segmentation contours
 
     Several features:
@@ -739,7 +737,8 @@ class CountOSNContour(SegProcess):
     2. Above size threshold, the contour is seen as a cluster of cells an estimate of cell count is given
         based on the volume of the contour
     3. For cells on the boundary location, their estimated ncell is penalized according to the distance
-        between the cell centroid and the boundary of the image
+        between the cell centroid and the boundary of the image; if the voxels of the cell do not touch
+        edge, this penalty does not apply
     4. A min_size threshold, below (<=) which the contour is simply discarded because it's likely just
         an artifact
     """
@@ -762,28 +761,41 @@ class CountOSNContour(SegProcess):
         ncells = {}
         dc = []
         dc_idx_to_centroid_idx = {}
+        idx_max = np.array(tuple(d - 1 for d in os.shape), dtype=np.int64)
         for i in range(len(contours_np3d)):
             contour = contours_np3d[i]
             nvoxel = contour.shape[0]
             if nvoxel <= self.min_size:
                 ncells[i] = 0.
-            elif nvoxel <= self.size_threshold:
-                dc_idx_to_centroid_idx[len(dc)] = i
-                dc.append(contour.astype(np.float32).mean(axis=0))
             else:
-                ncells[i] = nvoxel * self.volume_weight
+                ncells[i] = 0.
+                dc_idx_to_centroid_idx[len(dc)] = i
+
+                # if no voxel touch the boundary, we do not want to apply the edge penalty
+                on_edge = (contour == 0).astype(np.uint8) + (contour == idx_max[None, :]).astype(np.uint8)
+                on_edge = on_edge.sum().item() > 0
+                if on_edge:
+                    dc.append(contour.astype(np.float32).mean(axis=0))
+                else:
+                    ncells[i] = 1
+
+                if nvoxel > self.size_threshold:
+                    ncells[i] += (nvoxel - self.size_threshold) * self.volume_weight
         ps = CountLCEdgePenalized(os.shape, self.border_params)
         dc_centroids = np.array(dc, dtype=np.float32)
         dc_ncells = ps.cc_list(dc_centroids)
         for dc_idx in dc_idx_to_centroid_idx:
             i = dc_idx_to_centroid_idx[dc_idx]
-            ncells[i] = dc_ncells[dc_idx]
+            ncells[i] += dc_ncells[dc_idx]
         ncells = np.array([ncells[i] for i in range(len(ncells))], dtype=np.float32)
         return ncells
 
-    def np_features(self, os: np.ndarray[np.int32]) -> np.ndarray[np.float32]:
-        ps = DirectOSToLC()
-        lc = ps.forward(os)
+    def np_features(self,
+                    os: np.ndarray[np.int32],
+                    block_idx: tuple | None = None,
+                    slices: tuple | None = None) -> np.ndarray[np.float32]:
+        ps = DirectOSToLC(reduce=True)
+        lc = ps.np_features(os, block_idx, slices)
         cc_list = self.cc_list(os)
         features = np.concatenate((lc, cc_list[:, None]), axis=1)
         return features
@@ -799,8 +811,8 @@ class CountOSNContour(SegProcess):
 
     def forward(self, im: np.ndarray | da.Array) \
             -> np.ndarray:
-        features = select_feature_columns(self.feature_forward(im, self.reduce), [-1], self.reduce)
-        return sum_feature_columns(features, self.reduce)
+        features = select_feature_columns(self.feature_forward(im, self.reduce), [-1])
+        return sum_feature_columns(features)
 
     def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32]):
         features = self.feature_forward(im, reduce=True)

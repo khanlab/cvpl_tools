@@ -138,8 +138,9 @@ def npindices_from_os(lbl_im: np.ndarray[np.int32]) -> list[np.ndarray[np.int64]
             continue
 
         i = len(result) + 1
-        mask_np3d = lbl_im[slices] == i
-        result.append(np.argwhere(mask_np3d))
+        mask_np3d = np.argwhere(lbl_im[slices] == i)
+        mask_np3d += np.array(tuple(s.start for s in slices), dtype=np.int64)
+        result.append(mask_np3d)
     return result
 
 
@@ -245,7 +246,12 @@ def round_object_detection_3sizes(seg, size_thres, dist_thres, rst, size_thres2,
     # lbl_im = (lbl_im2 > 0) * 1 + (lbl_im > 0) * 2 + small_mask * 3
 
     if remap_indices:
-        _, lbl_im = np.unique(lbl_im, return_inverse=True)
+        if np.__version__ < '2.0.0':  # before 2.0.0, numpy will return a array of 1d regardless of input shape
+            im_shape = lbl_im.shape
+            _, lbl_im = np.unique(lbl_im, return_inverse=True)
+            lbl_im = lbl_im.reshape(im_shape)
+        else:
+            _, lbl_im = np.unique(lbl_im, return_inverse=True)
 
     return lbl_im
 

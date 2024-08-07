@@ -37,17 +37,16 @@ def map_da_to_rows(im: da.Array | np.ndarray,
     # reference: https://github.com/dask/dask/issues/7589 and
     # https://github.com/dask/dask-image/blob/adcb217de766dd6fef99895ed1a33bf78a97d14b/dask_image/ndmeasure/__init__.py#L299
 
+    if isinstance(im, np.ndarray):
+        # special case where this just reduces to a single function call
+        return fn(im, (0, 0, 0), tuple(slice(0, s) for s in im.shape))
+
     # note the block da.Array passed as first argument to delayed_fn() will become np.ndarray in the call to fn()
     # this is due to how dask.delayed() handles input arguments
-    # delayed_fn = dask.delayed(fn)
     @dask.delayed
     def delayed_fn(block, block_idx, slices):
         result = fn(block, block_idx, slices)
         return result
-
-    if isinstance(im, np.ndarray):
-        # special case where this just reduces to a single function call
-        im = da.from_array(im, chunks=im.shape)
 
     slices_list = dask.array.core.slices_from_chunks(im.chunks)
     block_iter = zip(
