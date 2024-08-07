@@ -39,18 +39,21 @@ def map_da_to_rows(im: da.Array | np.ndarray,
 
     # note the block da.Array passed as first argument to delayed_fn() will become np.ndarray in the call to fn()
     # this is due to how dask.delayed() handles input arguments
-    delayed_fn = dask.delayed(fn)
+    # delayed_fn = dask.delayed(fn)
+    @dask.delayed
+    def delayed_fn(block, block_idx, slices):
+        result = fn(block, block_idx, slices)
+        return result
 
     if isinstance(im, np.ndarray):
         # special case where this just reduces to a single function call
         im = da.from_array(im, chunks=im.shape)
 
-    slices_iter = dask.array.core.slices_from_chunks(im.chunks)
-    block_index = np.ndindex(*im.numblocks)
+    slices_list = dask.array.core.slices_from_chunks(im.chunks)
     block_iter = zip(
-        map(functools.partial(operator.getitem, im), slices_iter),  # dask block
-        block_index,  # the block index
-        slices_iter  # the slices (index of pixels)
+        map(functools.partial(operator.getitem, im), slices_list),  # dask block
+        np.ndindex(*im.numblocks),  # the block index
+        slices_list  # the slices (index of pixels)
     )
     results = [da.from_delayed(delayed_fn(*it),
                                shape=(np.nan, return_dim),
@@ -63,13 +66,13 @@ def map_da_to_rows(im: da.Array | np.ndarray,
         if return_dask:
             raise NotImplementedError('to be implemented')
         else:
-            return np.concat(results, axis=0)
+            return np.concatenate(results, axis=0)
     else:
         # add block index and slice information
         return zip(
             results,
-            block_index,
-            slices_iter
+            np.ndindex(*im.numblocks),
+            slices_list
         )
 
 
@@ -77,9 +80,11 @@ def map_rows_to_rows(rows: Iterator[tuple], block_map: Callable, reduce: bool = 
     """Input rows ('s elements) should be of type np.ndarray"""
     rows = [(block_map(r), block_index, slices) for r, block_index, slices in rows]
     if reduce:
-        rows = np.concat([r[0] for r in rows], axis=0)
+        rows = np.concatenate([r[0] for r in rows], axis=0)
     return rows
 
 
 def reduce_numpy_rows(rows: Iterator[tuple]) -> np.ndarray:
-    return np.concat([r[0] for r in rows], axis=0)
+    rows = [r[0] for r in rows]
+    assert len(rows) > 0, 'Need at least one row in the iterator to be reduced'
+    return np.concatenate(rows, axis=0)

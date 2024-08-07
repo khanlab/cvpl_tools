@@ -157,7 +157,9 @@ def watershed(seg_bin, dist_thres=1., remove_smaller_than=None):
         remove_smaller_than: Contours smaller than this value are added as part of neighboring contours (once)
 
     Returns:
-        The instance segmented int64 mask from 0 to N, where N is number of objects
+        The instance segmented int64 mask from 0 to N, where N is higher than the number of objects. Note
+        this algorithm does not guarantee there are N objects found, since some of the contours between 1
+        and N will be removed as a filter step
     """
     # reference: https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
     # fp_width = 2
@@ -208,7 +210,8 @@ def split_objects(seg, size_thres, connectivity=1):
     return split_labeled_objects(lbl_im, size_thres, connectivity)
 
 
-def round_object_detection_3sizes(seg, size_thres, dist_thres, rst, size_thres2, dist_thres2, rst2):
+def round_object_detection_3sizes(seg, size_thres, dist_thres, rst, size_thres2, dist_thres2, rst2,
+                                  remap_indices: bool = True):
     """detect round objects in a binary image
 
     Args:
@@ -219,9 +222,13 @@ def round_object_detection_3sizes(seg, size_thres, dist_thres, rst, size_thres2,
         size_thres2:
         dist_thres2:
         rst2:
+        remap_indices: If True, make sure `lbl_im.max()` is the number of objects; if this is False,
+            `lbl_max()` may be larger than the actual number of objects detected
 
     Returns:
-        Same shape image labeled 0, 1, ..., n, where 0 is background and 1...n are detected objects
+        Same shape image labeled 0, 1, ..., n, where 0 is background and 1...n are detected objects; note if
+        remap_indices is False, there may not be n objects as some of the objects between 1 and n are removed
+        from the list during filter step.
     """
     # objects too small cannot be connected. We use this property to first find small objects that must be single cells
     small_mask, big_mask = split_objects(seg, size_thres, connectivity=1)
@@ -236,6 +243,9 @@ def round_object_detection_3sizes(seg, size_thres, dist_thres, rst, size_thres2,
     lbl_im += (small_labeled != 0) * (small_labeled + lbl_im.max())
     lbl_im += (lbl_im2 != 0) * (lbl_im2 + lbl_im.max())
     # lbl_im = (lbl_im2 > 0) * 1 + (lbl_im > 0) * 2 + small_mask * 3
+
+    if remap_indices:
+        _, lbl_im = np.unique(lbl_im, return_inverse=True)
 
     return lbl_im
 

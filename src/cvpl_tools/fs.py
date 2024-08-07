@@ -188,7 +188,7 @@ class ImFileType:
                 # stack_axis = true_im_ndim - 1  # default stack on the last axis
             if concat_instead:  # concat on existing axis
                 assert 0 <= stack_axis < true_im_ndim - 1, f'Attempt to concat on axis {stack_axis} with true dim={true_im_ndim}'
-                im = np.concatenate(im_arr, axis=stack_axis)
+                im = np.concatenateenate(im_arr, axis=stack_axis)
             else:  # stack on new axis
                 assert 0 <= stack_axis < true_im_ndim, f'Attempt to concat on axis {stack_axis} with true dim={true_im_ndim}'
                 im = np.stack(im_arr, axis=stack_axis)
@@ -255,7 +255,7 @@ class ImReadSetting:
     """
     im_format (int) - specifies the data storage layout e.g. ImFileType.FORMAT_UINT8
     stack_axis (int) - if not None, combine several files with different zstacks to the same imid; specify the axis to stack on
-    concat_instead (bool) - if True, the stacking are done by np.concatenate() which preserves im dimensions; over the same axis
+    concat_instead (bool) - if True, the stacking are done by np.concatenateenate() which preserves im dimensions; over the same axis
     true_im_ndim (int) - # of dimensions of a single image; includes number of channels (for 2d BGR image this would be 3)
     allow_pickle (bool) - set allow_pickle for np.load and np.save
     imid_keep_dirpath (bool) - keeping the directory path when extracting imid from paths; default to False
@@ -273,7 +273,7 @@ class ImWriteSetting:
     """
     im_format (int) - specifies the data storage layout e.g. ImFileType.FORMAT_UINT8
     stack_axis (int) - if not None, combine several files with different zstacks to the same imid; specify the axis to stack on
-    concat_instead (bool) - if True, the stacking are done by np.concatenate() which preserves im dimensions; over the same axis
+    concat_instead (bool) - if True, the stacking are done by np.concatenateenate() which preserves im dimensions; over the same axis
     allow_pickle (bool) - set allow_pickle for np.load and np.save
     ftype (int) - file type to write e.g. ImFileType.FTYPE_NPZ
     """

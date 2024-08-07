@@ -143,7 +143,8 @@ def select_feature_columns(features,
     if reduced:
         return features[:, cols]
     else:
-        return ((block[:, cols], block_idx, slices) for (block, block_idx, slices) in features)
+        features_iter = ((block[:, cols], block_idx, slices) for (block, block_idx, slices) in features)
+        return features_iter
 
 
 def sum_feature_columns(features,
@@ -340,7 +341,7 @@ class BlobDog(SegProcess):
         self.threshold = threshold
         self.reduce = reduce
 
-    def np_features(self, block: np.ndarray[np.float32], block_idx: tuple | None = None, slices: tuple | None = None)\
+    def np_features(self, block: np.ndarray[np.float32], block_idx: tuple | None = None, slices: tuple | None = None) \
             -> np.ndarray[np.float32]:
         lc = skimage.feature.blob_dog(np.array(block * 255, dtype=np.uint8),
                                       max_sigma=self.max_sigma,
@@ -424,6 +425,7 @@ class ScaledSumIntensity(SegProcess):
             -> Iterator[tuple] | np.ndarray[np.float32]:
         def map_fn(b, bidx, slices):
             return self.np_features(b, bidx, slices, spatial_block_width)
+
         return dask_algorithms.map_da_to_rows(im=im,
                                               fn=map_fn,
                                               return_dim=im.ndim + 1,
@@ -433,7 +435,8 @@ class ScaledSumIntensity(SegProcess):
 
     def forward(self, im: np.ndarray | da.Array) \
             -> Iterator[tuple] | np.ndarray:
-        return select_feature_columns(self.feature_forward(im, reduce=self.reduce), [-1], self.reduce)
+        features = self.feature_forward(im, reduce=self.reduce)
+        return select_feature_columns(features, [-1], self.reduce)
 
     def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32] | da.Array):
         # see what has been completely masked off
@@ -481,7 +484,8 @@ class Watershed3SizesBSToOS(BlockToBlockProcess):
                                                           rst=self.rst,
                                                           size_thres2=self.size_thres2,
                                                           dist_thres2=self.dist_thres2,
-                                                          rst2=self.rst2)
+                                                          rst2=self.rst2,
+                                                          remap_indices=True)
         return lbl_im
     # TODO: better visualization of this stage
 
@@ -497,25 +501,35 @@ class BinaryAndCentroidListToInstance(SegProcess):
     segmentation based on the centroids found by blobdog. The result is a more finely segmented mask
     where objects closer together are more likely to be correctly segmented as two
     """
+
     def __init__(self):
         super().__init__(DatType.OTHER, DatType.OS)
 
     def bacl_forward(self, bs: np.ndarray[np.uint8], lc: np.ndarray[np.float32]) -> np.ndarray[np.int32]:
+        """For a numpy block and list of centroids in block, return segmentation based on centroids"""
+
         assert isinstance(bs, np.ndarray) and isinstance(lc, np.ndarray), \
             f'Error: inputs must be numpy for the forward() of this class, got bs={type(bs)} and lc={type(lc)}'
 
         # first sort each centroid into contour they belong to
         lc = lc.astype(np.int64)
-        lbl_im, max_lbl = instance_label(bs)[0]
+        lbl_im, max_lbl = instance_label(bs)
 
-        # index 0 is background - centroids fall within this are discarded
+        lbl_im: np.ndarray[np.int64]
+        max_lbl: int
+
+        # Below, index 0 is background - centroids fall within this are discarded
         contour_centroids = [[] for _ in range(max_lbl + 1)]
 
         for centroid in lc:
             c_ord = int(lbl_im[tuple(centroid)])
             contour_centroids[c_ord].append(centroid)
 
-        def map_fn(centroids: list[np.ndarray[np.int64]], indices: list[int], X: tuple[np.ndarray]):
+        def map_fn(
+                centroids: list[np.ndarray[np.int64]],
+                indices: list[int],
+                X: tuple[np.ndarray]
+        ):
             N = len(centroids)
             assert N >= 2
             assert N == len(indices)
@@ -523,12 +537,12 @@ class BinaryAndCentroidListToInstance(SegProcess):
             X = np.array(X)
             indices = np.array(indices, dtype=np.int32)
 
-            minD = np.inf  # should be an array with same size as the image, but for simplicity we set this as scalar
             idxD = np.zeros(arr_shape, dtype=np.int32)
+            minD = np.ones(arr_shape, dtype=np.float32) * 1e10
             for i in range(N):
                 centroid = centroids[i]
                 D = X - np.expand_dims(centroid, list(range(1, X.ndim)))
-                D = np.sqrt((D * D).astype(np.float32))  # euclidean distance
+                D = np.linalg.norm(D.astype(np.float32), axis=0)  # euclidean distance
                 new_mask = D < minD
                 idxD = new_mask * indices[i] + ~new_mask * idxD
                 minD = new_mask * D + ~new_mask * minD
@@ -538,7 +552,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
         object_slices = list(find_objects(lbl_im))
         new_lbl = max_lbl + 1
         for i in range(1, max_lbl + 1):
-            slices = object_slices[i]
+            slices = object_slices[i - 1]
             if slices is None:
                 continue
 
@@ -551,22 +565,28 @@ class BinaryAndCentroidListToInstance(SegProcess):
             # otherwise, divide the contour and map pixels to each
             indices = [i] + [lbl for lbl in range(new_lbl, new_lbl + ncentroid - 1)]
             new_lbl += ncentroid - 1
-            mask = lbl_im[slices] == i + 1
-            divided = algorithms.coord_map(mask.shape, lambda *X: map_fn(centroids, indices, X))
+            mask = lbl_im[slices] == i
+            stpt = np.array(tuple(s.start for s in slices), dtype=np.int64)
+            centroids = [centroid - stpt for centroid in centroids]
+            divided = algorithms.coord_map(mask.shape,
+                                           lambda *X: map_fn(centroids, indices, X))
 
-            lbl_im[slices] = lbl_im[slices] * ~mask + divided
+            lbl_im[slices] = lbl_im[slices] * ~mask + divided * mask
         return lbl_im
 
     def forward(self,
                 bs: np.ndarray[np.uint8] | da.Array,
                 lc: np.ndarray[np.float32] | Iterator[tuple]) -> np.ndarray[np.int32] | da.Array:
-        lc_map = {
-            block_idx: block for (block, block_idx, slices) in lc
-        }
         if isinstance(bs, np.ndarray):
+            if not isinstance(lc, np.ndarray):
+                lc = dask_algorithms.reduce_numpy_rows(lc)
             return self.bacl_forward(bs, lc)
         else:
             assert isinstance(bs, da.Array)
+
+            lc_map = {
+                block_idx: block for (block, block_idx, slices) in lc
+            }
 
             def map_fn(block, block_idx, slices):
                 block_lc = lc_map[block_idx]
@@ -596,7 +616,7 @@ class DirectOSToLC(SegProcess):
         super().__init__(DatType.OS, DatType.LC)
         self.reduce = reduce
 
-    def np_features(self, block: np.ndarray[np.int32], block_idx: tuple | None = None, slices: tuple | None = None)\
+    def np_features(self, block: np.ndarray[np.int32], block_idx: tuple | None = None, slices: tuple | None = None) \
             -> np.ndarray[np.float32]:
         contours_np3d = algorithms.npindices_from_os(block)
         lc = [contour.astype(np.float32).mean(axis=0) for contour in contours_np3d]
@@ -686,7 +706,7 @@ class CountLCEdgePenalized(SegProcess):
     def np_features(self, lc: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
         """Calculate cell counts, then concat centroid locations to the left of cell counts"""
         cc_list = self.cc_list(lc)
-        features = np.concat((lc, cc_list[:, None]), axis=1)
+        features = np.concatenate((lc, cc_list[:, None]), axis=1)
         return features
 
     def feature_forward(self, lc: Iterator[tuple] | np.ndarray[np.float32], reduce: bool) \
@@ -765,7 +785,7 @@ class CountOSNContour(SegProcess):
         ps = DirectOSToLC()
         lc = ps.forward(os)
         cc_list = self.cc_list(os)
-        features = np.concat((lc, cc_list[:, None]), axis=1)
+        features = np.concatenate((lc, cc_list[:, None]), axis=1)
         return features
 
     def feature_forward(self, im: np.ndarray | da.Array, reduce: bool) \
