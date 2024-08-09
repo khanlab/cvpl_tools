@@ -621,9 +621,18 @@ class DirectOSToLC(SegProcess):
             slices = block_info[0]['array-location']
             contours_np3d = algorithms.npindices_from_os(block)
             lc = [contour.astype(np.float32).mean(axis=0) for contour in contours_np3d]
-            lc = np.array(lc, dtype=np.float32)
+
+            if len(lc) == 0:
+                lc = np.zeros((0, block.ndim), dtype=np.float32)
+            else:
+                lc = np.array(lc, dtype=np.float32)
+
+            logs = []
             if slices is not None:
                 start_pos = np.array([slices[i].start for i in range(len(slices))], dtype=np.float32)
+                logs.append(f'{lc.shape}, {start_pos.shape}, {block.shape}')
+                if len(lc.shape) <= 1:
+                    raise ValueError('\n'.join(logs))
                 lc[:, :block.ndim] += start_pos[None, :]
             return lc
         else:
@@ -780,7 +789,11 @@ class CountOSBySize(SegProcess):
                 if nvoxel > self.size_threshold:
                     ncells[i] += (nvoxel - self.size_threshold) * self.volume_weight
         ps = CountLCEdgePenalized(os.shape, self.border_params)
-        dc_centroids = np.array(dc, dtype=np.float32)
+
+        if len(dc) == 0:
+            dc_centroids = np.zeros((0, os.ndim), dtype=np.float32)
+        else:
+            dc_centroids = np.array(dc, dtype=np.float32)
         dc_ncells = ps.cc_list(dc_centroids)
         for dc_idx in dc_idx_to_centroid_idx:
             i = dc_idx_to_centroid_idx[dc_idx]
