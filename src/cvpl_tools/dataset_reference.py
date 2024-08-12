@@ -13,6 +13,7 @@ from datetime import datetime
 from cvpl_tools.array_key_dict import ArrayKeyDict
 import cvpl_tools.fs as fs
 import numpy as np
+import numpy.typing as npt
 from dataclasses import dataclass
 
 
@@ -58,7 +59,7 @@ class DatapointReference:
         """
         return isinstance(self.data_ref, list)
 
-    def read_as_np(self, read_setting: fs.ImReadSetting) -> np.ndarray:
+    def read_as_np(self, read_setting: fs.ImReadSetting) -> npt.NDArray:
         """
         Reads the datapoint as a numpy array
         Args:

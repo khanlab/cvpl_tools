@@ -75,8 +75,11 @@ import cvpl_tools.im.algorithms as algorithms
 import cvpl_tools.im.dask_algorithms as dask_algorithms
 from cvpl_tools.im.dask_algorithms import NDBlock
 import dask.array as da
+from dask.distributed import print as dprint
 import napari
 import numpy as np
+import numpy.typing as npt
+
 import skimage
 from scipy.ndimage import (
     gaussian_filter as gaussian_filter,
@@ -84,21 +87,12 @@ from scipy.ndimage import (
     find_objects as find_objects
 )
 
-_logger = logging.getLogger('SEG_PROCESS')
-
 
 # ------------------------------------Helper Functions---------------------------------------
 
 
-def direct_map_block(forward: Callable, im: da.Array):
-    def map_fn(block, block_info=None):
-        return forward(block)
-
-    return im.map_blocks(map_fn)
-
-
 def lc_interpretable_napari(layer_name: str,
-                            lc: np.ndarray,
+                            lc: npt.NDArray,
                             viewer: napari.Viewer,
                             ndim: int,
                             extra_features: Sequence):
@@ -188,7 +182,7 @@ class SegProcess(abc.ABC):
         assert isinstance(tmpdir, fs.TmpDirectory), f'Expected type cvpl_tools.fs.TempDirectory, got {type(tmpdir)}'
         self.tmpdir = tmpdir
 
-    def cache_im(self, im: np.ndarray | da.Array) -> np.ndarray | da.Array:
+    def cache_im(self, im: npt.NDArray | da.Array) -> npt.NDArray | da.Array:
         if isinstance(im, da.Array):
             assert self.tmpdir is not None, 'Please assign a tmp_prefix before caching Napari image!'
             tmp_prefix = self.tmpdir.assign_tmpdir()
@@ -196,93 +190,78 @@ class SegProcess(abc.ABC):
         return im
 
     @abc.abstractmethod
-    def forward(self, *args, **kwargs):
-        raise NotImplementedError("SegProcess base class does not implement forward()!")
-
-    @abc.abstractmethod
-    def interpretable_napari(self, *args, **kwargs):
-        """By default, we directly try to add the output to Napari
-
-        This is the simplest way to interpret the output, but will not work for all data types. Subclasses should
-        disregard this method and write their own if any more complicated interpretation is needed.
+    def forward(self, *args, **kwargs) -> Any:  # removed viewer explicitly since that seems to cause issue in IDE docs
+        """Compute outputs from inputs (args)
 
         Args:
-            viewer: Napari viewer object
-            *args: args to be passed to forward()
-            **kwargs: keyword args to be passed to forward()
+            *args: args inputs to forward()
+            viewer: If None, this is just a forward step; if not None, visualization of the step
+                underlying working mechanism will be displayed in Napari viewer object for
+                interpretation of results and debugging purposes
+            **kwargs: kwargs inputs to forward
+
+        Returns:
+            computed output
         """
         raise NotImplementedError("SegProcess base class does not implement forward()!")
 
 
 class BlockToBlockProcess(SegProcess):
-    def __init__(self, input_type: DatType, output_type: DatType, is_label=False):
+    def __init__(self, input_type: DatType, output_type: DatType, out_dtype: np.dtype, is_label=False):
         super().__init__(input_type, output_type)
+        self.out_dtype = out_dtype
         self.is_label = is_label
 
     @final
-    def forward(self, im: np.ndarray | da.Array) \
-            -> np.ndarray | da.Array:
+    def forward(self, im: npt.NDArray | da.Array, viewer: napari.Viewer = None) \
+            -> npt.NDArray | da.Array:
         if isinstance(im, np.ndarray):
-            return self.np_forward(im)
+            result = self.np_forward(im)
         elif isinstance(im, da.Array):
-            return self.dask_forward(im)
+            result = im.map_blocks(
+                self.np_forward,
+                meta=np.array(tuple(), dtype=self.out_dtype),
+                dtype=self.out_dtype
+            )
         else:
             raise TypeError(f'Invalid im type: {type(im)}')
 
+        result = self.cache_im(result)
+        if viewer:
+            fn = viewer.add_labels if self.is_label else viewer.add_image
+            fn(result, name='interpretation')
+        return result
+
     @abc.abstractmethod
-    def np_forward(self, im: np.ndarray) -> np.ndarray:
+    def np_forward(self, im: npt.NDArray, block_info=None) -> npt.NDArray:
         raise NotImplementedError('Subclass of BlockToBlockProcess should implement np_forward!')
 
-    def dask_forward(self, im: da.Array) -> da.Array:
-        return direct_map_block(self.np_forward, im)
 
-    def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray | da.Array):
-        fn = viewer.add_labels if self.is_label else viewer.add_image
-        fn(self.cache_im(self.forward(im)), name='interpretation')
-
-
-def forward_sequential_processes(processes: Sequence[SegProcess], arg: Any):
+def forward_sequential_processes(
+        processes: Sequence[SegProcess],
+        arg: Any,
+        viewer: napari.Viewer = None,
+        add_flags: Sequence[bool] | None = None
+) -> Any:
     """Run a sequence of processes as one
 
     Args:
         processes: The list of SegProcess objects to be chained to one
         arg: The argument to the first SegProcess object
+        viewer: Napari viewer
+        add_flags: default to all True; a list of flags indicating which processes in the list should be interpreted
 
     Returns:
         The result returned after a chain of operations
     """
-    cur_out = arg
-    for i in range(len(processes)):
-        cur_out = processes[i].forward(cur_out)
-    return cur_out
-
-
-def interpretable_napari_sequential_processes(viewer: napari.Viewer,
-                                              processes: Sequence[SegProcess],
-                                              arg: Any,
-                                              add_flags: Sequence[bool] | None = None):
-    """Run a sequence of processes, and interpret these by adding them into napari as images
-
-    Args:
-        viewer: Napari viewer
-        processes: The processes to be interpreted
-        arg: The argument to the first process
-        add_flags: default to all True; a list of flags indicating which processes in the list should be interpreted
-    """
     if add_flags is None:
         add_flags = [True] * len(processes)
-    last_true = -1
-    for i in range(len(processes)):
-        if add_flags[i]:
-            last_true = i
-    if last_true == -1:
-        return
 
     cur_out = arg
-    for i in range(last_true + 1):
-        if i != last_true:
-            cur_out = processes[i].forward(cur_out)
-        processes[i].interpretable_napari(cur_out, viewer=viewer)
+    for i in range(len(processes)):
+        cur_viewer = viewer if add_flags[i] else None
+        cur_out = processes[i].forward(cur_out, viewer=cur_viewer)
+    return cur_out
 
 
 # ---------------------------------------Preprocess------------------------------------------
@@ -290,10 +269,10 @@ def interpretable_napari_sequential_processes(viewer: napari.Viewer,
 
 class GaussianBlur(BlockToBlockProcess):
     def __init__(self, sigma: float):
-        super().__init__(DatType.IN, DatType.IN, is_label=False)
+        super().__init__(DatType.IN, DatType.IN, np.float32, is_label=False)
         self.sigma = sigma
 
-    def np_forward(self, im: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
+    def np_forward(self, im: npt.NDArray[np.float32], block_info=None) -> npt.NDArray[np.float32]:
         return gaussian_filter(im, sigma=self.sigma)
 
 
@@ -302,19 +281,19 @@ class GaussianBlur(BlockToBlockProcess):
 
 class BSPredictor(BlockToBlockProcess):
     def __init__(self, pred_fn: Callable):
-        super().__init__(DatType.IN, DatType.BS, is_label=True)
+        super().__init__(DatType.IN, DatType.BS, np.uint8, is_label=True)
         self.pred_fn = pred_fn
 
-    def np_forward(self, im: np.ndarray[np.float32]) -> np.ndarray[np.uint8]:
+    def np_forward(self, im: npt.NDArray[np.float32], block_info=None) -> npt.NDArray[np.uint8]:
         return self.pred_fn(im)
 
 
 class SimpleThreshold(BlockToBlockProcess):
     def __init__(self, threshold: float):
-        super().__init__(DatType.IN, DatType.BS, is_label=True)
+        super().__init__(DatType.IN, DatType.BS, np.uint8, is_label=True)
         self.threshold = threshold
 
-    def np_forward(self, im: np.ndarray[np.float32]) -> np.ndarray[np.uint8]:
+    def np_forward(self, im: npt.NDArray[np.float32], block_info=None) -> npt.NDArray[np.uint8]:
         return (im > self.threshold).astype(np.uint8)
 
 
@@ -328,7 +307,7 @@ class BlobDog(SegProcess):
         self.threshold = threshold
         self.reduce = reduce
 
-    def np_features(self, block: np.ndarray[np.float32], block_info=None) -> np.ndarray[np.float32]:
+    def np_features(self, block: npt.NDArray[np.float32], block_info=None) -> npt.NDArray[np.float32]:
         if block_info is not None:
             slices = block_info[0]['array-location']
             lc = skimage.feature.blob_dog(np.array(block * 255, dtype=np.uint8),
@@ -340,19 +319,24 @@ class BlobDog(SegProcess):
         else:
             return block
 
-    def feature_forward(self, im: np.ndarray[np.float32] | da.Array) -> NDBlock[np.float32]:
+    def feature_forward(self, im: npt.NDArray[np.float32] | da.Array) -> NDBlock[np.float32]:
         return NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float32)
 
-    def forward(self, im: np.ndarray[np.float32] | da.Array) -> NDBlock:
+    def forward(self,
+                im: npt.NDArray[np.float32] | da.Array,
+                viewer: napari.Viewer = None
+                ) -> NDBlock:
         ndblock = self.feature_forward(im)
+        # TODO: cache this intermediate result
+
+        if viewer:
+            blobdog = ndblock.reduce(force_numpy=True)
+            lc_interpretable_napari('blobdog_centroids', blobdog, viewer, im.ndim, ['sigma'])
+
         ndblock = ndblock.select_columns(slice(im.ndim))
         if self.reduce:
             ndblock = ndblock.reduce(force_numpy=False)
         return ndblock
-
-    def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32]):
-        blobdog = self.feature_forward(im).reduce(force_numpy=True)
-        lc_interpretable_napari('blobdog_centroids', blobdog, viewer, im.ndim, ['sigma'])
 
 
 # -------------------------------Direct Cell Count Prediction----------------------------------
@@ -374,8 +358,8 @@ class ScaledSumIntensity(SegProcess):
         self.reduce = reduce
         self.spatial_box_width = spatial_box_width
 
-    def np_features(self, block: np.ndarray[np.float32], block_info=None, spatial_box_width=None) \
-            -> np.ndarray[np.float32]:
+    def np_features(self, block: npt.NDArray[np.float32], block_info=None, spatial_box_width=None) \
+            -> npt.NDArray[np.float32]:
         if block_info is not None:
             slices = block_info[0]['array-location']
             if spatial_box_width is not None:
@@ -392,7 +376,7 @@ class ScaledSumIntensity(SegProcess):
             if spatial_box_width is not None:
                 subblock_shape = (spatial_box_width,) * block.ndim
                 masked = algorithms.np_map_block(masked, block_sz=subblock_shape)
-                masked: np.ndarray = masked.sum(axis=tuple(range(block.ndim, block.ndim * 2)))
+                masked: npt.NDArray = masked.sum(axis=tuple(range(block.ndim, block.ndim * 2)))
 
                 features = np.zeros((masked.size, block.ndim + 1), dtype=np.float32)
                 inds = np.array(np.indices(masked.shape, dtype=np.float32))
@@ -408,30 +392,29 @@ class ScaledSumIntensity(SegProcess):
         else:
             return block
 
-    def feature_forward(self, im: np.ndarray[np.float32] | da.Array, spatial_block_width: int = None) \
+    def feature_forward(self, im: npt.NDArray[np.float32] | da.Array, spatial_block_width: int = None) \
             -> NDBlock[np.float32]:
         def map_fn(b, block_info):
             return self.np_features(b, block_info, spatial_block_width)
 
         return NDBlock.map_ndblocks([NDBlock(im)], map_fn, out_dtype=np.float32)
 
-    def forward(self, im: np.ndarray | da.Array) \
-            -> NDBlock | np.ndarray:
+    def forward(self, im: npt.NDArray | da.Array, viewer: napari.Viewer = None) \
+            -> NDBlock | npt.NDArray:
+        if viewer:
+            mask = im > self.min_thres
+            viewer.add_image(mask, name='spatial_vis_ncell_sum_intensity')
+
         ndblock = self.feature_forward(im)
+        if viewer:
+            # TODO cache here
+            ssi = self.feature_forward(im, spatial_block_width=self.spatial_box_width).reduce(force_numpy=True)
+            lc_interpretable_napari('block_scaled_sum_intensity', ssi, viewer, im.ndim, ['ncells'])
+
         ndblock = ndblock.select_columns([-1])
         if self.reduce:
             ndblock = ndblock.reduce(force_numpy=False)
         return ndblock
-
-    def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32] | da.Array):
-        # see what has been completely masked off
-        mask = im > self.min_thres
-        viewer.add_image(self.cache_im(mask), name='spatial_vis_ncell_sum_intensity')
-
-        # see for each spatial block, how many cells are counted within that block
-        ssi = self.feature_forward(im, spatial_block_width=self.spatial_box_width).reduce(force_numpy=True)
-
-        lc_interpretable_napari('block_scaled_sum_intensity', ssi, viewer, im.ndim, ['ncells'])
 
 
 # ---------------------------Convert Binary Mask to Instance Mask------------------------------
@@ -439,9 +422,9 @@ class ScaledSumIntensity(SegProcess):
 
 class DirectBSToOS(BlockToBlockProcess):
     def __init__(self):
-        super().__init__(DatType.BS, DatType.OS, is_label=True)
+        super().__init__(DatType.BS, DatType.OS, np.int32, is_label=True)
 
-    def np_forward(self, bs: np.ndarray[np.uint8]) -> np.ndarray[np.int32]:
+    def np_forward(self, bs: npt.NDArray[np.uint8], block_info=None) -> npt.NDArray[np.int32]:
         lbl_im, nlbl = instance_label(bs)
         return lbl_im
 
@@ -454,7 +437,7 @@ class Watershed3SizesBSToOS(BlockToBlockProcess):
                  size_thres2=100.,
                  dist_thres2=1.5,
                  rst2=60.):
-        super().__init__(DatType.BS, DatType.OS, is_label=True)
+        super().__init__(DatType.BS, DatType.OS, np.int32, is_label=True)
         self.size_thres = size_thres
         self.dist_thres = dist_thres
         self.rst = rst
@@ -462,7 +445,7 @@ class Watershed3SizesBSToOS(BlockToBlockProcess):
         self.dist_thres2 = dist_thres2
         self.rst2 = rst2
 
-    def np_forward(self, bs: np.ndarray[np.uint8]) -> np.ndarray[np.int32]:
+    def np_forward(self, bs: npt.NDArray[np.uint8], block_info=None) -> npt.NDArray[np.int32]:
         lbl_im = algorithms.round_object_detection_3sizes(bs,
                                                           size_thres=self.size_thres,
                                                           dist_thres=self.dist_thres,
@@ -487,44 +470,31 @@ class BinaryAndCentroidListToInstance(SegProcess):
     where objects closer together are more likely to be correctly segmented as two
     """
 
-    def __init__(self):
+    def __init__(self, maxSplit: int = 10):
+        """Initialize a BinaryAndCentroidListToInstance object
+
+        Args:
+            maxSplit: If a contour has number of corresponding centroids above (>) this number in lc,
+                then the contour is left as is; this parameter exists for optimization purpose, since
+                the larger contours have a time complexity O(N * S) to its spatial size S and the
+                number of contours N
+        """
         super().__init__(DatType.OTHER, DatType.OS)
+        self.maxSplit = maxSplit
 
-    def bacl_forward(self,
-                     bs: np.ndarray[np.uint8],
-                     lc: np.ndarray[np.float32],
-                     block_info=None) -> np.ndarray[np.int32]:
-        """For a numpy block and list of centroids in block, return segmentation based on centroids"""
-
-        assert isinstance(bs, np.ndarray) and isinstance(lc, np.ndarray), \
-            f'Error: inputs must be numpy for the forward() of this class, got bs={type(bs)} and lc={type(lc)}'
-
-        # first sort each centroid into contour they belong to
-        input_slices = block_info[0]['array-location']
-        lc = lc.astype(np.int64) - np.array(tuple(s.start for s in input_slices), dtype=np.int64)[None, :]
-        lbl_im, max_lbl = instance_label(bs)
-
-        lbl_im: np.ndarray[np.int64]
-        max_lbl: int
-
-        # Below, index 0 is background - centroids fall within this are discarded
-        contour_centroids = [[] for _ in range(max_lbl + 1)]
-
-        for centroid in lc:
-            c_ord = int(lbl_im[tuple(centroid)])
-            contour_centroids[c_ord].append(centroid)
-
-        def map_fn(
-                centroids: list[np.ndarray[np.int64]],
-                indices: list[int],
-                X: tuple[np.ndarray]
-        ) -> np.ndarray[np.int32]:
-            N = len(centroids)
-            assert N >= 2
-            assert N == len(indices)
-            arr_shape = X[0].shape
+    def split_ndarray_by_centroid(
+            self,
+            centroids: list[npt.NDArray[np.int64]],
+            indices: list[int],
+            X: tuple[npt.NDArray]
+    ) -> npt.NDArray[np.int32]:
+        N = len(centroids)
+        assert N >= 2
+        assert N == len(indices)
+        arr_shape = X[0].shape
+        indices = np.array(indices, dtype=np.int32)
+        if N < 10:
             X = np.array(X)
-            indices = np.array(indices, dtype=np.int32)
 
             idxD = np.zeros(arr_shape, dtype=np.int32)
             minD = np.ones(arr_shape, dtype=np.float32) * 1e10
@@ -536,6 +506,34 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 idxD = new_mask * indices[i] + ~new_mask * idxD
                 minD = new_mask * D + ~new_mask * minD
             return idxD
+        else:
+            centroids = np.array(centroids, dtype=np.int32)
+            idxD = algorithms.voronoi_ndarray(arr_shape, centroids)
+            return indices[idxD]
+
+    def bacl_forward(self,
+                     bs: npt.NDArray[np.uint8],
+                     lc: npt.NDArray[np.float32],
+                     block_info=None) -> npt.NDArray[np.int32]:
+        """For a numpy block and list of centroids in block, return segmentation based on centroids"""
+
+        assert isinstance(bs, np.ndarray) and isinstance(lc, np.ndarray), \
+            f'Error: inputs must be numpy for the forward() of this class, got bs={type(bs)} and lc={type(lc)}'
+
+        # first sort each centroid into contour they belong to
+        input_slices = block_info[0]['array-location']
+        lc = lc.astype(np.int64) - np.array(tuple(s.start for s in input_slices), dtype=np.int64)[None, :]
+        lbl_im, max_lbl = instance_label(bs)
+
+        lbl_im: npt.NDArray[np.int32] = lbl_im.astype(np.int32)
+        max_lbl: int
+
+        # Below, index 0 is background - centroids fall within this are discarded
+        contour_centroids = [[] for _ in range(max_lbl + 1)]
+
+        for centroid in lc:
+            c_ord = int(lbl_im[tuple(centroid)])
+            contour_centroids[c_ord].append(centroid)
 
         # now we compute the contours, and brute-force calculate what centroid each pixel is closest to
         object_slices = list(find_objects(lbl_im))
@@ -549,7 +547,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
             # if there are 0 or 1 centroid in the contour, we do nothing
             centroids = contour_centroids[i]  # centroids fall within the current contour
             ncentroid = len(centroids)
-            if ncentroid <= 1:
+            if ncentroid <= 1 or ncentroid > self.maxSplit:
                 continue
 
             # otherwise, divide the contour and map pixels to each
@@ -559,13 +557,28 @@ class BinaryAndCentroidListToInstance(SegProcess):
             stpt = np.array(tuple(s.start for s in slices), dtype=np.int64)
             centroids = [centroid - stpt for centroid in centroids]
             divided = algorithms.coord_map(mask.shape,
-                                           lambda *X: map_fn(centroids, indices, X))
+                                           lambda *X: self.split_ndarray_by_centroid(centroids, indices, X))
 
             lbl_im[slices] = lbl_im[slices] * ~mask + divided * mask
+
         return lbl_im
 
-    def forward(self, bs: np.ndarray[np.uint8] | da.Array, lc: NDBlock[np.float32]) \
-            -> np.ndarray[np.int32] | da.Array:
+    def forward(self,
+                bs: npt.NDArray[np.uint8] | da.Array,
+                lc: NDBlock[np.float32],
+                viewer: napari.Viewer = None
+                ) \
+            -> npt.NDArray[np.int32] | da.Array:
+        if viewer:
+            if isinstance(bs, np.ndarray):
+                lbl_im = instance_label(bs)[0]
+            else:
+                lbl_im = bs.map_blocks(
+                    lambda block: instance_label(block)[0].astype(np.int32), dtype=np.int32
+                )
+                lbl_im = self.cache_im(lbl_im)
+            viewer.add_labels(lbl_im, name='Inst seg before centroid split')
+
         bs = NDBlock(bs)
         is_numpy = bs.is_numpy() or lc.is_numpy()
         if is_numpy:
@@ -578,27 +591,19 @@ class BinaryAndCentroidListToInstance(SegProcess):
         ndblock = NDBlock.map_ndblocks([bs, lc], self.bacl_forward,
                                        out_dtype=np.int32, use_input_index_as_arrloc=0)
         if is_numpy:
-            return ndblock.as_numpy()
+            result = ndblock.as_numpy()
         else:
-            return ndblock.as_dask_array()
+            if self.tmpdir is not None:
+                tmp_path = self.tmpdir.assign_tmpdir()
+            else:
+                tmp_path = None
+            result = ndblock.as_dask_array(tmp_path)
 
-    def interpretable_napari(self,
-                             viewer: napari.Viewer,
-                             bs: np.ndarray[np.uint8] | da.Array,
-                             lc: NDBlock[np.float32]):
-        # first sort each centroid into contour they belong to
-        if isinstance(bs, np.ndarray):
-            lbl_im = instance_label(bs)[0]
-        else:
-            lbl_im = bs.map_blocks(
-                lambda block: instance_label(block)[0].astype(np.int32), dtype=np.int32
-            )
-            lbl_im = self.cache_im(lbl_im)
-        viewer.add_labels(lbl_im, name='Inst seg before centroid split')
+        if viewer:
+            result = self.cache_im(result)
+            viewer.add_labels(result, name='Inst seg by pixel distance to centroid')
 
-        after_split = self.cache_im(self.forward(bs, lc))
-        after_split_layer = viewer.add_labels(after_split,
-                                              name='Inst seg by pixel distance to centroid')
+        return result
 
 
 # ---------------------------Ordinal Segmentation to List of Centroids-------------------------
@@ -611,45 +616,45 @@ class DirectOSToLC(SegProcess):
     1 will come first and before contour labeled 2, 3 and so on)
     """
 
-    def __init__(self, reduce=False):
+    def __init__(self, min_size: int = 0, reduce=False):
         super().__init__(DatType.OS, DatType.LC)
         self.reduce = reduce
+        self.min_size = min_size
 
-    def np_features(self, block: np.ndarray[np.int32], block_info=None) \
-            -> np.ndarray[np.float32]:
+    def np_features(self, block: npt.NDArray[np.int32], block_info=None) \
+            -> npt.NDArray[np.float32]:
         if block_info is not None:
             slices = block_info[0]['array-location']
             contours_np3d = algorithms.npindices_from_os(block)
-            lc = [contour.astype(np.float32).mean(axis=0) for contour in contours_np3d]
+            lc = [contour.astype(np.float32).mean(axis=0) for contour in contours_np3d
+                  if len(contour) > self.min_size]
 
             if len(lc) == 0:
                 lc = np.zeros((0, block.ndim), dtype=np.float32)
             else:
                 lc = np.array(lc, dtype=np.float32)
-
-            logs = []
             if slices is not None:
                 start_pos = np.array([slices[i].start for i in range(len(slices))], dtype=np.float32)
-                logs.append(f'{lc.shape}, {start_pos.shape}, {block.shape}')
-                if len(lc.shape) <= 1:
-                    raise ValueError('\n'.join(logs))
                 lc[:, :block.ndim] += start_pos[None, :]
             return lc
         else:
-            return block
+            return np.zeros(block.shape, dtype=np.float32)
 
-    def feature_forward(self, im: np.ndarray[np.int32] | da.Array) -> NDBlock[np.float32]:
+    def feature_forward(self, im: npt.NDArray[np.int32] | da.Array) -> NDBlock[np.float32]:
         return NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float32)
 
-    def forward(self, im: np.ndarray[np.int32] | da.Array) -> NDBlock[np.float32]:
+    def forward(self,
+                im: npt.NDArray[np.int32] | da.Array,
+                viewer: napari.Viewer = None) -> NDBlock[np.float32]:
         ndblock = self.feature_forward(im)
+        if viewer:
+            # TODO: cache this
+            features = ndblock.reduce(force_numpy=True)
+            lc_interpretable_napari('os_to_lc_centroids', features, viewer, im.ndim, [])
+
         if self.reduce:
             ndblock = ndblock.reduce(force_numpy=False)
         return ndblock
-
-    def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.int32] | da.Array):
-        features = self.feature_forward(im).reduce(force_numpy=True)
-        lc_interpretable_napari('os_to_lc_centroids', features, viewer, im.ndim, [])
 
 
 # -----------------------Convert List of Centroids to Cell Count Estimate----------------------
@@ -668,13 +673,13 @@ class CountLCEdgePenalized(SegProcess):
     """
 
     def __init__(self,
-                 im_shape: np.ndarray | tuple[int],
+                 chunks: Sequence[Sequence[int]] | Sequence[int],
                  border_params: tuple[float, float, float] = (3., -.5, 2.),
                  reduce: bool = False):
         """Initialize a CountLCEdgePenalized object
 
         Args:
-            im_shape: Shape of the blocks where rows in list of centroids locate in
+            chunks: Shape of the blocks over each axis
             border_params: Specify how the cells on the border gets discounted. Formula is:
                 intercept, dist_coeff, div_max = self.border_params
                 mults = 1 / np.clip(intercept - border_dists * dist_coeff, 1., div_max)
@@ -682,7 +687,12 @@ class CountLCEdgePenalized(SegProcess):
             reduce: If True, reduce the results into a Numpy 2d array calling forward()
         """
         super().__init__(DatType.LC, DatType.CC)
-        self.im_shape = np.array(im_shape, dtype=np.float32)
+        if isinstance(chunks[0], int):
+            # Turn Sequence[int] to Sequence[Sequence[int]]
+            # assume single numpy block, at index (0, 0, 0)
+            chunks = tuple((chunks[i],) for i in range(len(chunks)))
+        self.chunks = chunks
+        self.numblocks = tuple(len(c) for c in chunks)
         self.border_params = border_params
         self.reduce = reduce
 
@@ -692,44 +702,60 @@ class CountLCEdgePenalized(SegProcess):
                                   f'from the edge')
         assert div_max >= 1., f'The divisor is >= 1, but got div_max < 1! (div_max={div_max})'
 
-    def cc_list(self, lc: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
+    def cc_list(self,
+                lc: npt.NDArray[np.float32],
+                block_index: tuple) -> npt.NDArray[np.float32]:
         """Returns a cell count estimate for each contour in the list of centroids
 
         Args:
             lc: The list of centroids to be given cell estimates for
+            block_index: The index of the block which this lc corresponds to
 
         Returns:
             A 1-d list, each element is a scalar cell count for the corresponding contour centroid in lc
         """
-        midpoint = (self.im_shape * .5)[None, :]
+        block_shape = np.array(
+            tuple(self.chunks[i][block_index[i]] for i in range(len(self.chunks))),
+            dtype=np.float32
+        )
+        midpoint = (block_shape * .5)[None, :]
 
         # compute border distances in each axis direction
-        border_dists = np.abs((lc + midpoint) % self.im_shape - (midpoint - .5))
+        border_dists = np.abs((lc + midpoint) % block_shape - (midpoint - .5))
 
         intercept, dist_coeff, div_max = self.border_params
         mults = 1 / np.clip(intercept + border_dists * dist_coeff, 1., div_max)
         cc_list = np.prod(mults, axis=1)
         return cc_list
 
-    def np_features(self, lc: np.ndarray[np.float32], block_info=None) -> np.ndarray[np.float32]:
+    def np_features(self, lc: npt.NDArray[np.float32], block_info=None) -> npt.NDArray[np.float32]:
         """Calculate cell counts, then concat centroid locations to the left of cell counts"""
-        cc_list = self.cc_list(lc)
+        cc_list = self.cc_list(lc, block_info[0]['chunk-location'])
         features = np.concatenate((lc, cc_list[:, None]), axis=1)
         return features
 
     def feature_forward(self, lc: NDBlock[np.float32]) -> NDBlock[np.float32]:
         return NDBlock.map_ndblocks([lc], self.np_features, out_dtype=np.float32)
 
-    def forward(self, lc: NDBlock[np.float32]) -> NDBlock[np.float32]:
-        ndblock = self.feature_forward(lc).select_columns([-1])
+    def forward(self, lc: NDBlock[np.float32], viewer: napari.Viewer = None) -> NDBlock[np.float32]:
+        ndblock = self.feature_forward(lc)
+        assert lc.get_numblocks() == self.numblocks, ('numblocks could not match up for the chunks argument '
+                                                      f'provided, expected {self.numblocks} but got '
+                                                      f'{lc.get_numblocks()}')
+
+        if viewer:
+            checkerboard: da.Array = cvpl_ome_zarr_io.dask_checkerboard(self.chunks)
+            viewer.add_labels(checkerboard, name='edge_penalized_checkerboards')
+
+            # TODO: cache this
+            features = ndblock.reduce(force_numpy=True)
+            lc_interpretable_napari('edge_penalized_centroids', features, viewer,
+                                    len(self.chunks), ['ncells'])
+
+        ndblock = ndblock.select_columns([-1])
         if self.reduce:
             ndblock = ndblock.reduce(force_numpy=False)
         return ndblock.sum(keepdims=True)
-
-    def interpretable_napari(self, viewer: napari.Viewer, lc: NDBlock[np.float32]):
-        features = self.feature_forward(lc).reduce(force_numpy=True)
-        lc_interpretable_napari('edge_penalized_centroids', features, viewer,
-                                len(self.im_shape), ['ncells'])
 
 
 # --------------------------Convert Ordinal Mask to Cell Count Estimate------------------------
@@ -763,7 +789,7 @@ class CountOSBySize(SegProcess):
         self.min_size = min_size
         self.reduce = reduce
 
-    def cc_list(self, os: np.ndarray[np.int32]) -> np.ndarray[np.float32]:
+    def cc_list(self, os: npt.NDArray[np.int32]) -> npt.NDArray[np.float32]:
         contours_np3d = algorithms.npindices_from_os(os)
         ncells = {}
         dc = []
@@ -794,7 +820,7 @@ class CountOSBySize(SegProcess):
             dc_centroids = np.zeros((0, os.ndim), dtype=np.float32)
         else:
             dc_centroids = np.array(dc, dtype=np.float32)
-        dc_ncells = ps.cc_list(dc_centroids)
+        dc_ncells = ps.cc_list(dc_centroids, (0,) * os.ndim)
         for dc_idx in dc_idx_to_centroid_idx:
             i = dc_idx_to_centroid_idx[dc_idx]
             ncells[i] += dc_ncells[dc_idx]
@@ -802,8 +828,8 @@ class CountOSBySize(SegProcess):
         return ncells
 
     def np_features(self,
-                    os: np.ndarray[np.int32],
-                    block_info=None) -> np.ndarray[np.float32]:
+                    os: npt.NDArray[np.int32],
+                    block_info=None) -> npt.NDArray[np.float32]:
         if block_info is None:
             return np.zeros(tuple(), dtype=np.float32)
 
@@ -814,16 +840,23 @@ class CountOSBySize(SegProcess):
         features = np.concatenate((lc, cc_list[:, None]), axis=1)
         return features
 
-    def feature_forward(self, im: np.ndarray | da.Array) -> NDBlock[np.float32]:
+    def feature_forward(self, im: npt.NDArray | da.Array) -> NDBlock[np.float32]:
         return NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float32)
 
-    def forward(self, im: np.ndarray | da.Array) \
-            -> np.ndarray:
-        ndblock = self.feature_forward(im).select_columns([-1])
+    def forward(self,
+                im: npt.NDArray[np.int32] | da.Array,
+                viewer: napari.Viewer = None
+                ) -> npt.NDArray[np.float32]:
+        ndblock = self.feature_forward(im)
+
+        if viewer:
+            features = ndblock.reduce(force_numpy=True)
+            features = features[features[:, -1] > 0., :]
+            lc_interpretable_napari('bysize_ncells',
+                                    features, viewer, im.ndim, ['ncells'])
+
+        ndblock = ndblock.select_columns([-1])
+
         if self.reduce:
             ndblock = ndblock.reduce(force_numpy=False)
         return ndblock.sum(keepdims=True)
-
-    def interpretable_napari(self, viewer: napari.Viewer, im: np.ndarray[np.float32]):
-        features = self.feature_forward(im).reduce(force_numpy=True)
-        lc_interpretable_napari('edge_penalized_centroids', features, viewer, im.ndim, ['ncells'])

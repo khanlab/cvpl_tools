@@ -3,12 +3,14 @@ This file defines some helper functions and algorithms for parallel dask image p
 """
 from __future__ import annotations
 
+import os
 import abc
 import copy
 import enum
 from typing import Callable, Iterator, Iterable, Sequence, Any, Generic, TypeVar
 
 import numpy as np
+import numpy.typing as npt
 import dask.array as da
 import dask
 import functools
@@ -61,7 +63,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
     from the side of the tail first
     """
 
-    def __init__(self, arr: np.ndarray | da.Array | NDBlock | None):
+    def __init__(self, arr: npt.NDArray | da.Array | NDBlock | None):
         self.arr = None
         self.properties = None
 
@@ -92,7 +94,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
     def get_ndim(self) -> int:
         return self.properties['ndim']
 
-    def get_numblocks(self):
+    def get_numblocks(self) -> tuple[int]:
         return self.properties['numblocks']
 
     def get_block_indices(self) -> list:
@@ -109,12 +111,12 @@ class NDBlock(Generic[ElementType], abc.ABC):
             other.to_numpy_array()
             return other.arr
 
-    def as_dask_array(self) -> da.Array:
+    def as_dask_array(self, tmp_dirpath: str | None = None) -> da.Array:
         if self.properties['repr_format'] == ReprFormat.DASK_ARRAY:
             return self.arr
         else:
             other = NDBlock(self)
-            other.to_dask_array()
+            other.to_dask_array(tmp_dirpath)
             return other.arr
 
     @staticmethod
@@ -129,7 +131,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             dtype=properties['dtype']
         )
 
-    def _set_properties_by_numpy_array(self, arr: np.ndarray):
+    def _set_properties_by_numpy_array(self, arr: npt.NDArray):
         ndim: int = arr.ndim
         self.properties = dict(
             repr_format=ReprFormat.NUMPY_ARRAY,
@@ -162,6 +164,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
     def to_numpy_array(self):
         """Convert representation format to numpy array"""
         if self.properties['repr_format'] == ReprFormat.DICT_BLOCK_INDEX_SLICES:
+            # TODO: optimize this
             self.to_dask_array()
 
         rformat = self.properties['repr_format']
@@ -175,8 +178,14 @@ class NDBlock(Generic[ElementType], abc.ABC):
         self.properties['repr_format'] = ReprFormat.NUMPY_ARRAY
         self.properties['is_numpy'] = True
 
-    def to_dask_array(self):
-        """Convert representation format to dask array"""
+    def to_dask_array(self, tmp_dirpath: str | None = None):
+        """Convert representation format to dask array
+
+        Args:
+            tmp_dirpath: An empty path to create a temporary save file, best provided if input format
+                is ReprFormat.DICT_BLOCK_INDEX_SLICES and is dask instead of numpy, and you want to
+                avoid repeated computations
+        """
         rformat = self.properties['repr_format']
         if rformat == ReprFormat.DASK_ARRAY:
             return
@@ -188,11 +197,26 @@ class NDBlock(Generic[ElementType], abc.ABC):
             numblocks = self.get_numblocks()
             dtype = self.get_dtype()
 
-            # def extract_block(idx: tuple[int]):
-            #     block = self.arr[idx][0]
-            #     if not isinstance(block, np.ndarray):
-            #         block = da.from_delayed(block, shape=block_shape, dtype=dtype)
-            #     return block
+            if not self.properties['is_numpy'] and tmp_dirpath is not None:
+                os.makedirs(tmp_dirpath, exist_ok=True)
+
+                @dask.delayed
+                def save_block(block_index, block):
+                    suffix = '_'.join(str(i) for i in block_index) + '.npy'
+                    np.save(f'{tmp_dirpath}/{suffix}', block)
+
+                @dask.delayed
+                def load_block(block_index):
+                    suffix = '_'.join(str(i) for i in block_index) + '.npy'
+                    return np.load(f'{tmp_dirpath}/{suffix}')
+
+                tasks = [save_block(block_index, block) for block_index, (block, _) in self.arr.items()]
+                dask.compute(*tasks)
+                self.arr = {
+                    block_index: (load_block(block_index), slices) for block_index, (_, slices) in self.arr.items()
+                }
+
+                # self.properties['is_numpy'] is set at the end of this function
 
             # reference: https://github.com/dask/dask-image/blob/adcb217de766dd6fef99895ed1a33bf78a97d14b/dask_image/ndmeasure/__init__.py#L299
             ndlists = np.empty(numblocks, dtype=object)
@@ -231,7 +255,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
         self.properties['repr_format'] = ReprFormat.DICT_BLOCK_INDEX_SLICES
 
-    def reduce(self, force_numpy: bool = False) -> np.ndarray | da.Array:
+    def reduce(self, force_numpy: bool = False) -> npt.NDArray | da.Array:
         """concatenate all blocks on the first axis"""
         if self.properties['repr_format'] == ReprFormat.NUMPY_ARRAY:
             return np.copy(self.arr)

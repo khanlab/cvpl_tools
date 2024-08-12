@@ -2,6 +2,7 @@
 Add support for writing dask array to ome zarr zip file, and avoid repeated computation as
 discussed in https://github.com/ome/ome-zarr-py/issues/392
 """
+from typing import Sequence
 
 import ome_zarr
 import ome_zarr.io
@@ -11,6 +12,7 @@ import shutil
 import zarr
 import dask.array as da
 import numpy as np
+import numpy.typing as npt
 from ome_zarr.io import parse_url
 import urllib.parse
 
@@ -52,7 +54,7 @@ def load_zarr_group_from_path(path: str,
     return zarr_group
 
 
-def cache_image(arr: da.Array, location: str):
+def cache_image(arr: da.Array, location: str) -> da.Array:
     """cache a dask image on disk, and return a new 'r' mode opened dask array of it
 
     Args:
@@ -246,3 +248,27 @@ def generate_synthetic_dataset(ome_zarr_path: str,
     write_ome_zarr_image(ome_zarr_path, tmp_path, da_arr=arr, make_zip=make_zip, MAX_LAYER=MAX_LAYER)
     group = load_zarr_group_from_path(ome_zarr_path, mode='r', use_zip=make_zip)
     return group
+
+
+def dask_checkerboard(chunks: Sequence[Sequence[int]]) -> da.Array:
+    """Create a synthetic checkerboard pattern dask image
+
+    Args:
+        chunks: The chunks of the checkerboard, from which shape and result array chunk sizes will
+            be calculated from
+
+    Returns:
+        A dask.Array of checkerboard patterns (0=black and 1=white) of type np.uint8; top-left is
+            black
+    """
+    shape = tuple(sum(c) for c in chunks)
+    checkerboard: da.Array = da.zeros(shape, chunks=chunks, dtype=np.uint8)
+
+    def map_fn(block, block_info=None):
+        block_index = block_info[0]['chunk-location']
+        color = sum(block_index) % 2
+        return np.ones_like(block) * color
+
+    checkerboard = checkerboard.map_blocks(map_fn, meta=np.zeros(tuple(), dtype=np.uint8), dtype=np.uint8)
+    return checkerboard
+

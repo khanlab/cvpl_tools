@@ -4,6 +4,7 @@ This file is for cv algorithms
 import enum
 from typing import Callable, Type
 import numpy as np
+import numpy.typing as npt
 import skimage
 from scipy.ndimage import (
     distance_transform_edt as distance_transform_edt,
@@ -12,7 +13,7 @@ from scipy.ndimage import (
 )
 
 
-def coord_map(im_shape: tuple, map_fn: Callable) -> np.ndarray:
+def coord_map(im_shape: tuple, map_fn: Callable) -> npt.NDArray:
     """
     Take a function mapping coordinates to pixel values and generate the specified image; np.indices
     is used in the underlying implementation.
@@ -34,7 +35,7 @@ def coord_map(im_shape: tuple, map_fn: Callable) -> np.ndarray:
     return im
 
 
-def np_map_block(im: np.ndarray, block_sz) -> np.ndarray:
+def np_map_block(im: npt.NDArray, block_sz) -> npt.NDArray:
     """map_block(), but for numpy arrays
 
     Makes image from shape (Z, Y, X...) into (Zb, Yb, Xb..., Zv, Yv, Xv...) where b are block indices within space and
@@ -63,7 +64,7 @@ def np_map_block(im: np.ndarray, block_sz) -> np.ndarray:
     return expanded_im.transpose(ax_order)
 
 
-def pad_to_multiple(arr: np.ndarray, n: int) -> np.ndarray:
+def pad_to_multiple(arr: npt.NDArray, n: int) -> npt.NDArray:
     """Numpy, pad an array on each axis to a multiple of n.
 
     This function ensures no operation is done and original array is returned if the shape is already
@@ -90,7 +91,7 @@ def pad_to_multiple(arr: np.ndarray, n: int) -> np.ndarray:
 # ----------------------------Specific Image Processing Algorithms-----------------------------
 
 
-def find_np3d_from_bs(mask: np.ndarray[np.uint8]) -> list[np.ndarray[np.int64]]:
+def find_np3d_from_bs(mask: npt.NDArray[np.uint8]) -> list[npt.NDArray[np.int64]]:
     """Find sparse representation of the contour locations for a contour mask.
 
     "bs"=binary segmentation mask
@@ -112,7 +113,7 @@ def find_np3d_from_bs(mask: np.ndarray[np.uint8]) -> list[np.ndarray[np.int64]]:
     return npindices_from_os(lbl_im)
 
 
-def npindices_from_os(lbl_im: np.ndarray[np.int32]) -> list[np.ndarray[np.int64]]:
+def npindices_from_os(lbl_im: npt.NDArray[np.int32]) -> list[npt.NDArray[np.int64]]:
     """Find sparse representation of the contour locations for a contour mask.
 
     "os"=ordinal segmentation mask
@@ -256,6 +257,30 @@ def round_object_detection_3sizes(seg, size_thres, dist_thres, rst, size_thres2,
     return lbl_im
 
 
+def voronoi_ndarray(im_shape: tuple, centroids: npt.NDArray[np.int32]) -> npt.NDArray[np.int32]:
+    """Given k centroids in a voxel ndarray, color the array by voronoi algorithm
+
+    Args:
+        im_shape: Shape of the array to be colored
+        centroids: The centroids in the space
+
+    Returns:
+        The indices of type np.int32 according to centroid order
+    """
+    import numpy as np
+    from scipy.spatial import cKDTree
+
+    # Algorithm provided by chatgpt-4o
+
+    indices = np.indices(im_shape)
+    grid_points = np.stack([idx.ravel() for idx in indices], axis=-1)
+
+    # Use cKDTree to find the nearest centroid for each voxel
+    tree = cKDTree(centroids)
+    _, labels = tree.query(grid_points)
+    return labels.astype(np.int32).reshape(im_shape)
+
+
 # --------------------------------Statistical Analysis-------------------------------------
 
 
@@ -294,4 +319,17 @@ def Stats_ShowScatterPairComparisons(counted: np.array, gt, enumType: Type[enum.
         ax.scatter(X, Y)
 
     plt.show()
+
+
+if __name__ == '__main__':
+    centroids = ((2, 2), (0, 1), (0, 0))
+    colored = voronoi_ndarray((3, 3), np.array(centroids, dtype=np.int32))
+    assert colored.dtype == np.int32, f'got colored.dtype={colored.dtype}'
+    colored[2, 0] = 0  # ambiguous as to whether this is 0 or 2, for testing purpose we don't mind this
+    reference = np.array(
+        ((2, 1, 1),
+         (2, 1, 0),
+         (0, 0, 0)), dtype=np.int32
+    )
+    assert (colored == reference).sum().item() == colored.size, f'got array {colored}'
 

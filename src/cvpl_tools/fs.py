@@ -16,12 +16,14 @@ import os
 import shutil
 import glob
 import numpy as np
+import numpy.typing as npt
 import nibabel as nib
 from PIL import Image
 import scipy
 from dataclasses import dataclass, field
 from cvpl_tools.array_key_dict import ArrayKeyDict
 from nibabel import load as nib_load
+import sys
 
 
 def ensure_dir_exists(dir_path, remove_if_already_exists):
@@ -199,7 +201,7 @@ class ImFileType:
             return im, im_meta
 
     @staticmethod
-    def save_np_as_im(target_path: str, im: np.ndarray, ftype=None, stack_axis=None,
+    def save_np_as_im(target_path: str, im: npt.NDArray, ftype=None, stack_axis=None,
                       concat_instead=False, ftype_meta=None, allow_pickle=False, im_format=None):
         """
         If ftype is None (default), it will be inferred from path
@@ -372,7 +374,7 @@ class ImIO:
         return imid_to_path
 
 
-def im_resize(target_size: tuple, im: np.ndarray, order: int = 0) -> np.ndarray:
+def im_resize(target_size: tuple, im: npt.NDArray, order: int = 0) -> npt.NDArray:
     assert len(im.shape) == len(target_size), f'Image has shape {im.shape} but intend to resize ' \
                                               f'to incompatible shape {target_size}'
     zoom_factors = (target_size[i] / im.shape[i] for i in range(len(target_size)))
@@ -381,9 +383,10 @@ def im_resize(target_size: tuple, im: np.ndarray, order: int = 0) -> np.ndarray:
 
 
 class TmpDirectory:
-    def __init__(self, dirpath: str):
+    def __init__(self, dirpath: str, remove_when_done: bool = True):
         self.cur_idx = 0
         self.dirpath = dirpath
+        self.remove_when_done = remove_when_done
 
     def __enter__(self):
         if os.path.exists(self.dirpath):
@@ -403,7 +406,21 @@ class TmpDirectory:
         return tmppath
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        shutil.rmtree(self.dirpath)
+        if self.remove_when_done:
+            shutil.rmtree(self.dirpath)
+
+
+class MultiOutputStream:
+    def __init__(self, *files):
+        self.files = files
+
+    def write(self, message):
+        for file in self.files:
+            file.write(message)
+
+    def flush(self):
+        for file in self.files:
+            file.flush()
 
 
 def test():

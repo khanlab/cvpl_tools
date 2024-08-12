@@ -16,6 +16,7 @@ import skimage
 import skimage.morphology as morph
 import scipy.ndimage as ndimage
 import numpy as np
+import numpy.typing as npt
 from abc import ABC, abstractmethod
 import skimage.draw as draw
 import matplotlib.pyplot as plt
@@ -25,7 +26,7 @@ from PIL import Image, ImageDraw, ImageFont
 ZOOM_FACTOR = 4
 
 
-def draw_ncells_text_on_im_cube(im_cube: np.ndarray, pos_list: np.ndarray, ncell_list: np.array) -> np.array:
+def draw_ncells_text_on_im_cube(im_cube: npt.NDArray, pos_list: npt.NDArray, ncell_list: np.array) -> np.array:
     sz = (im_cube.shape[0], im_cube.shape[1] * ZOOM_FACTOR, im_cube.shape[2] * ZOOM_FACTOR) + (4,)
     out_cube = np.zeros(sz, dtype=np.uint8)
     out_cube[:, :, :, 3] = 255
@@ -197,7 +198,7 @@ class Count_BlobDog(CountFromIntensityImage):
         blobs_dog = skimage.feature.blob_dog(np.array(im_cube * 255, dtype=np.uint8), **self.args)
         blobs_dog[:, 3:] = blobs_dog[:, 3:] * np.sqrt(3)  # adjust each sigma to get radius (this is still in pixels)
 
-        blobs_img = np.zeros(im_cube.shape + (4, ), dtype=np.float32)
+        blobs_img = np.zeros(im_cube.shape + (4,), dtype=np.float32)
         for i in range(blobs_dog.shape[0]):
             o = blobs_dog[i]
             iz, iy, ix, ir = int(o[0]), int(o[1]), int(o[2]), o[3]
