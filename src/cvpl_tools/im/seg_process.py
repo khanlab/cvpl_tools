@@ -155,7 +155,8 @@ class SegProcess(abc.ABC):
     def __init__(self, input_type: DatType, output_type: DatType):
         self._input_type = input_type
         self._output_type = output_type
-        self.tmpdir: fs.TmpDirectory | None = None
+        self.tmpdir: fs.CacheDirectory | None = None
+        self.cid_prefix: str | None = None
 
     def input_type(self) -> DatType:
         return self._input_type
@@ -169,24 +170,30 @@ class SegProcess(abc.ABC):
     def output_type_str(self) -> str:
         return self._output_type.name
 
-    def set_tmpdir(self, tmpdir: fs.TmpDirectory):
+    def set_tmpdir(self, tmpdir: fs.CacheDirectory, cid_prefix: str | None = None):
         """Use this to cache output results
 
         For output images that involves interpretation with napari, this is necessary for a smooth display of the
         results.
 
         Args:
-            tmpdir: Any fs.TmpDirectory object that allows many temporary objects to be written as cache in the
+            tmpdir: Any fs.CacheDirectory object that allows many temporary objects to be written as cache in the
                 directory
+            cid_prefix: The prefix of cids when we need to read or write cached data in the cache directory
         """
-        assert isinstance(tmpdir, fs.TmpDirectory), f'Expected type cvpl_tools.fs.TempDirectory, got {type(tmpdir)}'
+        assert isinstance(tmpdir, fs.CacheDirectory), f'Expected type cvpl_tools.fs.TempDirectory, got {type(tmpdir)}'
         self.tmpdir = tmpdir
+        self.cid_prefix = cid_prefix
 
-    def cache_im(self, im: npt.NDArray | da.Array) -> npt.NDArray | da.Array:
+    def cache_im(self, im: npt.NDArray | da.Array, cid_suffix: str | None = None) -> npt.NDArray | da.Array:
         if isinstance(im, da.Array):
             assert self.tmpdir is not None, 'Please assign a tmp_prefix before caching Napari image!'
-            tmp_prefix = self.tmpdir.assign_tmpdir()
-            im = cvpl_ome_zarr_io.cache_image(im, tmp_prefix)
+            if cid_suffix is None:
+                tmp_prefix = self.tmpdir.assign_tmpdir()
+                im = cvpl_ome_zarr_io.cache_image(im, tmp_prefix)
+            else:
+                cache_exists, tmp_prefix = self.tmpdir.get_cachedir(f'{self.cid_prefix}-{cid_suffix}')
+                cvpl_ome_zarr_io.cache_image(im, tmp_prefix, use_exists_if_found=True)
         return im
 
     @abc.abstractmethod
@@ -207,13 +214,14 @@ class SegProcess(abc.ABC):
 
 
 class BlockToBlockProcess(SegProcess):
-    def __init__(self, input_type: DatType, output_type: DatType, out_dtype: np.dtype, is_label=False):
+    def __init__(self, input_type: DatType, output_type: DatType, out_dtype: np.dtype,
+                 is_label=False):
         super().__init__(input_type, output_type)
         self.out_dtype = out_dtype
         self.is_label = is_label
 
     @final
-    def forward(self, im: npt.NDArray | da.Array, viewer: napari.Viewer = None) \
+    def forward(self, im: npt.NDArray | da.Array, cid_suffix: str | None = None, viewer: napari.Viewer = None) \
             -> npt.NDArray | da.Array:
         if isinstance(im, np.ndarray):
             result = self.np_forward(im)
@@ -226,7 +234,7 @@ class BlockToBlockProcess(SegProcess):
         else:
             raise TypeError(f'Invalid im type: {type(im)}')
 
-        result = self.cache_im(result)
+        result = self.cache_im(result, cid_suffix=cid_suffix)
         if viewer:
             fn = viewer.add_labels if self.is_label else viewer.add_image
             fn(result, name='interpretation')
@@ -566,9 +574,9 @@ class BinaryAndCentroidListToInstance(SegProcess):
     def forward(self,
                 bs: npt.NDArray[np.uint8] | da.Array,
                 lc: NDBlock[np.float32],
+                cid_suffix: str | None = None,
                 viewer: napari.Viewer = None
-                ) \
-            -> npt.NDArray[np.int32] | da.Array:
+                ) -> npt.NDArray[np.int32] | da.Array:
         if viewer:
             if isinstance(bs, np.ndarray):
                 lbl_im = instance_label(bs)[0]
@@ -576,7 +584,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 lbl_im = bs.map_blocks(
                     lambda block: instance_label(block)[0].astype(np.int32), dtype=np.int32
                 )
-                lbl_im = self.cache_im(lbl_im)
+                lbl_im = self.cache_im(lbl_im, f'{cid_suffix}-lblim')
             viewer.add_labels(lbl_im, name='Inst seg before centroid split')
 
         bs = NDBlock(bs)
@@ -594,13 +602,13 @@ class BinaryAndCentroidListToInstance(SegProcess):
             result = ndblock.as_numpy()
         else:
             if self.tmpdir is not None:
-                tmp_path = self.tmpdir.assign_tmpdir()
+                tmp_path = self.tmpdir.get_cachedir(f'{cid_suffix}-Blocks')
             else:
                 tmp_path = None
             result = ndblock.as_dask_array(tmp_path)
 
         if viewer:
-            result = self.cache_im(result)
+            result = self.cache_im(result, f'{cid_suffix}-InstSplit')
             viewer.add_labels(result, name='Inst seg by pixel distance to centroid')
 
         return result

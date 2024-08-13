@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import os
 import abc
-import copy
 import enum
-from typing import Callable, Iterator, Iterable, Sequence, Any, Generic, TypeVar
+import json
+from typing import Callable, Sequence, Any, Generic, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -15,6 +15,7 @@ import dask.array as da
 import dask
 import functools
 import operator
+import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
 
 
 def _init_ndlist(idx: tuple, shape: tuple, init_element: Callable[[tuple], Any]) -> list:
@@ -84,6 +85,87 @@ class NDBlock(Generic[ElementType], abc.ABC):
     @staticmethod
     def from_ndlists(ndlists: Sequence):
         return NDBlock(dask_ndconcat(ndlists))
+
+    @staticmethod
+    def save(file: str, ndblock: NDBlock):
+        """Save the NDBlock to the given path
+
+        Will compute immediately if the ndblock is delayed dask computations
+
+        Args:
+            file: The file to save to
+            ndblock: The block which will be saved
+        """
+        fmt = ndblock.get_repr_format()
+        os.makedirs(file, exist_ok=False)
+        if fmt == ReprFormat.NUMPY_ARRAY:
+            np.save(f'{file}/im.npy', ndblock.arr)
+        elif fmt == ReprFormat.DASK_ARRAY:
+            cvpl_ome_zarr_io.cache_image(ndblock.arr, f'{file}/dask_im', use_exists_if_found=False)
+        else:
+            os.makedirs(f'{file}/blocks', exist_ok=False)
+            @dask.delayed
+            def save_block(block_index, block):
+                suffix = '_'.join(str(i) for i in block_index) + '.npy'
+                np.save(f'{file}/blocks/{suffix}', block)
+
+            tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
+            with open(f'{file}/block_indices', mode='w') as idxfile:
+                for _, (_, slices) in ndblock.arr.items():
+                    slices_str = tuple(f'{s.start}-{s.stop}' for s in slices)
+                    idxfile.write(f"{','.join(slices_str)}\n")
+            dask.compute(*tasks)
+        with open(f'{file}/properties.json', mode='w') as outfile:
+            # convert repr_format and dtype to appropriate format for serialization
+            # reference: https://stackoverflow.com/questions/47641404/serializing-numpy-dtype-objects-human-readable
+            properties = {k: v for k, v in ndblock.properties.items()}
+            properties['repr_format'] = int(properties['repr_format'])
+            dt = np.dtype(properties['dtype'])
+            properties['dtype'] = dt.descr
+
+            json.dump(properties, fp=outfile, indent=2)
+
+    @staticmethod
+    def load(file: str):
+        with open(f'{file}/properties.json', mode='r') as infile:
+            properties = json.load(fp=infile)
+
+            properties['repr_format'] = ReprFormat(properties['repr_format'])
+            dt = np.dtype(properties['dtype'])
+            properties['dtype'] = np.dtype([tuple(i) for i in dt])
+        fmt = properties['repr_format']
+        if fmt == ReprFormat.NUMPY_ARRAY:
+            ndblock = NDBlock(None)
+            ndblock.arr = np.load(f'{file}/im.npy')
+        elif fmt == ReprFormat.DASK_ARRAY:
+            ndblock = NDBlock(None)
+            ndblock.arr = cvpl_ome_zarr_io.load_zarr_group_from_path(
+                f'{file}/dask_im',
+                mode='r',
+                level=0
+            )
+        else:
+            ndblock = NDBlock(None)
+            with open(f'{file}/block_indices', mode='r') as idxfile:
+                slices_list = []
+                for line in idxfile.readlines():
+                    slices = tuple(tuple(int(i) for i in slices_str.split('-')) for slices_str in line.split(','))
+                    slices = tuple(slice(s[0], s[1]) for s in slices)
+                    slices_list.append(slices)
+
+            @dask.delayed
+            def load_block(block_index):
+                suffix = '_'.join(str(i) for i in block_index) + '.npy'
+                return np.load(f'{file}/blocks/{suffix}')
+
+            ndblock.arr = {}
+            for i in range(len(slices_list)):
+                block_indices = properties['block_indices']
+                block_index, slices = block_indices[i], slices_list[i]
+
+                ndblock.arr[block_index] = (load_block(block_index), slices)
+        ndblock.properties = properties
+        return ndblock
 
     def is_numpy(self) -> bool:
         return self.properties['is_numpy']
@@ -198,30 +280,15 @@ class NDBlock(Generic[ElementType], abc.ABC):
             dtype = self.get_dtype()
 
             if not self.properties['is_numpy'] and tmp_dirpath is not None:
-                os.makedirs(tmp_dirpath, exist_ok=True)
-
-                @dask.delayed
-                def save_block(block_index, block):
-                    suffix = '_'.join(str(i) for i in block_index) + '.npy'
-                    np.save(f'{tmp_dirpath}/{suffix}', block)
-
-                @dask.delayed
-                def load_block(block_index):
-                    suffix = '_'.join(str(i) for i in block_index) + '.npy'
-                    return np.load(f'{tmp_dirpath}/{suffix}')
-
-                tasks = [save_block(block_index, block) for block_index, (block, _) in self.arr.items()]
-                dask.compute(*tasks)
-                self.arr = {
-                    block_index: (load_block(block_index), slices) for block_index, (_, slices) in self.arr.items()
-                }
-
-                # self.properties['is_numpy'] is set at the end of this function
+                if not os.path.exists(tmp_dirpath):
+                    NDBlock.save(tmp_dirpath, self)
+                ndblock_to_be_combined = NDBlock.load(tmp_dirpath)
+            else:
+                ndblock_to_be_combined = self
 
             # reference: https://github.com/dask/dask-image/blob/adcb217de766dd6fef99895ed1a33bf78a97d14b/dask_image/ndmeasure/__init__.py#L299
             ndlists = np.empty(numblocks, dtype=object)
-            for block_index in self.arr.keys():
-                block, slices = self.arr[block_index]
+            for block_index, (block, slices) in ndblock_to_be_combined.arr.items():
                 block_shape = tuple(s.stop - s.start for s in slices)
                 if not isinstance(block, np.ndarray):
                     block = da.from_delayed(block, shape=block_shape, dtype=dtype)
@@ -387,4 +454,3 @@ class NDBlock(Generic[ElementType], abc.ABC):
             ndblock = NDBlock(self)
             ndblock.arr = ndblock.arr[:, cols]
         return ndblock
-
