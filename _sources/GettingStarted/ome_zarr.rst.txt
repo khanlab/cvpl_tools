@@ -36,5 +36,9 @@ To view an ome-zarr file this way with `cvpl_tools`, use the command
     store = gfs.get_mapper('gs://path_to_your.ome.zarr')
     zarr_group = zarr.open(store, mode='r')
     cvpl_zarr.add_ome_zarr_group(viewer, zarr_group, dict(name="displayed_name_in_ui"))
+- An extra argument is_label can be passed into the function via kwargs dictionary. This is a
+  boolean value that specifies whether to use viewer.add_labels (if True) or viewer.add_image
+  (if False) function. This is useful for displaying instance segmentaion masks, where each
+  segmented object has a distinct color.
 
 Similarly, you can open a zip, or an image with multiple labels this way.
