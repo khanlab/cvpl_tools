@@ -4,15 +4,15 @@ Segmentation and post-processing.
 This file is for methods generating (dask) single class segmentation masks of binary or ordinal types, the latter of
 which is a 0-N segmentation of N objects of the same class in an image.
 
-Methods in this file should be run quickly and whose performance can be compared against each other to manual
-segmentations over a dataset.
+Methods in this file are designed such that they can be easily swapped out and whose performance is then compared
+against each other to manual segmentations over a dataset.
 
 The input to these methods are either input 3d single-channel image of type np.float32, or input image paired with
 a deep learning segmentation algorithm. The output may be cell count #, binary mask
 (np.uint8) or ordinal mask (np.int32).
 
 Conceptually, we define the following input/output types:
-IN - Input Image (np.float32) between 0 and 1, this is the brightness dask image as input
+IN - Input Image (np.float32) between min=0 and max=1, this is the brightness dask image as input
 BS - Binary Segmentation (3d, np.uint8), this is the binary mask single class segmentation
 OS - Ordinal Segmentation (3d, np.int32), this is the 0-N where contour 1-N each denotes an object; also single class
 LC - List of Centroids, this contains a list of centroids for each block in the original image

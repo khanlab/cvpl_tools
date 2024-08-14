@@ -40,7 +40,7 @@ def add_ome_zarr_group(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group,
                        kwargs: dict = None, lbl_kwargs: dict = None):
     """Add an ome zarr image (if exists) along with its labels (if exist) to viewer.
 
-    Args
+    Args:
         viewer: Napari viewer object to attach image to
         zarr_group: The zarr group that contains the ome zarr file
         kwargs: dictionary, keyword arguments to be passed to viewer.add_image for root image

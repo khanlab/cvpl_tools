@@ -26,7 +26,7 @@ def encode_path_as_filename(path):
 
 
 def load_zarr_group_from_path(path: str,
-                              mode=None,
+                              mode: str | None = None,
                               use_zip: bool | None = None,
                               level: int | None = None) -> zarr.Group:
     """Loads either a zarr folder or zarr zip file into a zarr group.
@@ -153,22 +153,22 @@ def write_ome_zarr_image(ome_zarr_path: str,
                          lbl_arr: da.Array | None = None,
                          lbl_name: str | None = None,
                          make_zip: bool | None = None,
-                         MAX_LAYER=3,
+                         MAX_LAYER: int = 3,
                          logging=False):
     """Write dask array as an ome zarr
 
     For writing to zip file: due to dask does not directly support write to zip file, we instead create a temp ome zarr
     output and copy it into a zip after done. This is why tmp_path is required if make_zip=True
 
-    Args
-        ome_zarr_path - The path to target ome zarr folder, or ome zarr zip folder if make_zip is True
-        tmp_path - temporary files will be stored under this,
-        da_arr - If provided, this is the array to write at {ome_zarr_path}
-        lbl_arr - If provided, this is the array to write at {ome_zarr_path}/labels/{lbl_name}
-        lbl_name - name of the folder of the label array
-        make_zip - bool, if True the output is a zip; if False a folder; if None, then determine based on file suffix
-        MAX_LAYER - The maximum layer of down sampling; starting at layer=0
-        logging - If true, print message when job starts and ends
+    Args:
+        ome_zarr_path: The path to target ome zarr folder, or ome zarr zip folder if make_zip is True
+        tmp_path: temporary files will be stored under this,
+        da_arr: If provided, this is the array to write at {ome_zarr_path}
+        lbl_arr: If provided, this is the array to write at {ome_zarr_path}/labels/{lbl_name}
+        lbl_name: name of the folder of the label array
+        make_zip: bool, if True the output is a zip; if False a folder; if None, then determine based on file suffix
+        MAX_LAYER: The maximum layer of down sampling; starting at layer=0
+        logging: If true, print message when job starts and ends
     """
     if tmp_path is not None:
         os.makedirs(tmp_path, exist_ok=True)
