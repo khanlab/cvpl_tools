@@ -382,68 +382,6 @@ def im_resize(target_size: tuple, im: npt.NDArray, order: int = 0) -> npt.NDArra
     return resized_im
 
 
-class CacheDirectory:
-    def __init__(self, dirpath: str, remove_when_done: bool = True, read_if_exists: bool = True):
-        self.cur_idx = 0
-        self.dirpath = dirpath
-        self.remove_when_done = remove_when_done
-        self.read_if_exists = read_if_exists
-        self.cid_set = set()
-
-    def __enter__(self):
-        if self.read_if_exists:
-            if os.path.exists(self.dirpath):
-                for filename in os.listdir(self.dirpath):
-                    if filename.startswith('tmpdir_'):
-                        shutil.rmtree(f'{self.dirpath}/{filename}')
-                    elif filename.startswith('cachedir_'):
-                        suffix = filename[len('cachedir_'):]
-                        cid = suffix[:suffix.find('_')]
-                        self.cid_set.add(cid)
-            ensure_dir_exists(self.dirpath, remove_if_already_exists=False)
-        else:
-            if os.path.exists(self.dirpath):
-                for _ in os.listdir(self.dirpath):
-                    raise FileExistsError('Temporary directory path must not contain existing files, please check '
-                                          f'if any file exists under {self.dirpath}.')
-            ensure_dir_exists(self.dirpath, remove_if_already_exists=True)
-        return self
-
-    def assign_tmpdir(self):
-        """Return a path prefix that is guaranteed to be empty within the temporary directory
-
-        Files and directories with this prefix can be created then
-        """
-        tmppath = f'{self.dirpath}/tmpdir_{self.cur_idx}_'
-        self.cur_idx += 1
-        return tmppath
-
-    def is_cached(self, cid: str) -> bool:
-        """Check if a cid is cached"""
-        return cid in self.cid_set
-
-    def get_cachedir(self, cid: str) -> tuple[bool, str]:
-        """Obtain a persistent cachedir to read or write arbitrary data
-
-        Args:
-            cid: Used to retrieve the cache later on
-
-        Returns:
-            A tuple (cache_exists, cachedir), the first indicates whether the cachedir has previously been written,
-            and the second is a string giving the path to the cache directory (which may not be created if this
-            is the first request for this given cid)
-        """
-        cachepath = f'{self.dirpath}/cachedir_{cid}_'
-        cache_exists = cid in self.cid_set
-        if not cache_exists:
-            self.cid_set.add(cid)
-        return cache_exists, cachepath
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.remove_when_done:
-            shutil.rmtree(self.dirpath)
-
-
 class MultiOutputStream:
     def __init__(self, *files):
         self.files = files

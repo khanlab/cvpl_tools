@@ -1,5 +1,5 @@
 """
-This file defines some helper functions and algorithms for parallel dask image processing
+This file defines the NDBlock class and related enum, helper functions related to it
 """
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import abc
 import enum
 import json
 from typing import Callable, Sequence, Any, Generic, TypeVar
+import copy
 
 import numpy as np
 import numpy.typing as npt
@@ -16,36 +17,6 @@ import dask
 import functools
 import operator
 import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
-
-
-def _init_ndlist(idx: tuple, shape: tuple, init_element: Callable[[tuple], Any]) -> list:
-    if len(shape) > 1:
-        return [_init_ndlist(idx + (i,), shape[1:], init_element) for i in range(shape[0])]
-
-    return [init_element(idx + (i,)) for i in range(shape[0])]
-
-
-def _dask_ndconcat(ndlists: Sequence, ax_orders: Sequence[int] | None = None):
-    if len(ax_orders) > 1:
-        sub_ax_orders = ax_orders[1:]
-        ndlists = [_dask_ndconcat(ndlists[i], sub_ax_orders) for i in range(len(ndlists))]
-    # TODO: This does not parallelize well, how can this be delayed?
-    return da.concatenate(da.compute(*ndlists), axis=ax_orders[0])
-
-
-def dask_ndconcat(ndlists: Sequence, ndim: int | None = None, ax_orders: Sequence[int] | None = None):
-    """Concatenate a ndlists of dask delayed into a single dask image
-
-    This function will correctly handle both when blocks are numpy ndarray or when they are dask arrays
-    """
-    assert not (ndim is None and ax_orders is None), ('Expected to receive at least one of ndim or ax_order as input, '
-                                                      f'got ndim={ndim} and ax_orders={ax_orders}')
-    if ndim is not None and ax_orders is not None:
-        assert len(ax_orders) == ndim, f'Conflicting inputs, got ndim={ndim} and ax_orders={ax_orders}'
-
-    if ax_orders is None:
-        ax_orders = tuple(range(ndim))
-    return _dask_ndconcat(ndlists, ax_orders)
 
 
 class ReprFormat(enum.Enum):
@@ -78,16 +49,46 @@ class NDBlock(Generic[ElementType], abc.ABC):
             self.arr = arr
             self._set_properties_by_dask_array(arr)
         else:
-            assert isinstance(arr, NDBlock)
+            assert isinstance(arr, NDBlock), f'Unexpected type {type(arr)}'
             self.arr = arr.arr
             self.properties = NDBlock._copy_properties(arr.properties)
 
     @staticmethod
-    def from_ndlists(ndlists: Sequence):
-        return NDBlock(dask_ndconcat(ndlists))
+    def properties_consistency_check(properties: dict[str, Any]):
+        block_indices = properties['block_indices']
+        assert isinstance(block_indices, list)
+        assert isinstance(block_indices[0], tuple)
+
+        slices_list = properties['slices_list']
+        assert isinstance(slices_list, list)
+        assert isinstance(slices_list[0], tuple)
+        assert isinstance(slices_list[0][0], slice)
+
+        repr_format = properties['repr_format']
+        assert isinstance(repr_format, ReprFormat)
+
+        numblocks = properties['numblocks']
+        assert isinstance(numblocks, tuple)
+        assert isinstance(numblocks[0], int)
 
     @staticmethod
-    def save(file: str, ndblock: NDBlock):
+    def save_properties(file: str, properties: dict):
+        with open(file, mode='w') as outfile:
+            # convert repr_format and dtype to appropriate format for serialization
+            # reference: https://stackoverflow.com/questions/47641404/serializing-numpy-dtype-objects-human-readable
+            properties = copy.copy(properties)
+            properties['repr_format'] = properties['repr_format'].value
+            dt = np.dtype(properties['dtype'])
+            properties['dtype'] = dt.descr
+            properties['slices_list'] = [tuple((s.start, s.stop) for s in si) for si in properties['slices_list']]
+
+            block_indices = properties['block_indices']
+            assert isinstance(properties['block_indices'], list), (f'Expected block indices to be of type list, '
+                                                                   f'got {block_indices}')
+            json.dump(properties, fp=outfile, indent=2)
+
+    @staticmethod
+    def save(file: str, ndblock: NDBlock, downsample_level: int = 0):
         """Save the NDBlock to the given path
 
         Will compute immediately if the ndblock is delayed dask computations
@@ -95,13 +96,15 @@ class NDBlock(Generic[ElementType], abc.ABC):
         Args:
             file: The file to save to
             ndblock: The block which will be saved
+            downsample_level: This only applies if ndblock is dask, will write multilevel if non-zero
         """
         fmt = ndblock.get_repr_format()
         os.makedirs(file, exist_ok=False)
         if fmt == ReprFormat.NUMPY_ARRAY:
             np.save(f'{file}/im.npy', ndblock.arr)
         elif fmt == ReprFormat.DASK_ARRAY:
-            cvpl_ome_zarr_io.cache_image(ndblock.arr, f'{file}/dask_im', use_exists_if_found=False)
+            cvpl_ome_zarr_io.write_ome_zarr_image(f'{file}/dask_im', da_arr=ndblock.arr,
+                                                  make_zip=False, MAX_LAYER=downsample_level)
         else:
             os.makedirs(f'{file}/blocks', exist_ok=False)
             @dask.delayed
@@ -110,61 +113,51 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 np.save(f'{file}/blocks/{suffix}', block)
 
             tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
-            with open(f'{file}/block_indices', mode='w') as idxfile:
-                for _, (_, slices) in ndblock.arr.items():
-                    slices_str = tuple(f'{s.start}-{s.stop}' for s in slices)
-                    idxfile.write(f"{','.join(slices_str)}\n")
             dask.compute(*tasks)
-        with open(f'{file}/properties.json', mode='w') as outfile:
-            # convert repr_format and dtype to appropriate format for serialization
-            # reference: https://stackoverflow.com/questions/47641404/serializing-numpy-dtype-objects-human-readable
-            properties = {k: v for k, v in ndblock.properties.items()}
-            properties['repr_format'] = int(properties['repr_format'])
-            dt = np.dtype(properties['dtype'])
-            properties['dtype'] = dt.descr
-
-            json.dump(properties, fp=outfile, indent=2)
+        NDBlock.save_properties(f'{file}/properties.json', ndblock.properties)
 
     @staticmethod
-    def load(file: str):
-        with open(f'{file}/properties.json', mode='r') as infile:
+    def load_properties(file: str) -> dict:
+        with open(file, mode='r') as infile:
             properties = json.load(fp=infile)
 
             properties['repr_format'] = ReprFormat(properties['repr_format'])
-            dt = np.dtype(properties['dtype'])
+            dt = properties['dtype']
             properties['dtype'] = np.dtype([tuple(i) for i in dt])
+            properties['block_indices'] = [tuple(idx) for idx in properties['block_indices']]
+            properties['slices_list'] = [tuple(slice(s[0], s[1]) for s in si) for si in properties['slices_list']]
+            properties['numblocks'] = tuple(properties['numblocks'])
+        NDBlock.properties_consistency_check(properties)
+        return properties
+
+    @staticmethod
+    def load(file: str):
+        properties = NDBlock.load_properties(f'{file}/properties.json')
+
         fmt = properties['repr_format']
+        ndblock = NDBlock(None)
+        ndblock.properties = properties
         if fmt == ReprFormat.NUMPY_ARRAY:
-            ndblock = NDBlock(None)
             ndblock.arr = np.load(f'{file}/im.npy')
         elif fmt == ReprFormat.DASK_ARRAY:
-            ndblock = NDBlock(None)
-            ndblock.arr = cvpl_ome_zarr_io.load_zarr_group_from_path(
+            ndblock.arr = da.from_zarr(cvpl_ome_zarr_io.load_zarr_group_from_path(
                 f'{file}/dask_im',
                 mode='r',
                 level=0
-            )
+            ))
         else:
-            ndblock = NDBlock(None)
-            with open(f'{file}/block_indices', mode='r') as idxfile:
-                slices_list = []
-                for line in idxfile.readlines():
-                    slices = tuple(tuple(int(i) for i in slices_str.split('-')) for slices_str in line.split(','))
-                    slices = tuple(slice(s[0], s[1]) for s in slices)
-                    slices_list.append(slices)
-
             @dask.delayed
             def load_block(block_index):
                 suffix = '_'.join(str(i) for i in block_index) + '.npy'
                 return np.load(f'{file}/blocks/{suffix}')
 
             ndblock.arr = {}
+            block_indices = properties['block_indices']
+            slices_list = properties['slices_list']
             for i in range(len(slices_list)):
-                block_indices = properties['block_indices']
                 block_index, slices = block_indices[i], slices_list[i]
 
                 ndblock.arr[block_index] = (load_block(block_index), slices)
-        ndblock.properties = properties
         return ndblock
 
     def is_numpy(self) -> bool:
@@ -203,6 +196,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     @staticmethod
     def _copy_properties(properties: dict):
+        NDBlock.properties_consistency_check(properties)
         return dict(
             repr_format=properties['repr_format'],
             ndim=properties['ndim'],
@@ -219,11 +213,12 @@ class NDBlock(Generic[ElementType], abc.ABC):
             repr_format=ReprFormat.NUMPY_ARRAY,
             ndim=ndim,
             numblocks=(1,) * ndim,
-            block_indices=(0,) * ndim,
-            slices_list=list((0, s) for s in arr.shape),
+            block_indices=[(0,) * ndim],
+            slices_list=[tuple(slice(0, s) for s in arr.shape)],
             is_numpy=True,
             dtype=arr.dtype
         )
+        NDBlock.properties_consistency_check(self.properties)
 
     def _set_properties_by_dask_array(self, arr: da.Array):
         ndim: int = arr.ndim
@@ -240,6 +235,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             is_numpy=False,
             dtype=arr.dtype
         )
+        NDBlock.properties_consistency_check(self.properties)
 
     # ReprFormat conversion functions
 
@@ -435,11 +431,12 @@ class NDBlock(Generic[ElementType], abc.ABC):
             repr_format=ReprFormat.DICT_BLOCK_INDEX_SLICES,
             ndim=ndim,
             numblocks=numblocks,
-            block_indices=block_iterators[use_input_index_as_arrloc].arr.keys(),
+            block_indices=[k for k in block_iterators[use_input_index_as_arrloc].arr.keys()],
             slices_list=block_iterators[use_input_index_as_arrloc].properties['slices_list'],
             is_numpy=False,
             dtype=out_dtype
         )
+        NDBlock.properties_consistency_check(result_ndblock.properties)
         return result_ndblock
 
     def select_columns(self, cols: slice | Sequence[int] | int) -> NDBlock:
