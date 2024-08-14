@@ -30,11 +30,12 @@ or on cloud.
    :caption: Contents:
 
    Introduction <self>
-   Viewing OME Zarr <GettingStarted/ome_zarr>
+   Viewing and IO of OME Zarr <GettingStarted/ome_zarr>
 
 .. toctree::
    :maxdepth: 2
    :caption: API Reference
 
-   cvpl_tools.napari.zarr <API/napari_zarr>
+   cvpl_tools.napari.zarr.py <API/napari_zarr>
+   cvpl_tools.ome_zarr.io.py <API/ome_zarr_io>
 

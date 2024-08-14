@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cvpl_tools/ome_zarr/io.py &mdash; cvpl_tools 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=4e78f113"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="cvpl_tools/napari/zarr.py" href="napari_zarr.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cvpl_tools
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/ome_zarr.html">Viewing and IO of OME Zarr</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.ome_zarr.io.py</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.ome_zarr.io.load_zarr_group_from_path"><code class="docutils literal notranslate"><span class="pre">load_zarr_group_from_path()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.ome_zarr.io.write_ome_zarr_image"><code class="docutils literal notranslate"><span class="pre">write_ome_zarr_image()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cvpl_tools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">cvpl_tools/ome_zarr/io.py</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/API/ome_zarr_io.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cvpl-tools-ome-zarr-io-py">
+<span id="ome-zarr-io"></span><h1>cvpl_tools/ome_zarr/io.py<a class="headerlink" href="#cvpl-tools-ome-zarr-io-py" title="Permalink to this heading"></a></h1>
+<p>View source at <a class="reference external" href="https://github.com/khanlab/cvpl_tools/blob/main/src/cvpl_tools/ome_zarr/io.py">io.py</a>.</p>
+<p>Read and Write: For reading OME ZARR image, use <strong>load_zarr_group_from_path</strong> to open a zarr group in
+read mode and then use <strong>dask.array.from_zarr</strong> to create a dask array from the group. For writing OME
+ZARR image, we assume you have a dask array and would like to write it as a .zip or a directory. In
+such cases, <strong>write_ome_zarr_image</strong> directly writes the dask array onto disk.</p>
+<p class="rubric">APIs</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.ome_zarr.io.load_zarr_group_from_path">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.ome_zarr.io.</span></span><span class="sig-name descname"><span class="pre">load_zarr_group_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_zip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Group</span></span></span><a class="headerlink" href="#cvpl_tools.ome_zarr.io.load_zarr_group_from_path" title="Permalink to this definition"></a></dt>
+<dd><p>Loads either a zarr folder or zarr zip file into a zarr group.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – path to the zarr folder or zip to be opened</p></li>
+<li><p><strong>mode</strong> – file open mode e.g. ‘r’, only pass this if the file is a zip file</p></li>
+<li><p><strong>use_zip</strong> – if True, treat path as a zip; if False, treat path as a folder; if None, use path to determine
+file type</p></li>
+<li><p><strong>level</strong> – If None (default), load the entire ome zarr; if an int is provided, load the corresponding level
+in the ome zarr array</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the opened zarr group</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.ome_zarr.io.write_ome_zarr_image">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.ome_zarr.io.</span></span><span class="sig-name descname"><span class="pre">write_ome_zarr_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ome_zarr_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">da_arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lbl_arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lbl_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">make_zip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MAX_LAYER</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logging</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.ome_zarr.io.write_ome_zarr_image" title="Permalink to this definition"></a></dt>
+<dd><p>Write dask array as an ome zarr</p>
+<p>For writing to zip file: due to dask does not directly support write to zip file, we instead create a temp ome zarr
+output and copy it into a zip after done. This is why tmp_path is required if make_zip=True</p>
+<dl class="simple">
+<dt>Args</dt><dd><p>ome_zarr_path - The path to target ome zarr folder, or ome zarr zip folder if make_zip is True
+tmp_path - temporary files will be stored under this,
+da_arr - If provided, this is the array to write at {ome_zarr_path}
+lbl_arr - If provided, this is the array to write at {ome_zarr_path}/labels/{lbl_name}
+lbl_name - name of the folder of the label array
+make_zip - bool, if True the output is a zip; if False a folder; if None, then determine based on file suffix
+MAX_LAYER - The maximum layer of down sampling; starting at layer=0
+logging - If true, print message when job starts and ends</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="napari_zarr.html" class="btn btn-neutral float-left" title="cvpl_tools/napari/zarr.py" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, KarlHanUW.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

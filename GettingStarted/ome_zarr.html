@@ -47,11 +47,16 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Viewing OME Zarr</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Viewing and IO of OME Zarr</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#viewing-of-ome-zarr-file">Viewing of ome_zarr file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reading-and-writing-ome-zarr-files">Reading and Writing ome_zarr files</a></li>
+</ul>
+</li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.napari.zarr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
 </ul>
 
         </div>
@@ -80,27 +85,29 @@
              
   <section id="ome-zarr">
 <span id="id1"></span><h1>OME_ZARR<a class="headerlink" href="#ome-zarr" title="Permalink to this heading"></a></h1>
+<section id="viewing-of-ome-zarr-file">
+<h2>Viewing of ome_zarr file<a class="headerlink" href="#viewing-of-ome-zarr-file" title="Permalink to this heading"></a></h2>
 <p>Viewing of ome_zarr in a directory or as a zip file.</p>
-<p>1.Open Napari with command <cite>napari</cite></p>
+<p>1.Open Napari with command <strong>napari</strong></p>
 <p>2.Open the command widget with button at the bottom left corner of the window.</p>
 <p>3.After that, type in the command window to invoke functions that add more images as layers.
-To view an ome-zarr file this way with <cite>cvpl_tools</cite>, use the command</p>
+To view an ome-zarr file this way with <strong>cvpl_tools</strong>, use the command</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.napari.zarr</span> <span class="k">as</span> <span class="nn">cvpl_zarr</span>
 <span class="n">cvpl_zarr</span><span class="o">.</span><span class="n">add_ome_zarr_array_from_path</span><span class="p">(</span><span class="n">viewer</span><span class="p">,</span> <span class="s2">&quot;/absolute/path/to/your/ome.zarr&quot;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;displayed_name_in_ui&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>This will create a new layer named <cite>displayed_name_in_ui</cite> which displays your ome zarr array.
+<li><p>This will create a new layer named <strong>displayed_name_in_ui</strong> which displays your ome zarr array.
 The underlying implementation uses Napari add_image’s multiscale array display</p></li>
-<li><p>To open a <cite>.zip</cite> file, specify ome.zarr.zip in the path (and optionally set use_zip=True to
+<li><p>To open a <strong>.zip</strong> file, specify ome.zarr.zip in the path (and optionally set use_zip=True to
 open the file as zip regardless of its suffix)</p></li>
-<li><p>To open both the <cite>ome.zarr</cite> file and any label files located at <cite>ome.zarr/labels/label_name</cite>
+<li><p>To open both the <strong>ome.zarr</strong> file and any label files located at <strong>ome.zarr/labels/label_name</strong>
 as specified by the ome zarr standard, use cvpl_zarr.add_ome_zarr_group_from_path instead.</p></li>
 <li><p>To specify additional arguments passed to Napari’s add_image function, pass your arguments in
 the kwargs as a dictionary.</p></li>
 <li><p>To open an OME ZARR image on Google cloud storage, use the following code instead</p></li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.napari.zarr</span> <span class="k">as</span> <span class="nn">cvpl_zarr</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.napari.zarr</span> <span class="k">as</span> <span class="nn">cvpl_zarr</span>
 <span class="kn">import</span> <span class="nn">gcsfs</span>
 <span class="kn">import</span> <span class="nn">zarr</span>
 <span class="n">gfs</span> <span class="o">=</span> <span class="n">gcsfs</span><span class="o">.</span><span class="n">GCSFileSystem</span><span class="p">(</span><span class="n">token</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
@@ -116,6 +123,52 @@ boolean value that specifies whether to use viewer.add_labels (if True) or viewe
 segmented object has a distinct color.</p></li>
 </ul>
 <p>Similarly, you can open a zip, or an image with multiple labels this way.</p>
+</section>
+<section id="reading-and-writing-ome-zarr-files">
+<h2>Reading and Writing ome_zarr files<a class="headerlink" href="#reading-and-writing-ome-zarr-files" title="Permalink to this heading"></a></h2>
+<p>Before talking about the read and write, we need to first understand the directory structure of an
+OME ZARR file. A basic OME ZARR file (which is what we work with) is a directory that looks like
+the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">image</span><span class="o">.</span><span class="n">OME</span><span class="o">.</span><span class="n">ZARR</span><span class="o">/</span>  <span class="c1"># The OME ZARR image, which is a directory in Windows/Linux</span>
+    <span class="o">-</span> <span class="mi">0</span><span class="o">/</span>  <span class="c1"># The original image, in ZARR format</span>
+        <span class="o">+</span> <span class="mi">0</span><span class="o">/</span>  <span class="c1"># Slice of image at first axis X=0</span>
+        <span class="o">+</span> <span class="mi">1</span><span class="o">/</span>
+        <span class="o">...</span>
+        <span class="o">.</span><span class="n">zarray</span>  <span class="c1"># .zarray is meta attribute for the ZARR image</span>
+    <span class="o">+</span> <span class="mi">1</span><span class="o">/</span>  <span class="c1"># Downsampled image at downsample level 1, in ZARR format</span>
+    <span class="o">+</span> <span class="mi">2</span><span class="o">/</span>
+    <span class="o">+</span> <span class="mi">3</span><span class="o">/</span>
+    <span class="o">+</span> <span class="mi">4</span><span class="o">/</span>  <span class="c1"># The smallest downsampled image at level 4, in ZARR format</span>
+    <span class="o">.</span><span class="n">zattrs</span>  <span class="c1"># .zattrs and .zgroup are meta attributes for the OME ZARR image</span>
+    <span class="o">.</span><span class="n">zgroup</span>
+</pre></div>
+</div>
+<p>Above + denotes collapsed folder and - denotes expanded folder. A few things to note here:</p>
+<ul class="simple">
+<li><p>An image does not have to end with .OME.ZARR suffix</p></li>
+<li><p>The image is multiscaled if the maximum downsample level is 0 instead of 4, in which case there
+will only be one 0/ folder</p></li>
+<li><p>You may confuse an OME ZARR image with a single ZARR image. An OME ZARR image
+is not a standard ZARR directory and contains no <strong>.zarray</strong> meta file. Loading an OME ZARR
+image as ZARR will crash, if you forget to specify <strong>0/</strong> subfolder as the path to load</p></li>
+<li><p>When saved as a zip file instead of a directory, the directory structure is the same except that
+the root is a zip file. And when loading we can use ZipStore’s features to directly reading
+individual files without having to unpack the entire zip file. However, writing to a ZipStore is
+not well supported by either Python’s zarr or the ome-zarr library.</p></li>
+<li><p>An HPC system like Compute Canada may work better with one large files than many small files,
+thus the result should be zipped. This can be done by first writing the folder to somewhere
+that allows creating many small files and then zip the result into a single zip in the target
+directory</p></li>
+<li><p>As of the time of writing (2024.8.14), ome-zarr library’s Writer class has a <a class="reference external" href="https://github.com/ome/ome-zarr-py/issues/392">double computation
+issue</a> and to temporary patch this for our
+use case, I’ve added a <strong>write_ome_zarr_image</strong> function to write a dask array as an OME ZARR
+file. This function also adds support for reading images stored as a <strong>.zip</strong> file.</p></li>
+</ul>
+<p>See the API page for <a class="reference external" href="API/ome_zarr_io">cvpl_tools.ome_zarr.io.py</a> for how to read and write OME
+ZARR files if you want to use <strong>cvpl_tools</strong> for such tasks. This file provides two functions
+<strong>load_zarr_group_from_path</strong> and <strong>write_ome_zarr_image</strong> which allows you to read and write OME
+ZARR files, respectively.</p>
+</section>
 </section>
 
 
