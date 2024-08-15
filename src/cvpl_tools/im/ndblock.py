@@ -178,6 +178,11 @@ class NDBlock(Generic[ElementType], abc.ABC):
     def get_dtype(self):
         return self.properties['dtype']
 
+    def get_chunksize(self) -> tuple[int, ...]:
+        slices = self.properties['slices_list'][0]
+        chunksize = tuple(s.stop - s.start + 1 for s in slices)
+        return chunksize
+
     def as_numpy(self) -> da.Array:
         if self.properties['repr_format'] == ReprFormat.NUMPY_ARRAY:
             return self.arr

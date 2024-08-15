@@ -91,29 +91,12 @@ from scipy.ndimage import (
 # ------------------------------------Helper Functions---------------------------------------
 
 
-def cache_im(tmpdir: imfs.CacheDirectory,
-             im_fn: Callable,
-             cid: str | None = None,
-             multiscale: int = 0,
-             viewer_args: dict = None) -> npt.NDArray | da.Array | NDBlock:
-    """A wrapper around CacheDirectory.cache_im for some additional features"""
-
-    def save_fn(file, im):
-        if isinstance(im, da.Array):
-            NDBlock(im).save(file, NDBlock(im), multiscale)
-            with open(f'{file}/fmt.txt', mode='w') as outfile:
-                outfile.write(str(imfs.ImageFormat.DASK_ARRAY.value))
-        else:
-            imfs.save(file, im)
-
-    return tmpdir.cache_im(im_fn, cid=cid, save_fn=save_fn, viewer_args=viewer_args)
-
-
 def lc_interpretable_napari(layer_name: str,
                             lc: npt.NDArray,
                             viewer: napari.Viewer,
                             ndim: int,
-                            extra_features: Sequence):
+                            extra_features: Sequence,
+                            text_color: str = 'green'):
     """This function is used to display feature points for LC-typed output
 
     Args:
@@ -122,6 +105,7 @@ def lc_interpretable_napari(layer_name: str,
         viewer: Napari viewer to add points to
         ndim: dimension of the image
         extra_features: extra features to be displayed as text
+        text_color: to be used as display text color
     """
     # reference: https://napari.org/stable/gallery/add_points_with_features.html
     nextra = len(extra_features)
@@ -140,7 +124,7 @@ def lc_interpretable_napari(layer_name: str,
     text_parameters = {
         'string': '\n'.join(strings),
         'size': 9,
-        'color': 'green',
+        'color': text_color,
         'anchor': 'center',
     }
     viewer.add_points(lc[:, :ndim],
@@ -148,7 +132,8 @@ def lc_interpretable_napari(layer_name: str,
                       ndim=ndim,
                       name=layer_name,
                       features=features,
-                      text=text_parameters)
+                      text=text_parameters,
+                      visible=False)
 
 
 # ---------------------------------------Interfaces------------------------------------------
@@ -249,9 +234,11 @@ class BlockToBlockProcess(SegProcess):
         else:
             raise TypeError(f'Invalid im type: {type(im)}')
 
-        result = cache_im(self.tmpdir, lambda: result, cid=cid, multiscale=4 if viewer else 0, viewer_args=dict(
+        result = self.tmpdir.cache_im(lambda: result, cid=cid, viewer_args=dict(
             viewer=viewer,
-            is_label=self.is_label
+            is_label=self.is_label,
+            preferred_chunksize=(1, 4096, 4096),
+            multiscale=4 if viewer else 0,
         ))
         return result
 
@@ -297,8 +284,9 @@ class SimpleThreshold(BlockToBlockProcess):
 
 
 class BlobDog(SegProcess):
-    def __init__(self, max_sigma=2, threshold: float = 0.1, reduce=False):
+    def __init__(self, min_sigma=1, max_sigma=2, threshold: float = 0.1, reduce=False):
         super().__init__(DatType.IN, DatType.LC)
+        self.min_sigma = min_sigma
         self.max_sigma = max_sigma
         self.threshold = threshold
         self.reduce = reduce
@@ -307,6 +295,7 @@ class BlobDog(SegProcess):
         if block_info is not None:
             slices = block_info[0]['array-location']
             lc = skimage.feature.blob_dog(np.array(block * 255, dtype=np.uint8),
+                                          min_sigma=self.min_sigma,
                                           max_sigma=self.max_sigma,
                                           threshold=self.threshold).astype(np.float32)  # N * (ndim + 1) ndarray
             start_pos = np.array([slices[i].start for i in range(len(slices))], dtype=np.float32)
@@ -323,7 +312,7 @@ class BlobDog(SegProcess):
                 cid: str = None,
                 viewer: napari.Viewer = None
                 ) -> NDBlock:
-        ndblock = cache_im(self.tmpdir, lambda: self.feature_forward(im), cid=cid)
+        ndblock = self.tmpdir.cache_im(lambda: self.feature_forward(im), cid=cid)
 
         if viewer:
             blobdog = ndblock.reduce(force_numpy=True)
@@ -400,12 +389,13 @@ class ScaledSumIntensity(SegProcess):
         cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
 
         if viewer:
-            mask = cache_im(cache_path, im_fn=lambda: im > self.min_thres, cid='ssi_mask',
-                            multiscale=4 if viewer else 0,
-                            viewer_args=dict(
-                                viewer=viewer,
-                                is_label=True
-                            ))
+            mask = cache_path.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
+                                       viewer_args=dict(
+                                           viewer=viewer,
+                                           is_label=True,
+                                           preferred_chunksize=(1, 4096, 4096),
+                                           multiscale=4 if viewer else 0,
+                                       ))
 
             ssi = cache_path.cache_im(
                 fn=lambda: self.feature_forward(
@@ -420,6 +410,7 @@ class ScaledSumIntensity(SegProcess):
             if self.reduce:
                 ndblock = ndblock.reduce(force_numpy=False)
             return ndblock
+
         return cache_path.cache_im(fn=fn, cid='ssi_result')
 
 
@@ -579,7 +570,9 @@ class BinaryAndCentroidListToInstance(SegProcess):
 
         viewer_args = dict(
             viewer=viewer,
-            is_label=True
+            is_label=True,
+            preferred_chunksize=(1, 4096, 4096),
+            multiscale=4 if viewer else 0,
         )
         if viewer:
             def compute_lbl():
@@ -590,6 +583,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
                         lambda block: instance_label(block)[0].astype(np.int32), dtype=np.int32
                     )
                 return lbl_im
+
             lbl_im = cache_path.cache_im(fn=compute_lbl, cid='before_split', viewer_args=viewer_args)
 
         def compute_result():
@@ -612,8 +606,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 result = ndblock.as_dask_array(tmp_path)
             return result
 
-        result = cache_im(cache_path, im_fn=compute_result, cid='result', multiscale=4 if viewer else 0,
-                          viewer_args=viewer_args)
+        result = cache_path.cache_im(fn=compute_result, cid='result', viewer_args=viewer_args)
         return result
 
 
@@ -658,7 +651,7 @@ class DirectOSToLC(SegProcess):
                 im: npt.NDArray[np.int32] | da.Array,
                 cid: str = None,
                 viewer: napari.Viewer = None) -> NDBlock[np.float32]:
-        ndblock = cache_im(self.tmpdir, im_fn=lambda: self.feature_forward(im), cid=cid)
+        ndblock = self.tmpdir.cache_im(fn=lambda: self.feature_forward(im), cid=cid)
 
         if viewer:
             features = ndblock.reduce(force_numpy=True)
@@ -670,6 +663,26 @@ class DirectOSToLC(SegProcess):
 
 
 # -----------------------Convert List of Centroids to Cell Count Estimate----------------------
+
+
+def map_ncell_vector_to_total(ndblock: NDBlock[np.float32]) -> NDBlock[np.float32]:
+    """Aggregate the counts in ncell vector to get a single ncell estimate
+
+    Args:
+        ndblock: Each block contains a ncell vector
+
+    Returns:
+        The summed ncell by block; coordinates of each ncell is the center of the block
+    """
+    def map_fn(block: npt.NDArray[np.float32], block_info):
+        slices = block_info[0]['array-location']
+        midpoint = np.array(tuple((s.stop - s.start + 1) / 2 + s.start for s in slices), dtype=np.float32)
+        ndim = midpoint.shape[0]
+        result = np.zeros((1, ndim + 1), dtype=np.float32)
+        result[0, :-1] = midpoint
+        result[0, -1] = block[:, -1].sum()
+        return result
+    return NDBlock.map_ndblocks([ndblock], map_fn, out_dtype=np.float32)
 
 
 class CountLCEdgePenalized(SegProcess):
@@ -757,7 +770,7 @@ class CountLCEdgePenalized(SegProcess):
                                                       f'provided, expected {self.numblocks} but got '
                                                       f'{lc.get_numblocks()}')
 
-        ndblock = cache_im(self.tmpdir, im_fn=lambda: self.feature_forward(lc), cid=cid)
+        ndblock = self.tmpdir.cache_im(fn=lambda: self.feature_forward(lc), cid=cid)
         if viewer:
             # TODO: cache the checkerboard
             checkerboard: da.Array = cvpl_ome_zarr_io.dask_checkerboard(self.chunks)
@@ -766,6 +779,10 @@ class CountLCEdgePenalized(SegProcess):
             features = ndblock.reduce(force_numpy=True)
             lc_interpretable_napari('edge_penalized_centroids', features, viewer,
                                     len(self.chunks), ['ncells'])
+
+            aggregate_features = map_ncell_vector_to_total(ndblock).reduce(force_numpy=True)
+            lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
+                                    len(self.chunks), ['ncells'], text_color='red')
 
         ndblock = ndblock.select_columns([-1])
         if self.reduce:
@@ -863,13 +880,17 @@ class CountOSBySize(SegProcess):
                 cid: str = None,
                 viewer: napari.Viewer = None
                 ) -> npt.NDArray[np.float32]:
-        ndblock = cache_im(self.tmpdir, im_fn=lambda: self.feature_forward(im), cid=cid)
+        ndblock = self.tmpdir.cache_im(fn=lambda: self.feature_forward(im), cid=cid)
 
         if viewer:
             features = ndblock.reduce(force_numpy=True)
             features = features[features[:, -1] > 0., :]
             lc_interpretable_napari('bysize_ncells',
                                     features, viewer, im.ndim, ['ncells'])
+
+            aggregate_features = map_ncell_vector_to_total(ndblock).reduce(force_numpy=True)
+            lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
+                                    im.ndim, ['ncells'], text_color='red')
 
         ndblock = ndblock.select_columns([-1])
 

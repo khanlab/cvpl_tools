@@ -24,7 +24,18 @@ class ImageFormat(enum.Enum):
     NDBLOCK = 2
 
 
-def save(file: str, im):
+def chunksize_to_str(chunksize: tuple[int, ...]):
+    return ','.join(str(s) for s in chunksize)
+
+
+def str_to_chunksize(chunksize_str: str):
+    return tuple(int(s) for s in chunksize_str.split(','))
+
+
+def save(file: str,
+         im,
+         preferred_chunksize: tuple[int, ...] = None,
+         multiscale: int = 0):
     """Save an image object into given path
 
     Supported im object types:
@@ -35,20 +46,39 @@ def save(file: str, im):
     Args:
         file: The full/relative path to the directory to be saved to
         im: Object to be saved
+        preferred_chunksize: chunk sizes to save as; will rechunk if different from current size; only applies to
+            dask arrays.
+        multiscale: The number of downsample layers for save ome-zarr; only applies if the image is a dask image
     """
     if isinstance(im, np.ndarray):
-        NDBlock.save(file, NDBlock(im))
+        old_chunksize = im.shape
         fmt = ImageFormat.NUMPY
     elif isinstance(im, da.Array):
-        NDBlock.save(file, NDBlock(im))
+        old_chunksize = im.chunksize
         fmt = ImageFormat.DASK_ARRAY
     elif isinstance(im, NDBlock):
-        NDBlock.save(file, im)
+        old_chunksize = im.get_chunksize()
         fmt = ImageFormat.NDBLOCK
     else:
         raise ValueError(f'Unexpected input type im {type(im)}')
-    with open(f'{file}/fmt.txt', mode='w') as outfile:
+    if preferred_chunksize is None:
+        preferred_chunksize = old_chunksize
+
+    if isinstance(im, np.ndarray):
+        NDBlock.save(file, NDBlock(im))
+    elif isinstance(im, da.Array):
+        if old_chunksize != preferred_chunksize:
+            im = im.rechunk(preferred_chunksize)
+        NDBlock.save(file, NDBlock(im), downsample_level=multiscale)
+    elif isinstance(im, NDBlock):
+        if im.get_repr_format() == cvpl_ndblock.ReprFormat.DASK_ARRAY and old_chunksize != preferred_chunksize:
+            im = NDBlock(im.arr.rechunk(preferred_chunksize))
+        NDBlock.save(file, im, downsample_level=multiscale)
+    else:
+        raise ValueError(f'Unexpected input type im {type(im)}')
+    with open(f'{file}/.save_meta.txt', mode='w') as outfile:
         outfile.write(str(fmt.value))
+        outfile.write(f'\n{chunksize_to_str(old_chunksize)}\n{chunksize_to_str(preferred_chunksize)}')
 
 
 def load(file: str):
@@ -63,14 +93,20 @@ def load(file: str):
         Recreated image; this method attempts to keep meta and content of the loaded image stays
         the same as when they are saved
     """
-    with open(f'{file}/fmt.txt') as outfile:
-        fmt = ImageFormat(int(outfile.read()))
+    with open(f'{file}/.save_meta.txt') as outfile:
+        items = outfile.read().split('\n')
+        fmt = ImageFormat(int(items[0]))
+        old_chunksize, preferred_chunksize = str_to_chunksize(items[1]), str_to_chunksize(items[2])
     if fmt == ImageFormat.NUMPY:
         im = NDBlock.load(file).arr
     elif fmt == ImageFormat.DASK_ARRAY:
         im = NDBlock.load(file).arr
+        if old_chunksize != preferred_chunksize:
+            im = im.rechunk(old_chunksize)
     elif fmt == ImageFormat.NDBLOCK:
         im = NDBlock.load(file)
+        if im.get_repr_format() == cvpl_ndblock.ReprFormat.DASK_ARRAY and old_chunksize != preferred_chunksize:
+            im = NDBlock(im.arr.rechunk(old_chunksize))
     else:
         raise ValueError(f'Unexpected input type im {fmt}')
     return im
@@ -88,8 +124,8 @@ def display(file: str, viewer_args: dict):
     viewer_args = copy.copy(viewer_args)
     viewer: napari.Viewer = viewer_args.pop('viewer')
 
-    with open(f'{file}/fmt.txt') as outfile:
-        fmt = ImageFormat(int(outfile.read()))
+    with open(f'{file}/.save_meta.txt') as outfile:
+        fmt = ImageFormat(int(outfile.read().split('\n')[0]))
     if fmt == ImageFormat.NUMPY:
         is_numpy = True
     elif fmt == ImageFormat.DASK_ARRAY:
@@ -320,18 +356,23 @@ class CacheDirectory(CachePath):
         Returns:
             The cached image loaded
         """
+        if viewer_args is None:
+            viewer_args = {}
+        else:
+            viewer_args = copy.copy(viewer_args)  # since we will pop off some attributes
+        preferred_chunksize = viewer_args.pop('preferred_chunksize', None)
+        multiscale = viewer_args.pop('multiscale', 0)
+
         is_cached, cache_path = self.cache(is_dir=False, cid=cid)
         raw_path = cache_path.path
         if not is_cached:
             im = fn()
-            save_fn(raw_path, im)
+            save_fn(raw_path, im, preferred_chunksize=preferred_chunksize, multiscale=multiscale)
 
         assert os.path.exists(raw_path), f'Directory should be created at path {raw_path}, but it is not found'
-        if viewer_args is None:
-            viewer_args = {}
         if viewer_args.get('viewer', None) is not None:
-            viewer_args['name'] = viewer_args.get('name', cid)  # name of the image layer is defaulted to cid
-            display(raw_path, viewer_args)
+            name = viewer_args.get('name', cid)  # name of the image layer is defaulted to cid
+            display(raw_path, viewer_args | dict(name=name))
 
         return load_fn(raw_path)
 

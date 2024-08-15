@@ -153,7 +153,7 @@ def write_ome_zarr_image(ome_zarr_path: str,
                          lbl_arr: da.Array | None = None,
                          lbl_name: str | None = None,
                          make_zip: bool | None = None,
-                         MAX_LAYER: int = 3,
+                         MAX_LAYER: int = 0,
                          logging=False):
     """Write dask array as an ome zarr
 
