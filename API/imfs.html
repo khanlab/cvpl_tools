@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cvpl_tools/im/fs.py &mdash; cvpl_tools 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=4e78f113"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cvpl_tools/im/ndblock.py" href="ndblock.html" />
+    <link rel="prev" title="cvpl_tools/ome_zarr/io.py" href="ome_zarr_io.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cvpl_tools
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/ome_zarr.html">Viewing and IO of OME Zarr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/boilerplate.html">Boilerplate Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.im.fs</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.save"><code class="docutils literal notranslate"><span class="pre">save()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.display"><code class="docutils literal notranslate"><span class="pre">display()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath"><code class="docutils literal notranslate"><span class="pre">CachePath</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath.filename_form_meta"><code class="docutils literal notranslate"><span class="pre">CachePath.filename_form_meta()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath.meta_from_filename"><code class="docutils literal notranslate"><span class="pre">CachePath.meta_from_filename()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory"><code class="docutils literal notranslate"><span class="pre">CacheDirectory</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.cache"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.cache()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.cache_im"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.cache_im()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.children_from_path"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.children_from_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.remove_tmp"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.remove_tmp()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ndblock.html">cvpl_tools.im.ndblock</a></li>
+<li class="toctree-l1"><a class="reference internal" href="seg_process.html">cvpl_tools.im.seg_process</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cvpl_tools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">cvpl_tools/im/fs.py</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/API/imfs.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cvpl-tools-im-fs-py">
+<span id="imfs"></span><h1>cvpl_tools/im/fs.py<a class="headerlink" href="#cvpl-tools-im-fs-py" title="Permalink to this heading"></a></h1>
+<p>View source at <a class="reference external" href="https://github.com/khanlab/cvpl_tools/blob/main/src/cvpl_tools/im/fs.py">fs.py</a>.</p>
+<p class="rubric">APIs</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.save">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">im</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.save" title="Permalink to this definition"></a></dt>
+<dd><p>Save an image object into given path</p>
+<p>Supported im object types:
+- np.ndarray
+- dask.Array
+- cvpl_tools.im.ndblock.NDBlock</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file</strong> – The full/relative path to the directory to be saved to</p></li>
+<li><p><strong>im</strong> – Object to be saved</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.load">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.load" title="Permalink to this definition"></a></dt>
+<dd><p>Load an image from the given directory.</p>
+<p>The image is one saved by cvpl_tools.im.fs.save()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file</strong> – Full path to the directory to be read from</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Recreated image; this method attempts to keep meta and content of the loaded image stays
+the same as when they are saved</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.display">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">display</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.display" title="Permalink to this definition"></a></dt>
+<dd><p>Display an image in the viewer; supports numpy or dask ome zarr image</p>
+<p>The image is one saved by cvpl_tools.im.fs.save()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file</strong> – Full path to the directory to be read from</p></li>
+<li><p><strong>viewer_args</strong> – contains viewer and arguments passed to the viewer’s add image functions</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CachePath">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">CachePath</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CachePath" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CachePath.filename_form_meta">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filename_form_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CachePath.filename_form_meta" title="Permalink to this definition"></a></dt>
+<dd><p>obtain filename from the meta dict</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CachePath.meta_from_filename">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">meta_from_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_none_if_malform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CachePath.meta_from_filename" title="Permalink to this definition"></a></dt>
+<dd><p>Retrieve meta information from the path</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file</strong> – filename of the (existing to planning to be created) CachePath object</p></li>
+<li><p><strong>return_none_if_malform</strong> – If True, return None instead of throwing error if a malformed
+filename is given</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary of the meta information</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">CacheDirectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_when_done</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_if_exists</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.cache">
+<span class="sig-name descname"><span class="pre">cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">is_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">bool</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#cvpl_tools.im.fs.CachePath" title="cvpl_tools.im.fs.CachePath"><span class="pre">cvpl_tools.im.fs.CachePath</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory" title="cvpl_tools.im.fs.CacheDirectory"><span class="pre">cvpl_tools.im.fs.CacheDirectory</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.cache" title="Permalink to this definition"></a></dt>
+<dd><p>Return a directory that is guaranteed to be empty within the temporary directory</p>
+<p>This is the interface to create new CachePath or CacheDirectory within this directory.
+The directory will not be immediately created but need to be done manually if is_dir=False</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>is_dir</strong> – If False, this creates a subfolder that have no children; if True, this creates
+a CacheDirectory recursively</p></li>
+<li><p><strong>cid</strong> – If specified, will attempt to find cache if already exists; otherwise a temporary
+cache will be returned</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple (is_cached, CachePath), is_cached giving whether the file is cached or is newly
+created. If is_cached is True, then the user should directly read from the cached file
+instead</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.cache_im">
+<span class="sig-name descname"><span class="pre">cache_im</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cid:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_fn=&lt;function</span> <span class="pre">save&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_fn=&lt;function</span> <span class="pre">load&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args:</span> <span class="pre">dict</span> <span class="pre">=</span> <span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.cache_im" title="Permalink to this definition"></a></dt>
+<dd><p>Caches an image object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fn</strong> – Computes the image if it’s not already cached</p></li>
+<li><p><strong>cid</strong> – The cache ID within this directory</p></li>
+<li><p><strong>save_fn</strong> – fn(file: str, im) Used to save the image to file</p></li>
+<li><p><strong>load_fn</strong> – fn(file: str) Used to load the image from file</p></li>
+<li><p><strong>viewer_args</strong> – contains viewer and arguments passed to the viewer’s add image functions</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The cached image loaded</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.children_from_path">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#cvpl_tools.im.fs.CachePath" title="cvpl_tools.im.fs.CachePath"><span class="pre">cvpl_tools.im.fs.CachePath</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.children_from_path" title="Permalink to this definition"></a></dt>
+<dd><p>Examine an existing directory path, return recursively all files and directories as</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.remove_tmp">
+<span class="sig-name descname"><span class="pre">remove_tmp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.remove_tmp" title="Permalink to this definition"></a></dt>
+<dd><p>traverse all subnodes and self, removing those with is_tmp=True</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ome_zarr_io.html" class="btn btn-neutral float-left" title="cvpl_tools/ome_zarr/io.py" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ndblock.html" class="btn btn-neutral float-right" title="cvpl_tools/im/ndblock.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, KarlHanUW.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

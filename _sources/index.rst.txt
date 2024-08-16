@@ -31,6 +31,8 @@ or on cloud.
 
    Introduction <self>
    Viewing and IO of OME Zarr <GettingStarted/ome_zarr>
+   Boilerplate Code <GettingStarted/boilerplate>
+   Defining Segmentation Pipeline <GettingStarted/segmentation_pipeline>
 
 .. toctree::
    :maxdepth: 2
@@ -38,4 +40,8 @@ or on cloud.
 
    cvpl_tools.napari.zarr.py <API/napari_zarr>
    cvpl_tools.ome_zarr.io.py <API/ome_zarr_io>
+   cvpl_tools.im.fs <API/imfs>
+   cvpl_tools.im.ndblock <API/ndblock>
+   cvpl_tools.im.seg_process <API/seg_process>
+
 

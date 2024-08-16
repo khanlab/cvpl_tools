@@ -21,7 +21,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="cvpl_tools/napari/zarr.py" href="../API/napari_zarr.html" />
+    <link rel="next" title="Boilerplate Code" href="boilerplate.html" />
     <link rel="prev" title="Introduction - cvpl_tools documentation" href="../index.html" /> 
 </head>
 
@@ -52,11 +52,16 @@
 <li class="toctree-l2"><a class="reference internal" href="#reading-and-writing-ome-zarr-files">Reading and Writing ome_zarr files</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="boilerplate.html">Boilerplate Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process</a></li>
 </ul>
 
         </div>
@@ -152,15 +157,15 @@ will only be one 0/ folder</p></li>
 is not a standard ZARR directory and contains no <strong>.zarray</strong> meta file. Loading an OME ZARR
 image as ZARR will crash, if you forget to specify <strong>0/</strong> subfolder as the path to load</p></li>
 <li><p>When saved as a zip file instead of a directory, the directory structure is the same except that
-the root is a zip file. And when loading we can use ZipStore’s features to directly reading
-individual files without having to unpack the entire zip file. However, writing to a ZipStore is
-not well supported by either Python’s zarr or the ome-zarr library.</p></li>
+the root is zipped. Loading a zipped OME ZARR, cvpl_tools uses ZipStore’s features to directly reading
+individual chunks without having to unpack the entire zip file. However, writing to a ZipStore is
+not supported, due to lack of support by either Python’s zarr or the ome-zarr library.</p></li>
 <li><p>An HPC system like Compute Canada may work better with one large files than many small files,
 thus the result should be zipped. This can be done by first writing the folder to somewhere
 that allows creating many small files and then zip the result into a single zip in the target
 directory</p></li>
 <li><p>As of the time of writing (2024.8.14), ome-zarr library’s Writer class has a <a class="reference external" href="https://github.com/ome/ome-zarr-py/issues/392">double computation
-issue</a> and to temporary patch this for our
+issue</a>. To temporary patch this for our
 use case, I’ve added a <strong>write_ome_zarr_image</strong> function to write a dask array as an OME ZARR
 file. This function also adds support for reading images stored as a <strong>.zip</strong> file.</p></li>
 </ul>
@@ -176,7 +181,7 @@ ZARR files, respectively.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../index.html" class="btn btn-neutral float-left" title="Introduction - cvpl_tools documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../API/napari_zarr.html" class="btn btn-neutral float-right" title="cvpl_tools/napari/zarr.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="boilerplate.html" class="btn btn-neutral float-right" title="Boilerplate Code" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

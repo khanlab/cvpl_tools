@@ -47,11 +47,16 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/ome_zarr.html">Viewing and IO of OME Zarr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted/boilerplate.html">Boilerplate Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="API/napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="API/imfs.html">cvpl_tools.im.fs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="API/ndblock.html">cvpl_tools.im.ndblock</a></li>
+<li class="toctree-l1"><a class="reference internal" href="API/seg_process.html">cvpl_tools.im.seg_process</a></li>
 </ul>
 
         </div>
@@ -105,6 +110,18 @@ or on cloud.</p>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/ome_zarr.html#reading-and-writing-ome-zarr-files">Reading and Writing ome_zarr files</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted/boilerplate.html">Boilerplate Code</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/boilerplate.html#dask-cluster-and-temporary-directory">Dask Cluster and temporary directory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/boilerplate.html#cachedirectory">CacheDirectory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html">Defining Segmentation Pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html#motivation-microscope-cell-counting-atlas-map-and-object-segmentation">Motivation: Microscope, Cell Counting, Atlas map and Object Segmentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html#the-segprocess-class">The SegProcess Class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html#extending-the-pipeline">Extending the Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html#running-the-pipeline">Running the Pipeline</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
@@ -120,6 +137,36 @@ or on cloud.</p>
 <li class="toctree-l1"><a class="reference internal" href="API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="API/ome_zarr_io.html#cvpl_tools.ome_zarr.io.load_zarr_group_from_path"><code class="docutils literal notranslate"><span class="pre">load_zarr_group_from_path()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="API/ome_zarr_io.html#cvpl_tools.ome_zarr.io.write_ome_zarr_image"><code class="docutils literal notranslate"><span class="pre">write_ome_zarr_image()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API/imfs.html">cvpl_tools.im.fs</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API/imfs.html#cvpl_tools.im.fs.save"><code class="docutils literal notranslate"><span class="pre">save()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/imfs.html#cvpl_tools.im.fs.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/imfs.html#cvpl_tools.im.fs.display"><code class="docutils literal notranslate"><span class="pre">display()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/imfs.html#cvpl_tools.im.fs.CachePath"><code class="docutils literal notranslate"><span class="pre">CachePath</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory"><code class="docutils literal notranslate"><span class="pre">CacheDirectory</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API/ndblock.html">cvpl_tools.im.ndblock</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API/ndblock.html#cvpl_tools.im.ndblock.NDBlock"><code class="docutils literal notranslate"><span class="pre">NDBlock</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/ndblock.html#cvpl_tools.im.ndblock.ReprFormat"><code class="docutils literal notranslate"><span class="pre">ReprFormat</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API/seg_process.html">cvpl_tools.im.seg_process</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.SegProcess"><code class="docutils literal notranslate"><span class="pre">SegProcess</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.BlockToBlockProcess"><code class="docutils literal notranslate"><span class="pre">BlockToBlockProcess</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.lc_interpretable_napari"><code class="docutils literal notranslate"><span class="pre">lc_interpretable_napari()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.GaussianBlur"><code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.BSPredictor"><code class="docutils literal notranslate"><span class="pre">BSPredictor</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.SimpleThreshold"><code class="docutils literal notranslate"><span class="pre">SimpleThreshold</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.BlobDog"><code class="docutils literal notranslate"><span class="pre">BlobDog</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.ScaledSumIntensity"><code class="docutils literal notranslate"><span class="pre">ScaledSumIntensity</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.DirectBSToOS"><code class="docutils literal notranslate"><span class="pre">DirectBSToOS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.Watershed3SizesBSToOS"><code class="docutils literal notranslate"><span class="pre">Watershed3SizesBSToOS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance"><code class="docutils literal notranslate"><span class="pre">BinaryAndCentroidListToInstance</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.DirectOSToLC"><code class="docutils literal notranslate"><span class="pre">DirectOSToLC</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.CountLCEdgePenalized"><code class="docutils literal notranslate"><span class="pre">CountLCEdgePenalized</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.seg_process.CountOSBySize"><code class="docutils literal notranslate"><span class="pre">CountOSBySize</span></code></a></li>
 </ul>
 </li>
 </ul>

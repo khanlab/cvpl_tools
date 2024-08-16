@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boilerplate Code &mdash; cvpl_tools 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=4e78f113"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Segmentation Pipeline" href="segmentation_pipeline.html" />
+    <link rel="prev" title="OME_ZARR" href="ome_zarr.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cvpl_tools
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Boilerplate Code</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dask-cluster-and-temporary-directory">Dask Cluster and temporary directory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cachedirectory">CacheDirectory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cvpl_tools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Boilerplate Code</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/GettingStarted/boilerplate.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="boilerplate-code">
+<span id="boilerplate"></span><h1>Boilerplate Code<a class="headerlink" href="#boilerplate-code" title="Permalink to this heading"></a></h1>
+<p>Each time we write a new script, we need to include some setup code that configures the dask library and other
+utilities we need for our image processing pipeline. Below gives a brief description for the setup of these
+utilities and how they can be used when we are writing our image processing pipelines with
+cvpl_tools.im.seg_process.SegProcess class.</p>
+<section id="dask-cluster-and-temporary-directory">
+<h2>Dask Cluster and temporary directory<a class="headerlink" href="#dask-cluster-and-temporary-directory" title="Permalink to this heading"></a></h2>
+<p>Dask is a multithreaded and distributed computing library, in which temporary results can not all be saved in
+memory. When the intermediate results do not fit in memory, they are written in the temporary directory set in
+the dask config’s temporary_directory variable. When working on HPC system on Compute Canada, be careful that
+this path is set to a /scratch directory where number of file allowed to be created is large enough.</p>
+<p>Setting up the client is described in the <a class="reference external" href="https://distributed.dask.org/en/stable/quickstart.html">Dask quickstart</a>
+page. We will use local laptop as example.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">dask</span>
+<span class="kn">import</span> <span class="nn">dask.config</span>
+<span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
+<span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}):</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">((</span><span class="n">da</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>  <span class="c1"># will output 9</span>
+</pre></div>
+</div>
+</section>
+<section id="cachedirectory">
+<h2>CacheDirectory<a class="headerlink" href="#cachedirectory" title="Permalink to this heading"></a></h2>
+<p>Different from Dask’s temporary directory, cvpl_tool’s CacheDirectory class provides intermediate result
+caching APIs. A multi-step segmentation pipeline may produce many intermediate results, for some of them we
+may compute once discard, and for the others (like the final output) we may want to cache them on the disk
+for access later without having to redo the computation. In order to cache the result, we need a fixed path
+that do not change across execution of the program. The <strong>CacheDirectory</strong> class is one that manages and
+assigns paths for these intermediate results, based on their cache ID (cid) and the parent CacheDirectory
+they belongs to.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ome_zarr.html" class="btn btn-neutral float-left" title="OME_ZARR" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="segmentation_pipeline.html" class="btn btn-neutral float-right" title="Segmentation Pipeline" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, KarlHanUW.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

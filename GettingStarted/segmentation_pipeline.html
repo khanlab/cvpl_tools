@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Segmentation Pipeline &mdash; cvpl_tools 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=4e78f113"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cvpl_tools/napari/zarr.py" href="../API/napari_zarr.html" />
+    <link rel="prev" title="Boilerplate Code" href="boilerplate.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cvpl_tools
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="boilerplate.html">Boilerplate Code</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Defining Segmentation Pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#motivation-microscope-cell-counting-atlas-map-and-object-segmentation">Motivation: Microscope, Cell Counting, Atlas map and Object Segmentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-segprocess-class">The SegProcess Class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#extending-the-pipeline">Extending the Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-the-pipeline">Running the Pipeline</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cvpl_tools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Segmentation Pipeline</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/GettingStarted/segmentation_pipeline.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="segmentation-pipeline">
+<span id="id1"></span><h1>Segmentation Pipeline<a class="headerlink" href="#segmentation-pipeline" title="Permalink to this heading"></a></h1>
+<section id="motivation-microscope-cell-counting-atlas-map-and-object-segmentation">
+<h2>Motivation: Microscope, Cell Counting, Atlas map and Object Segmentation<a class="headerlink" href="#motivation-microscope-cell-counting-atlas-map-and-object-segmentation" title="Permalink to this heading"></a></h2>
+<p>In our use case, lightsheet microscopy of mouse brain produces several hundreds of GBs of
+data, represented as a 3-dimensional array. This array is stored as an OME
+ZARR file in our case. Distributed processing of the data is necessary to make the analysis time
+trackable, and we choose to use Dask as the distributed computing library for our project.</p>
+<p>As part of our research, we need to use automated method to count different types of visible objects in
+the image. After counting cells, we use a map that maps from pixel location of
+the image to brain regions (this is the <strong>atlas map</strong>) to obtain the density of cells in each region of
+the mouse brain. We need to test several methods and find one that would give the most
+accurate counts, and for new incoming data volumes, we want to be able to quickly find a set of parameters
+that works on the new data.</p>
+<p>On the algorithm side, object counting consists of performing a sequence of steps to process an input image
+into densities over regions of the brain, and is relatively simple to understand and implement on a Numpy
+array with small dataset size. On larger datasets, we need to do long-running distributed computation
+that are hard to debug and requires tens of minutes or hours if we need to rerun the computation
+(often just to display the results again).</p>
+</section>
+<section id="the-segprocess-class">
+<h2>The SegProcess Class<a class="headerlink" href="#the-segprocess-class" title="Permalink to this heading"></a></h2>
+<p>The <strong>SegProcess</strong> class in module <strong>cvpl_tools.im.seg_process</strong> provides a convenient way for us to define
+a step in multi-step image processing pipeline for distributed, interpretable and cached image data analysis.</p>
+<p>Consider a function that counts the number of cells in a 3d-block of brightness map:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
+<span class="k">def</span> <span class="nf">cell_count</span><span class="p">(</span><span class="n">block3d</span><span class="p">:</span> <span class="n">da</span><span class="o">.</span><span class="n">Array</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Count the number of cells in a dask 3d brightness image&quot;&quot;&quot;</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">threshold</span><span class="p">(</span><span class="n">block3d</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">)</span>  <span class="c1"># use simple thresholding to mark pixels where cells are as 1s</span>
+    <span class="n">inst</span> <span class="o">=</span> <span class="n">instance_segmentation</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>  <span class="c1"># segment the mask into contours</span>
+    <span class="n">cell_cnt</span> <span class="o">=</span> <span class="n">count_inst</span><span class="p">(</span><span class="n">inst</span><span class="p">)</span>  <span class="c1"># count each contour as a cell</span>
+    <span class="k">return</span> <span class="n">cell_cnt</span>
+</pre></div>
+</div>
+<p>There are a few issues:</p>
+<p>1. Lack of interpretability. Often when we first run this function some bug will show up, for example
+when the output cell count is unexpectedly large. Debugging this becomes a problem since we don’t know
+if one of the three steps in the cell_count function did not work as expected, or if the algorithm does
+not work well on the input data for some reason. In either case, if we want to find the root cause of
+the problem we very often end up adding code and rerun the pipeline to display the output of each step
+to see if they match with our expectations.</p>
+<p>2. Result is not cached. Ideally the pipeline is run once and we get the result, but more often than
+not the result may need to be used in different places (visualization, analysis etc.). Caching these
+results makes sure computation is done only once, which is necessary when we work with costly algorithms
+on hundreds of GBs of data.</p>
+<p>SegProcess is designed to address these issues, with the basic idea to integrate visualization as
+part of the cell_count function, and cache the result of each step into a file in a <strong>CacheDirectory</strong>.</p>
+<p>The class supports the following use cases:</p>
+<p>1. dask-support. Inputs are expected to be either numpy array, dask array, or cvpl.im.ndblock.NDBlock
+objects. In particular, dask.Array and NDBlock are suitable for parallel or distributed image processing
+workflows.</p>
+<p>2. integration of Napari. <strong>forward()</strong> function of a SegProcess object has a viewer attribute that
+defaults to None. By passing a Napari viewer to this parameter, the forward process will add intermediate
+images or centroids to the Napari viewer for easier debugging.</p>
+<p>3. intermediate result caching. <strong>CacheDirectory</strong> class provides a hierarchical caching directory,
+where each <strong>forward()</strong> call will either create a new directory or load from existing cache directory
+based on the <strong>cid</strong> parameter passed to the function.</p>
+<p>Now we discuss how to define such a pipeline.</p>
+</section>
+<section id="extending-the-pipeline">
+<h2>Extending the Pipeline<a class="headerlink" href="#extending-the-pipeline" title="Permalink to this heading"></a></h2>
+<p>The first step of building a pipeline is to break a segmentation algorithm down to steps that process the
+image in different formats. As an example, we may implement a pipeline as IN -&gt; BS -&gt; OS -&gt; CC, where:</p>
+<ul class="simple">
+<li><p>IN - Input Image (np.float32) between min=0 and max=1, this is the brightness dask image as input</p></li>
+<li><p>BS - Binary Segmentation (3d, np.uint8), this is the binary mask single class segmentation</p></li>
+<li><p>OS - Ordinal Segmentation (3d, np.int32), this is the 0-N where contour 1-N each denotes an object; also single class</p></li>
+<li><p>CC - Cell Count Map (3d, np.float32), a cell count number (estimate, can be float) for each block</p></li>
+</ul>
+<p>Mapping from IN to BS comes in two choices. One is to simply take threshold &gt; some number as cells and the
+rest as background. Another is to use a trained machine learned algorithm to do binary segmentation. Mapping
+from BS to OS also comes in two choices. Either directly treating each connected volume as a separate cell,
+or use watershed to get finner segmentation mask. Finally, We can count cells in the instance
+segmentation mask by perhaps look at how many seperate contours we have found.</p>
+<p>In some cases this is not necessary if we know what algorithm works best, but abstracting the algorithm
+intermediate results as four types IN, BS, OS, CC have helped us identify which part of the pipeline can
+be reused and which part may have variations in the algorithm used.</p>
+<p>We can then plan the processing steps we need to define as follows:</p>
+<ol class="arabic simple">
+<li><p>thresholding (IN -&gt; BS)</p></li>
+<li><p>model_prediction (IN -&gt; BS)</p></li>
+<li><p>direct_inst_segmentation (BS -&gt; OS)</p></li>
+<li><p>watershed_inst_segmentation (BS -&gt; OS)</p></li>
+<li><p>cell_cnt_from_inst (OS -&gt; CC)</p></li>
+</ol>
+<p>How do we go from this plan to actually code these steps? Subclassing <strong>SegProcess</strong> is the recommended way.
+This means to create a subclass that defines the <strong>forward()</strong> method, which takes arbitrary inputs
+and two optional parameters: cid and viewer.</p>
+<ul>
+<li><p>cid specifies the subdirectory under the cache directory (set by the <strong>set_tmpdir</strong> method of the base
+class) to save intermediate files. If not provided (cid=None),
+then the cache will be saved in a temporary directory that will be removed when the CacheDirectory is
+closed. If provided, this cache file will persist. Within the forward() method, you should use
+self.tmpdir.cache() and self.tmpdir.cache_im() to create cache files:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ExampleSegProcess</span><span class="p">(</span><span class="n">SegProcess</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">cache_exists</span><span class="p">,</span> <span class="n">cache_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">is_dir</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">)</span>
+
+        <span class="c1"># in the case cache does not exists, cache_path.path is an empty path we can create a folder in:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_exists</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+            <span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+
+    <span class="c1"># ...</span>
+</pre></div>
+</div>
+</li>
+<li><p>The viewer parameter specifies the napari viewer to display the intermediate results. If not provided
+(viewer=None), then no computation will be done to visualize the image. Within the forward() method, you
+should use viewer.add_labels(), lc_interpretable_napari() or temp_directory.cache_im() while passing in
+viewer_args argument to display your results:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ExampleSegProcess</span><span class="p">(</span><span class="n">SegProcess</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">cache_im</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+            <span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">,</span>  <span class="c1"># The napari viewer, visualization will be skipped if viewer is None</span>
+            <span class="n">is_label</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># If True, viewer.add_labels() will be called; if False, viewer.add_image() will be called</span>
+            <span class="n">preferred_chunksize</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">),</span>  <span class="c1"># image will be converted to this chunksize when saved, and converted back when loaded</span>
+            <span class="n">multiscale</span><span class="o">=</span><span class="mi">4</span> <span class="k">if</span> <span class="n">viewer</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># maximum downsampling level of OME ZARR files, necessary for very large images</span>
+        <span class="p">))</span>
+        <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>viewer_args is a parameter that allows us to visualize the saved results as part of the caching function. The
+reason we need this is that displaying the saved result often requires a different (flatter) chunk size for
+fast loading of cross-sectional image, and also requires downsampling for zooming in/out of larger images.</p>
+</li>
+</ul>
+</section>
+<section id="running-the-pipeline">
+<h2>Running the Pipeline<a class="headerlink" href="#running-the-pipeline" title="Permalink to this heading"></a></h2>
+<p>Now we have defined a ExampleSegProcess class, the next step is to write our script that uses the pipeline to
+segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
+forward() method.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>  <span class="c1"># Only for main thread, worker threads will not run this</span>
+    <span class="n">TMP_PATH</span> <span class="o">=</span> <span class="s2">&quot;path/to/temporary/directory&quot;</span>
+    <span class="kn">import</span> <span class="nn">dask</span>
+    <span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+    <span class="kn">import</span> <span class="nn">napari</span>
+    <span class="k">with</span> <span class="p">(</span><span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}),</span>
+          <span class="n">imfs</span><span class="o">.</span><span class="n">CacheDirectory</span><span class="p">(</span>
+              <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">TMP_PATH</span><span class="si">}</span><span class="s1">/CacheDirectory&#39;</span><span class="p">,</span>
+              <span class="n">remove_when_done</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+              <span class="n">read_if_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_directory</span><span class="p">):</span>
+
+        <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">im</span> <span class="o">=</span> <span class="n">load_im</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>  <span class="c1"># this is our input dask.Array object to be segmented</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">ExampleSegProcess</span><span class="p">()</span>
+        <span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">()</span>
+        <span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;cell_count_cache&#39;</span><span class="p">,</span> <span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">)</span>
+
+        <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>See <a class="reference external" href="GettingStarted/boilerplate">Boilerplate Code</a> for explanation of the boilerplate code.</p>
+<p>To learn more, see the API pages for cvpl_tools.im.seg_process, cvpl_tools.im.fs and
+cvpl_tools.im.ndblock modules.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="boilerplate.html" class="btn btn-neutral float-left" title="Boilerplate Code" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../API/napari_zarr.html" class="btn btn-neutral float-right" title="cvpl_tools/napari/zarr.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, KarlHanUW.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
