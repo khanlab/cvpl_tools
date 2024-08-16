@@ -20,6 +20,13 @@ import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
 
 
 class ReprFormat(enum.Enum):
+    """ReprFormat specifies all possible NDBlock formats to use.
+
+    NUMPY_ARRAY = 0
+    DASK_ARRAY = 1
+    DICT_BLOCK_INDEX_SLICES = 2  # block can be either numpy or dask
+    """
+
     NUMPY_ARRAY = 0
     DASK_ARRAY = 1
     DICT_BLOCK_INDEX_SLICES = 2  # block can be either numpy or dask
@@ -29,13 +36,24 @@ ElementType = TypeVar('ElementType')
 
 
 class NDBlock(Generic[ElementType], abc.ABC):
-    """This class represents a nd arrangement of arbitrarily sized blocks
+    """This class represents an N-dimensional grid, each block in the grid is of arbitrary ndarray shape
+
+    When the grid is of size 1 in all axes, it represents a Numpy array;
+    When the grid has blocks of matching size on all axes, it represents a Dask array;
+    In the general case the blocks can be of varying sizes e.g. A block of size (2, 2) may be neighboring to a block
+    of size (5, 10)
 
     Currently, we assume block_index is a list always ordered in (0, ..., 0), (0, ..., 1)... (N, ..., M-1) Increasing
     from the side of the tail first
     """
 
     def __init__(self, arr: npt.NDArray | da.Array | NDBlock | None):
+        """Initializes an NDBlock object
+
+        Args:
+            arr: If Numpy, create a NDBlock with repr_format=ReprFormat.NUMPY_ARRAY; if Dask, create a NDBlock
+                with repr_format=ReprFormat.DASK_ARRAY; if arr is an NDBlock, then a copy of arr will be created
+        """
         self.arr = None
         self.properties = None
 
@@ -131,7 +149,16 @@ class NDBlock(Generic[ElementType], abc.ABC):
         return properties
 
     @staticmethod
-    def load(file: str):
+    def load(file: str) -> NDBlock:
+        """Load the NDBlock from the given path.
+
+        Args:
+            file: The path to load from, same as used in the save() function
+
+        Returns:
+            The loaded NDBlock. Guaranteed to have the same properties as the saved one, and the content of each
+            block will be the same as when they are saved.
+        """
         properties = NDBlock.load_properties(f'{file}/properties.json')
 
         fmt = properties['repr_format']
@@ -161,6 +188,15 @@ class NDBlock(Generic[ElementType], abc.ABC):
         return ndblock
 
     def is_numpy(self) -> bool:
+        """Returns if this is Numpy array
+
+        Note besides type ReprFormat.NUMPY, ReprFormat.DICT_BLOCK_INDEX_SLICES may have either Numpy arrays as each
+        block, or Dask delayed objects each returning a Numpy array; in the former case is_numpy() will return True,
+        and in the latter case is_numpy() will return False.
+
+        Returns:
+            Returns True if this is Numpy array
+        """
         return self.properties['is_numpy']
 
     def get_repr_format(self) -> ReprFormat:
@@ -300,6 +336,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
         self.properties['is_numpy'] = False
 
     def to_dict_block_index_slices(self):
+        """Convert representation format to ReprFormat.DICT_BLOCK_INDEX_SLICES"""
         rformat = self.properties['repr_format']
         if rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             return
@@ -324,7 +361,15 @@ class NDBlock(Generic[ElementType], abc.ABC):
         self.properties['repr_format'] = ReprFormat.DICT_BLOCK_INDEX_SLICES
 
     def reduce(self, force_numpy: bool = False) -> npt.NDArray | da.Array:
-        """concatenate all blocks on the first axis"""
+        """Concatenate all blocks on the first axis
+
+        Args:
+            force_numpy: If True, the result will be forced from dask to a numpy array, if not already; useful for
+                outputting to analysis that requires numpy input
+
+        Returns:
+            The concatenated result, is Numpy if previous array is Numpy, or if force_numpy is True
+        """
         if self.properties['repr_format'] == ReprFormat.NUMPY_ARRAY:
             return np.copy(self.arr)
         else:
@@ -368,12 +413,16 @@ class NDBlock(Generic[ElementType], abc.ABC):
         out_dtype: np.dtype,
         use_input_index_as_arrloc: int = 0
     ) -> NDBlock:
-        """similar to da.map_blocks but works with NDBlock
+        """Similar to da.map_blocks, but works with NDBlock.
+
+        Different from dask array's map_blocks: For each input i, the block_info[i] provided to the mapping function
+        will contain only two keys, 'chunk-location' and 'array-location'.
 
         Args:
             inputs: A list of inputs to be mapped, either all dask or all numpy; All inputs must have the same number
                 of blocks, block indices, and over the same slices as well if inputs are dask images
-            fn: fn(*block, block_info) maps input blocks to an output block
+            fn: fn(\*block, block_info) maps input blocks to an output block
+            out_dtype: Output block type (provide a Numpy dtype to this)
             use_input_index_as_arrloc: output slices_list will be the same as this input (ignore this for variable
                 sized blocks)
 

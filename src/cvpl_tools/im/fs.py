@@ -151,6 +151,14 @@ def display(file: str, viewer_args: dict):
 
 
 class CachePath:
+    """A CachePath class is a pointer to a cached location within a hierarchical directory structure.
+
+    CachePath and CacheDirectory are two classes that implements the file-directory programming pattern,
+    where CacheDirectory is a subclass of CachePath and contains zero or more CachePath as its children.
+    To create a CachePath object, use the CacheDirectory's cache() function to allocate a new or find
+    an existing cache location.
+    """
+
     def __init__(self, path: str, meta: dict = None):
         """Create a CachePath object that manages meta info about the cache file or directory
 
@@ -170,10 +178,20 @@ class CachePath:
 
     @property
     def path(self):
+        """Obtain the os path under which you can create a directory
+
+        The first time a CachePath object is created for this path, cache_path.path will point to an empty location;
+        second time onwards if the directory is not removed, then the returned cache_path.path will point to the
+        previously existing directory
+        """
         return self._path
 
     @property
     def is_dir(self):
+        """Returns True if this is a directory object instead of a file.
+
+        In other words, this function returns False if this is a leaf node.
+        """
         return self._meta['is_dir']
 
     @property
@@ -230,7 +248,14 @@ class CachePath:
 
     @staticmethod
     def filename_form_meta(meta: dict[str, Any]) -> str:
-        """obtain filename from the meta dict"""
+        """Obtain filename from the meta dict
+
+        Args:
+            meta: The dictionary containing meta information for the CachePath object
+
+        Returns:
+            A string as the filename of the cached directory or file
+        """
         s1 = 'dir_' if meta['is_dir'] else 'file_'
         s2 = 'tmp_' if meta['is_tmp'] else 'cache_'
         cid = meta['cid']
@@ -238,7 +263,22 @@ class CachePath:
 
 
 class CacheDirectory(CachePath):
+    """A CacheDirectory is a hierarchical directory structure, corresponding to a directory in the os
+
+    CachePath and CacheDirectory are two classes that implements the file-directory programming pattern.
+    """
+
     def __init__(self, path: str, remove_when_done: bool = True, read_if_exists: bool = True):
+        """Creates a CacheDirectory instance
+
+        Args:
+            path: The os path to which the directory is to be created; must be empty if read_if_exists=True
+            remove_when_done: If True, the entire directory will be removed when it is closed by __exit__; if
+                False, then only the temporary folders within the directory will be removed. (The entire subtree
+                will be traversed to find any file or directory whose is_tmp is True and they will be removed)
+            read_if_exists: If True, will read from the existing directory at the given path
+        """
+
         super().__init__(path, dict(
             is_dir=True,
             is_tmp=remove_when_done,
@@ -267,14 +307,23 @@ class CacheDirectory(CachePath):
                     meta=child.meta
                 )
             else:
-                children_json[key] = meta
+                children_json[key] = child.meta
+        return children_json
 
     def get_children_str(self):
         return json.dumps(self.get_children_json(), indent=2)
 
     @staticmethod
     def children_from_path(path: str) -> dict[str, CachePath]:
-        """Examine an existing directory path, return recursively all files and directories as """
+        """Examine an existing directory path, return recursively all files and directories as json.
+
+        Args:
+            path: The path to be examined
+
+        Returns:
+            Returned json dictionary contains a hierarchical str -> CachePath map; use CachePath.is_dir to
+            determine if they contain more children
+        """
         children = {}
         for filename in os.listdir(path):
             subpath = f'{path}/{filename}'

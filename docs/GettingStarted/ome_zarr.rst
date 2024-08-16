@@ -79,15 +79,15 @@ Above + denotes collapsed folder and - denotes expanded folder. A few things to 
   is not a standard ZARR directory and contains no **.zarray** meta file. Loading an OME ZARR
   image as ZARR will crash, if you forget to specify **0/** subfolder as the path to load
 - When saved as a zip file instead of a directory, the directory structure is the same except that
-  the root is a zip file. And when loading we can use ZipStore's features to directly reading
-  individual files without having to unpack the entire zip file. However, writing to a ZipStore is
-  not well supported by either Python's zarr or the ome-zarr library.
+  the root is zipped. Loading a zipped OME ZARR, cvpl_tools uses ZipStore's features to directly reading
+  individual chunks without having to unpack the entire zip file. However, writing to a ZipStore is
+  not supported, due to lack of support by either Python's zarr or the ome-zarr library.
 - An HPC system like Compute Canada may work better with one large files than many small files,
   thus the result should be zipped. This can be done by first writing the folder to somewhere
   that allows creating many small files and then zip the result into a single zip in the target
   directory
 - As of the time of writing (2024.8.14), ome-zarr library's Writer class has a `double computation
-  issue <https://github.com/ome/ome-zarr-py/issues/392>`_ and to temporary patch this for our
+  issue <https://github.com/ome/ome-zarr-py/issues/392>`_. To temporary patch this for our
   use case, I've added a **write_ome_zarr_image** function to write a dask array as an OME ZARR
   file. This function also adds support for reading images stored as a **.zip** file.
 

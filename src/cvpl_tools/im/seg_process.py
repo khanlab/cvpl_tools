@@ -54,14 +54,10 @@ count_to_atlas_cell_density: CC -> ATLAS_CD
 e.g. average_by_region
 
 Each method is an object implementing the SegStage interface that has the following methods:
-- input_type() -> ty
-- output_type() -> ty
-- forward(*args) -> out, this is the forward stage
-- interpretable_napari(viewer, *args) -> None, this adds the appropriate human-interpretable debugging-purpose outputs to viewer
+- forward(*args, cid=None, viewer=None) -> out
 
-About the dask version of the last 2 functions: These are for parallel processing of the images; they need not be
-interpretable for large images but the interpretable_napari function should handle small sized dask images for
-debugging purpose.
+About viewer visualization: They need not be interpretable for large images but should handle small sized dask
+images for debugging purpose.
 """
 
 import abc
@@ -142,18 +138,6 @@ def lc_interpretable_napari(layer_name: str,
 logger = logging.getLogger('SEG_PROCESSES')
 
 
-class DatType(enum.Enum):
-    IN = 0
-    BS = 1
-    OS = 2
-    LC = 3
-    CC = 4
-    CD = 5
-    ATLAS_MAP = 6
-    ATLAS_CD = 7
-    OTHER = 8  # tuple of two or more of the above, or etc.
-
-
 # class CacheType(enum.Enum):
 #     """Useful for determining the amount and what kinds of cache we need"""
 #     TEMPORARY_FILE = 0
@@ -164,23 +148,9 @@ class DatType(enum.Enum):
 
 
 class SegProcess(abc.ABC):
-    def __init__(self, input_type: DatType, output_type: DatType):
-        self._input_type = input_type
-        self._output_type = output_type
+    def __init__(self):
         self.tmpdir: imfs.CacheDirectory | None = None
         self.cid_prefix: str | None = None
-
-    def input_type(self) -> DatType:
-        return self._input_type
-
-    def output_type(self) -> DatType:
-        return self._output_type
-
-    def input_type_str(self) -> str:
-        return self._input_type.name
-
-    def output_type_str(self) -> str:
-        return self._output_type.name
 
     def set_tmpdir(self, tmpdir: imfs.CacheDirectory):
         """Use this to cache output results
@@ -214,9 +184,8 @@ class SegProcess(abc.ABC):
 
 
 class BlockToBlockProcess(SegProcess):
-    def __init__(self, input_type: DatType, output_type: DatType, out_dtype: np.dtype,
-                 is_label=False):
-        super().__init__(input_type, output_type)
+    def __init__(self, out_dtype: np.dtype, is_label=False):
+        super().__init__()
         self.out_dtype = out_dtype
         self.is_label = is_label
 
@@ -252,7 +221,7 @@ class BlockToBlockProcess(SegProcess):
 
 class GaussianBlur(BlockToBlockProcess):
     def __init__(self, sigma: float):
-        super().__init__(DatType.IN, DatType.IN, np.float32, is_label=False)
+        super().__init__(np.float32, is_label=False)
         self.sigma = sigma
 
     def np_forward(self, im: npt.NDArray[np.float32], block_info=None) -> npt.NDArray[np.float32]:
@@ -264,7 +233,7 @@ class GaussianBlur(BlockToBlockProcess):
 
 class BSPredictor(BlockToBlockProcess):
     def __init__(self, pred_fn: Callable):
-        super().__init__(DatType.IN, DatType.BS, np.uint8, is_label=True)
+        super().__init__(np.uint8, is_label=True)
         self.pred_fn = pred_fn
 
     def np_forward(self, im: npt.NDArray[np.float32], block_info=None) -> npt.NDArray[np.uint8]:
@@ -273,7 +242,7 @@ class BSPredictor(BlockToBlockProcess):
 
 class SimpleThreshold(BlockToBlockProcess):
     def __init__(self, threshold: float):
-        super().__init__(DatType.IN, DatType.BS, np.uint8, is_label=True)
+        super().__init__(np.uint8, is_label=True)
         self.threshold = threshold
 
     def np_forward(self, im: npt.NDArray[np.float32], block_info=None) -> npt.NDArray[np.uint8]:
@@ -285,7 +254,7 @@ class SimpleThreshold(BlockToBlockProcess):
 
 class BlobDog(SegProcess):
     def __init__(self, min_sigma=1, max_sigma=2, threshold: float = 0.1, reduce=False):
-        super().__init__(DatType.IN, DatType.LC)
+        super().__init__()
         self.min_sigma = min_sigma
         self.max_sigma = max_sigma
         self.threshold = threshold
@@ -337,7 +306,7 @@ class ScaledSumIntensity(SegProcess):
         """
         assert scale >= 0, f'{scale}'
         assert 0. <= min_thres <= 1., f'{min_thres}'
-        super().__init__(DatType.IN, DatType.CC)
+        super().__init__()
         self.scale = scale
         self.min_thres = min_thres
         self.reduce = reduce
@@ -419,7 +388,7 @@ class ScaledSumIntensity(SegProcess):
 
 class DirectBSToOS(BlockToBlockProcess):
     def __init__(self):
-        super().__init__(DatType.BS, DatType.OS, np.int32, is_label=True)
+        super().__init__(np.int32, is_label=True)
 
     def np_forward(self, bs: npt.NDArray[np.uint8], block_info=None) -> npt.NDArray[np.int32]:
         lbl_im, nlbl = instance_label(bs)
@@ -434,7 +403,7 @@ class Watershed3SizesBSToOS(BlockToBlockProcess):
                  size_thres2=100.,
                  dist_thres2=1.5,
                  rst2=60.):
-        super().__init__(DatType.BS, DatType.OS, np.int32, is_label=True)
+        super().__init__(np.int32, is_label=True)
         self.size_thres = size_thres
         self.dist_thres = dist_thres
         self.rst = rst
@@ -476,7 +445,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 the larger contours have a time complexity O(N * S) to its spatial size S and the
                 number of contours N
         """
-        super().__init__(DatType.OTHER, DatType.OS)
+        super().__init__()
         self.maxSplit = maxSplit
 
     def split_ndarray_by_centroid(
@@ -621,7 +590,7 @@ class DirectOSToLC(SegProcess):
     """
 
     def __init__(self, min_size: int = 0, reduce=False):
-        super().__init__(DatType.OS, DatType.LC)
+        super().__init__()
         self.reduce = reduce
         self.min_size = min_size
 
@@ -711,7 +680,7 @@ class CountLCEdgePenalized(SegProcess):
                 cc_list = np.prod(mults, axis=1)
             reduce: If True, reduce the results into a Numpy 2d array calling forward()
         """
-        super().__init__(DatType.LC, DatType.CC)
+        super().__init__()
         if isinstance(chunks[0], int):
             # Turn Sequence[int] to Sequence[Sequence[int]]
             # assume single numpy block, at index (0, 0, 0)
@@ -798,14 +767,14 @@ class CountOSBySize(SegProcess):
 
     Several features:
     1. A size threshold, below which each contour is counted as a single cell (or part of a single cell,
-        in the case it is neighbor to boundary of the image)
+    in the case it is neighbor to boundary of the image)
     2. Above size threshold, the contour is seen as a cluster of cells an estimate of cell count is given
-        based on the volume of the contour
+    based on the volume of the contour
     3. For cells on the boundary location, their estimated ncell is penalized according to the distance
-        between the cell centroid and the boundary of the image; if the voxels of the cell do not touch
-        edge, this penalty does not apply
+    between the cell centroid and the boundary of the image; if the voxels of the cell do not touch
+    edge, this penalty does not apply
     4. A min_size threshold, below (<=) which the contour is simply discarded because it's likely just
-        an artifact
+    an artifact
     """
 
     def __init__(self,
@@ -814,7 +783,7 @@ class CountOSBySize(SegProcess):
                  border_params: tuple[float, float, float] = (3., -.5, 2.),
                  min_size: int | float = 0,
                  reduce: bool = False):
-        super().__init__(DatType.OS, DatType.CC)
+        super().__init__()
         self.size_threshold = size_threshold
         self.volume_weight = volume_weight
         self.border_params = border_params
