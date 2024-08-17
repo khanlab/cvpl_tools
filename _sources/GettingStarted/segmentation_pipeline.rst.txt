@@ -154,6 +154,9 @@ and two optional parameters: cid and viewer.
 Running the Pipeline
 ********************
 
+See `Boilerplate Code <GettingStarted/boilerplate>`_ to understand boilerplate code used below. It's required
+to do the following example.
+
 Now we have defined a ExampleSegProcess class, the next step is to write our script that uses the pipeline to
 segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
 forward() method.
@@ -181,8 +184,6 @@ forward() method.
             viewer.show(block=True)
 
             client.close()
-
-See `Boilerplate Code <GettingStarted/boilerplate>`_ for explanation of the boilerplate code.
 
 To learn more, see the API pages for cvpl_tools.im.seg_process, cvpl_tools.im.fs and
 cvpl_tools.im.ndblock modules.

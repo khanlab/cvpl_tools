@@ -61,9 +61,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process.py</a></li>
 </ul>
 
         </div>
@@ -223,6 +223,8 @@ fast loading of cross-sectional image, and also requires downsampling for zoomin
 </section>
 <section id="running-the-pipeline">
 <h2>Running the Pipeline<a class="headerlink" href="#running-the-pipeline" title="Permalink to this heading"></a></h2>
+<p>See <a class="reference external" href="GettingStarted/boilerplate">Boilerplate Code</a> to understand boilerplate code used below. It’s required
+to do the following example.</p>
 <p>Now we have defined a ExampleSegProcess class, the next step is to write our script that uses the pipeline to
 segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
 forward() method.</p>
@@ -249,7 +251,6 @@ forward() method.</p>
         <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>See <a class="reference external" href="GettingStarted/boilerplate">Boilerplate Code</a> for explanation of the boilerplate code.</p>
 <p>To learn more, see the API pages for cvpl_tools.im.seg_process, cvpl_tools.im.fs and
 cvpl_tools.im.ndblock modules.</p>
 </section>

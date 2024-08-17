@@ -50,6 +50,7 @@
 <li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Boilerplate Code</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#dask-cluster-and-temporary-directory">Dask Cluster and temporary directory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dask-logging-setup">Dask Logging Setup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cachedirectory">CacheDirectory</a></li>
 </ul>
 </li>
@@ -59,9 +60,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process.py</a></li>
 </ul>
 
         </div>
@@ -112,6 +113,42 @@ page. We will use local laptop as example.</p>
 </pre></div>
 </div>
 </section>
+<section id="dask-logging-setup">
+<h2>Dask Logging Setup<a class="headerlink" href="#dask-logging-setup" title="Permalink to this heading"></a></h2>
+<p>Distributed logging are hard (Python’s logging module is supported by Dask but I’ve had some issues to get it
+right), but Dask provides a simple strategy for debug logging as described in <a class="reference external" href="https://docs.dask.org/en/latest/how-to/debug.html">this page</a>. The solution is to use the same logging as usual for
+the main threads, and use dask.distributed.print to print debugging messages if inside a worker thread. For
+convenience I also echo the stdout and stderr outputs into separate logfiles so they will persist even if you
+accidentally close the command window. Below is an example:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">cvpl_tools.im.fs</span> <span class="k">as</span> <span class="nn">imfs</span>
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+    <span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="nb">print</span> <span class="k">as</span> <span class="n">dprint</span>
+
+    <span class="n">logfile_stdout</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;log_stdout.txt&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">logfile_stderr</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;log_stderr.txt&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">MultiOutputStream</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">logfile_stdout</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">MultiOutputStream</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="n">logfile_stderr</span><span class="p">)</span>
+
+    <span class="kn">import</span> <span class="nn">dask</span>
+    <span class="kn">import</span> <span class="nn">dask.config</span>
+    <span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
+    <span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}):</span>
+        <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">((</span><span class="n">da</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>  <span class="c1"># will output 9</span>
+
+        <span class="k">def</span> <span class="nf">map_fn</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="n">block_info</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;map_fn is called with input </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">block</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">da</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span><span class="o">.</span><span class="n">map_blocks</span><span class="p">(</span><span class="n">map_fn</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;result is:&#39;</span><span class="p">,</span> <span class="n">arr</span><span class="o">.</span><span class="n">compute</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>After running this program, you should see outputs in both the command window and the log_stdout.txt and
+log_stderr.txt files under your working directory.</p>
+</section>
 <section id="cachedirectory">
 <h2>CacheDirectory<a class="headerlink" href="#cachedirectory" title="Permalink to this heading"></a></h2>
 <p>Different from Dask’s temporary directory, cvpl_tool’s CacheDirectory class provides intermediate result
@@ -121,6 +158,44 @@ for access later without having to redo the computation. In order to cache the r
 that do not change across execution of the program. The <strong>CacheDirectory</strong> class is one that manages and
 assigns paths for these intermediate results, based on their cache ID (cid) and the parent CacheDirectory
 they belongs to.</p>
+<p>In cvpl_tool’s model of caching, there is a root cache directory that is created or loaded when the program
+starts to run, and every cache directory may contain many sub-cache-directory or data directories within
+which are intermediate files. To create a cache directory, we can write</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">cvpl_tools.im.fs</span> <span class="k">as</span> <span class="nn">imfs</span>
+    <span class="k">with</span> <span class="n">imfs</span><span class="o">.</span><span class="n">CacheDirectory</span><span class="p">(</span>
+          <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">TMP_PATH</span><span class="si">}</span><span class="s1">/CacheDirectory&#39;</span><span class="p">,</span>
+          <span class="n">remove_when_done</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+          <span class="n">read_if_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_directory</span><span class="p">):</span>
+
+        <span class="c1"># Use case #1. Create a data directory for caching computation results</span>
+        <span class="n">cache_exists</span><span class="p">,</span> <span class="n">cache_path</span> <span class="o">=</span> <span class="n">temp_directory</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">is_dir</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;some_cache_path&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_exists</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">exists_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="c1"># PUT CODE HERE: Now write your data into cache_path.path and load it back later</span>
+
+        <span class="c1"># Use case #2. Create a sub-directory and pass it to other processes for caching</span>
+        <span class="k">def</span> <span class="nf">multi_step_computation</span><span class="p">(</span><span class="n">cache_at</span><span class="p">:</span> <span class="n">imfs</span><span class="o">.</span><span class="n">CacheDirectory</span><span class="p">):</span>
+            <span class="n">cache_exists</span><span class="p">,</span> <span class="n">cache_path</span> <span class="o">=</span> <span class="n">cache_at</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">is_dir</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;A&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_exists</span><span class="p">:</span>
+                <span class="n">A</span> <span class="o">=</span> <span class="n">computeA</span><span class="p">()</span>
+                <span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">A</span><span class="p">)</span>
+            <span class="n">A</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+
+            <span class="n">cache_exists_B</span><span class="p">,</span> <span class="n">cache_path_B</span> <span class="o">=</span> <span class="n">cache_at</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">is_dir</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;B&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_exists_B</span><span class="p">:</span>
+                <span class="n">B</span> <span class="o">=</span> <span class="n">computeBFromA</span><span class="p">()</span>
+                <span class="n">save</span><span class="p">(</span><span class="n">cache_path_B</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path_B</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">B</span>
+
+        <span class="n">sub_temp_directory</span> <span class="o">=</span> <span class="n">temp_directory</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">is_dir</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;mult_step_cache&#39;</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">multi_step_computation</span><span class="p">(</span><span class="n">cache_at</span><span class="o">=</span><span class="n">sub_temp_directory</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After running the above code once, caching file will be created. The second time the code is run, the computation steps
+will be skipped. This sort of hierarchical caching is convenient for working with complex processes that can be broken
+down to smaller and simpler compute steps.</p>
 </section>
 </section>
 
