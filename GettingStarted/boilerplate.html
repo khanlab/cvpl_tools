@@ -91,7 +91,7 @@
              
   <section id="boilerplate-code">
 <span id="boilerplate"></span><h1>Boilerplate Code<a class="headerlink" href="#boilerplate-code" title="Permalink to this heading"></a></h1>
-<p>Each time we write a new script, we need to include some setup code that configures the dask library and other
+<p>Writing code using cvpl_tools requires some setup code that configures the dask library and other
 utilities we need for our image processing pipeline. Below gives a brief description for the setup of these
 utilities and how they can be used when we are writing our image processing pipelines with
 cvpl_tools.im.seg_process.SegProcess class.</p>
@@ -99,24 +99,62 @@ cvpl_tools.im.seg_process.SegProcess class.</p>
 <h2>Dask Cluster and temporary directory<a class="headerlink" href="#dask-cluster-and-temporary-directory" title="Permalink to this heading"></a></h2>
 <p>Dask is a multithreaded and distributed computing library, in which temporary results can not all be saved in
 memory. When the intermediate results do not fit in memory, they are written in the temporary directory set in
-the dask config’s temporary_directory variable. When working on HPC system on Compute Canada, be careful that
+the dask config’s temporary_directory variable. When working on HPC system on Compute Canada, make sure
 this path is set to a /scratch directory where number of file allowed to be created is large enough.</p>
 <p>Setting up the client is described in the <a class="reference external" href="https://distributed.dask.org/en/stable/quickstart.html">Dask quickstart</a>
-page. We will use local laptop as example.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">dask</span>
-<span class="kn">import</span> <span class="nn">dask.config</span>
-<span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
-<span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}):</span>
-    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+page. We will use a local cluster setup on a local computer as example.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">dask</span>
+    <span class="kn">import</span> <span class="nn">dask.config</span>
+    <span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
+    <span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
 
-    <span class="nb">print</span><span class="p">((</span><span class="n">da</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>  <span class="c1"># will output 9</span>
+    <span class="n">TMP_PATH</span> <span class="o">=</span> <span class="s2">&quot;path/to/tmp/dir&quot;</span>  <span class="c1"># CHANGE THIS TO AN EMPTY PATH YOU WOULD LIKE TO USE FOR CACHING</span>
+    <span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}):</span>
+        <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">((</span><span class="n">da</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>  <span class="c1"># will output 9</span>
 </pre></div>
 </div>
+<p>Note the <strong>if __name__’ == ‘__main__’:</strong> line is necessary to ensure only the main thread executes the task creation
+code. When dask starts a client in the <strong>Client()</strong> call, it will spawn worker threads that run the same script
+this file is in. This creates threads that re-executes the Client creation code into an dead loop if the guarding
+statement is not present. However, this approach has some complications, one can be seen from the following
+example (one that I’ve encountered with showing large multiscale images):</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">dask</span>
+    <span class="kn">import</span> <span class="nn">dask.config</span>
+    <span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
+    <span class="kn">import</span> <span class="nn">napari</span>
+    <span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+
+    <span class="n">TMP_PATH</span> <span class="o">=</span> <span class="s2">&quot;path/to/tmp/dir&quot;</span>
+    <span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}):</span>
+        <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">(</span><span class="n">ndisplay</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">viewer</span><span class="o">.</span><span class="n">add_ome_zarr_array_from_path</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># add a large OME ZARR image</span>
+        <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># here all threads available will be used to fetch data to show image</span>
+</pre></div>
+</div>
+<p>Napari will utilize all threads on current process to load image, but
+on a typical dask setup, the <strong>Client()</strong> call will take up all resources available except one thread left for main.
+If image is added to napari and displayed with <strong>viewer.show(block=True)</strong> on the main thread, then Napari
+does not get the rest of the threads, and the loading speed is slow (working but with some lagging).</p>
+<p>solution: the existence of a dask Client object seems to be the cause of the problem, as loading speed is slow
+no matter if threads_per_worker=1 or threads_per_worker=12. Calling client.close() before viewer.show(block=True)
+solves the problem:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span><span class="o">.</span><span class="n">add_ome_zarr_array_from_path</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># adding image itself does not take too much time</span>
+<span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># here resources are freed up</span>
+<span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># threads are now available to fetch data to show image</span>
+</pre></div>
+</div>
+<p>This does mean any dask loading will not use the cluster, but usually things will work. See this
+<a class="reference external" href="https://stackoverflow.com/questions/71470336/using-dask-without-client-client">SO post</a> for explanations</p>
 </section>
 <section id="dask-logging-setup">
 <h2>Dask Logging Setup<a class="headerlink" href="#dask-logging-setup" title="Permalink to this heading"></a></h2>
-<p>Distributed logging are hard (Python’s logging module is supported by Dask but I’ve had some issues to get it
-right), but Dask provides a simple strategy for debug logging as described in <a class="reference external" href="https://docs.dask.org/en/latest/how-to/debug.html">this page</a>. The solution is to use the same logging as usual for
+<p>Distributed logging setup. Python’s logging module is supported by Dask but I’ve had some issues to get it
+right, so I looked and found Dask provides a simple strategy for debug logging as described in <a class="reference external" href="https://docs.dask.org/en/latest/how-to/debug.html">this page</a>. The solution is to use the same logging as usual for
 the main threads, and use dask.distributed.print to print debugging messages if inside a worker thread. For
 convenience I also echo the stdout and stderr outputs into separate logfiles so they will persist even if you
 accidentally close the command window. Below is an example:</p>
@@ -133,6 +171,9 @@ accidentally close the command window. Below is an example:</p>
     <span class="kn">import</span> <span class="nn">dask</span>
     <span class="kn">import</span> <span class="nn">dask.config</span>
     <span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
+    <span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+
+    <span class="n">TMP_PATH</span> <span class="o">=</span> <span class="s2">&quot;path/to/tmp/dir&quot;</span>
     <span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}):</span>
         <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
