@@ -3,7 +3,7 @@
 Boilerplate Code
 ################
 
-Each time we write a new script, we need to include some setup code that configures the dask library and other
+Writing code using cvpl_tools requires some setup code that configures the dask library and other
 utilities we need for our image processing pipeline. Below gives a brief description for the setup of these
 utilities and how they can be used when we are writing our image processing pipelines with
 cvpl_tools.im.seg_process.SegProcess class.
@@ -13,27 +13,71 @@ Dask Cluster and temporary directory
 
 Dask is a multithreaded and distributed computing library, in which temporary results can not all be saved in
 memory. When the intermediate results do not fit in memory, they are written in the temporary directory set in
-the dask config's temporary_directory variable. When working on HPC system on Compute Canada, be careful that
+the dask config's temporary_directory variable. When working on HPC system on Compute Canada, make sure
 this path is set to a /scratch directory where number of file allowed to be created is large enough.
 
 Setting up the client is described in the `Dask quickstart <https://distributed.dask.org/en/stable/quickstart.html>`_
-page. We will use local laptop as example.
+page. We will use a local cluster setup on a local computer as example.
 
 .. code-block:: Python
 
-    import dask
-    import dask.config
-    import dask.array as da
-    with dask.config.set({'temporary_directory': TMP_PATH}):
-        client = Client(threads_per_worker=6, n_workers=1)
+    if __name__ == '__main__':
+        import dask
+        import dask.config
+        import dask.array as da
+        from dask.distributed import Client
 
-        print((da.zeros((3, 3)) + 1).compute().sum().item())  # will output 9
+        TMP_PATH = "path/to/tmp/dir"  # CHANGE THIS TO AN EMPTY PATH YOU WOULD LIKE TO USE FOR CACHING
+        with dask.config.set({'temporary_directory': TMP_PATH}):
+            client = Client(threads_per_worker=6, n_workers=1)
+
+            print((da.zeros((3, 3)) + 1).compute().sum().item())  # will output 9
+
+Note the **if __name__' == '__main__':** line is necessary to ensure only the main thread executes the task creation
+code. When dask starts a client in the **Client()** call, it will spawn worker threads that run the same script
+this file is in. This creates threads that re-executes the Client creation code into an dead loop if the guarding
+statement is not present. However, this approach has some complications, one can be seen from the following
+example (one that I've encountered with showing large multiscale images):
+
+.. code-block:: Python
+
+    if __name__ == '__main__':
+        import dask
+        import dask.config
+        import dask.array as da
+        import napari
+        from dask.distributed import Client
+
+        TMP_PATH = "path/to/tmp/dir"
+        with dask.config.set({'temporary_directory': TMP_PATH}):
+            client = Client(threads_per_worker=6, n_workers=1)
+            viewer = napari.Viewer(ndisplay=2)
+            viewer.add_ome_zarr_array_from_path(...)  # add a large OME ZARR image
+            viewer.show(block=True)  # here all threads available will be used to fetch data to show image
+
+Napari will utilize all threads on current process to load image, but
+on a typical dask setup, the **Client()** call will take up all resources available except one thread left for main.
+If image is added to napari and displayed with **viewer.show(block=True)** on the main thread, then Napari
+does not get the rest of the threads, and the loading speed is slow (working but with some lagging).
+
+solution: the existence of a dask Client object seems to be the cause of the problem, as loading speed is slow
+no matter if threads_per_worker=1 or threads_per_worker=12. Calling client.close() before viewer.show(block=True)
+solves the problem:
+
+.. code-block:: Python
+
+    viewer.add_ome_zarr_array_from_path(...)  # adding image itself does not take too much time
+    client.close()  # here resources are freed up
+    viewer.show(block=True)  # threads are now available to fetch data to show image
+
+This does mean any dask loading will not use the cluster, but usually things will work. See this
+`SO post <https://stackoverflow.com/questions/71470336/using-dask-without-client-client>`_ for explanations
 
 Dask Logging Setup
 ******************
 
-Distributed logging are hard (Python's logging module is supported by Dask but I've had some issues to get it
-right), but Dask provides a simple strategy for debug logging as described in `this page
+Distributed logging setup. Python's logging module is supported by Dask but I've had some issues to get it
+right, so I looked and found Dask provides a simple strategy for debug logging as described in `this page
 <https://docs.dask.org/en/latest/how-to/debug.html>`_. The solution is to use the same logging as usual for
 the main threads, and use dask.distributed.print to print debugging messages if inside a worker thread. For
 convenience I also echo the stdout and stderr outputs into separate logfiles so they will persist even if you
@@ -54,6 +98,9 @@ accidentally close the command window. Below is an example:
         import dask
         import dask.config
         import dask.array as da
+        from dask.distributed import Client
+
+        TMP_PATH = "path/to/tmp/dir"
         with dask.config.set({'temporary_directory': TMP_PATH}):
             client = Client(threads_per_worker=6, n_workers=1)
 
