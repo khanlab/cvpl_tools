@@ -31,7 +31,7 @@ or on cloud.
 
    Introduction <self>
    Viewing and IO of OME Zarr <GettingStarted/ome_zarr>
-   Boilerplate Code <GettingStarted/boilerplate>
+   Setting Up the Script <GettingStarted/setting_up_the_script>
    Defining Segmentation Pipeline <GettingStarted/segmentation_pipeline>
 
 .. toctree::
