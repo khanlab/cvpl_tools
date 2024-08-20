@@ -8,12 +8,12 @@ Viewing of ome_zarr file
 
 Viewing of ome_zarr in a directory or as a zip file.
 
-1.Open Napari with command **napari**
+1.Open Napari with command :code:`napari`
 
 2.Open the command widget with button at the bottom left corner of the window.
 
 3.After that, type in the command window to invoke functions that add more images as layers.
-To view an ome-zarr file this way with **cvpl_tools**, use the command
+To view an ome-zarr file this way with :code:`cvpl_tools`, use the command
 
 ::
 
@@ -40,10 +40,10 @@ To view an ome-zarr file this way with **cvpl_tools**, use the command
     zarr_group = zarr.open(store, mode='r')
     cvpl_zarr.add_ome_zarr_group(viewer, zarr_group, dict(name="displayed_name_in_ui"))
 
-- An extra argument is_label can be passed into the function via kwargs dictionary. This is a
-  boolean value that specifies whether to use viewer.add_labels (if True) or viewer.add_image
-  (if False) function. This is useful for displaying instance segmentaion masks, where each
-  segmented object has a distinct color.
+- An extra argument is_label can be passed into the function via :code:`kwargs` dictionary.
+  This is a boolean value that specifies whether to use :code:`viewer.add_labels`
+  (if :code:`True`) or :code:`viewer.add_image` (if :code:`False`) function. This is useful for
+  displaying instance segmentaion masks, where each segmented object has a distinct color.
 
 Similarly, you can open a zip, or an image with multiple labels this way.
 
@@ -79,20 +79,22 @@ Above + denotes collapsed folder and - denotes expanded folder. A few things to 
   is not a standard ZARR directory and contains no **.zarray** meta file. Loading an OME ZARR
   image as ZARR will crash, if you forget to specify **0/** subfolder as the path to load
 - When saved as a zip file instead of a directory, the directory structure is the same except that
-  the root is zipped. Loading a zipped OME ZARR, cvpl_tools uses ZipStore's features to directly reading
-  individual chunks without having to unpack the entire zip file. However, writing to a ZipStore is
-  not supported, due to lack of support by either Python's zarr or the ome-zarr library.
+  the root is zipped. Loading a zipped OME ZARR, cvpl_tools uses :code:`ZipStore`'s features to
+  directly reading individual chunks without having to unpack
+  the entire zip file. However, writing to a :code:`ZipStore` is not supported, due to lack of
+  support by either Python's :code:`zarr` or the :code:`ome-zarr` library.
 - An HPC system like Compute Canada may work better with one large files than many small files,
   thus the result should be zipped. This can be done by first writing the folder to somewhere
   that allows creating many small files and then zip the result into a single zip in the target
   directory
-- As of the time of writing (2024.8.14), ome-zarr library's Writer class has a `double computation
-  issue <https://github.com/ome/ome-zarr-py/issues/392>`_. To temporary patch this for our
-  use case, I've added a **write_ome_zarr_image** function to write a dask array as an OME ZARR
+- As of the time of writing (2024.8.14), ome-zarr library's :code:`Writer` class has a
+  `double computation issue <https://github.com/ome/ome-zarr-py/issues/392>`_. To temporary patch
+  this for our use case, I've added a :code:`write_ome_zarr_image`
+  function to write a dask array as an OME ZARR
   file. This function also adds support for reading images stored as a **.zip** file.
 
-See the API page for `cvpl_tools.ome_zarr.io.py <API/ome_zarr_io>`_ for how to read and write OME
-ZARR files if you want to use **cvpl_tools** for such tasks. This file provides two functions
-**load_zarr_group_from_path** and **write_ome_zarr_image** which allows you to read and write OME
+See the API page for cvpl_tools.ome_zarr.io.py for how to read and write OME
+ZARR files if you want to use :code:`cvpl_tools` for such tasks. This file provides two functions
+:code:`load_zarr_group_from_path` and :code:`write_ome_zarr_image` which allows you to read and write OME
 ZARR files, respectively.
 

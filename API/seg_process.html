@@ -47,7 +47,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../GettingStarted/ome_zarr.html">Viewing and IO of OME Zarr</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/boilerplate.html">Boilerplate Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/setting_up_the_script.html">Setting Up the Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../GettingStarted/segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -130,11 +130,12 @@
   <section id="cvpl-tools-im-seg-process-py">
 <span id="seg-process"></span><h1>cvpl_tools/im/seg_process.py<a class="headerlink" href="#cvpl-tools-im-seg-process-py" title="Permalink to this heading"></a></h1>
 <p>View source at <a class="reference external" href="https://github.com/khanlab/cvpl_tools/blob/main/src/cvpl_tools/im/seg_process.py">seg_process.py</a>.</p>
-<p>Q: Why are there two baseclasses SegProcess and BlockToBlockProcess? When I define my own pipeline, which class
-should I be subclassing from?</p>
-<p>A: BlockToBlockProcess is a wrapper around SegProcess for code whose input and output block sizes are the same.
+<p>Q: Why are there two baseclasses <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> and <code class="code docutils literal notranslate"><span class="pre">BlockToBlockProcess</span></code>? When I define my own pipeline,
+which class should I be subclassing from?</p>
+<p>A: <code class="code docutils literal notranslate"><span class="pre">BlockToBlockProcess</span></code> is a wrapper around <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> for code whose input and output block sizes
+are the same.
 For general processing whose output are list of centroids, or when input shape of any block is not the same as
-output shape of that block, then BlockToBlockProcess is suitable for that purpose.</p>
+output shape of that block, use <code class="code docutils literal notranslate"><span class="pre">BlockToBlockProcess</span></code>.</p>
 <p class="rubric">APIs</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="cvpl_tools.im.seg_process.SegProcess">

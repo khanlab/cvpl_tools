@@ -5,12 +5,13 @@ cvpl_tools/im/seg_process.py
 
 View source at `seg_process.py <https://github.com/khanlab/cvpl_tools/blob/main/src/cvpl_tools/im/seg_process.py>`_.
 
-Q: Why are there two baseclasses SegProcess and BlockToBlockProcess? When I define my own pipeline, which class
-should I be subclassing from?
+Q: Why are there two baseclasses :code:`SegProcess` and :code:`BlockToBlockProcess`? When I define my own pipeline,
+which class should I be subclassing from?
 
-A: BlockToBlockProcess is a wrapper around SegProcess for code whose input and output block sizes are the same.
+A: :code:`BlockToBlockProcess` is a wrapper around :code:`SegProcess` for code whose input and output block sizes
+are the same.
 For general processing whose output are list of centroids, or when input shape of any block is not the same as
-output shape of that block, then BlockToBlockProcess is suitable for that purpose.
+output shape of that block, use :code:`BlockToBlockProcess`.
 
 .. rubric:: APIs
 

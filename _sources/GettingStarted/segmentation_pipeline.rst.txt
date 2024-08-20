@@ -27,8 +27,9 @@ that are hard to debug and requires tens of minutes or hours if we need to rerun
 The SegProcess Class
 ********************
 
-The **SegProcess** class in module **cvpl_tools.im.seg_process** provides a convenient way for us to define
-a step in multi-step image processing pipeline for distributed, interpretable and cached image data analysis.
+The :code:`SegProcess` class in module :code:`cvpl_tools.im.seg_process` provides a convenient way for us
+to define a step in multi-step image processing pipeline for distributed, interpretable and cached image
+data analysis.
 
 Consider a function that counts the number of cells in a 3d-block of brightness map:
 
@@ -57,21 +58,22 @@ results makes sure computation is done only once, which is necessary when we wor
 on hundreds of GBs of data.
 
 SegProcess is designed to address these issues, with the basic idea to integrate visualization as
-part of the cell_count function, and cache the result of each step into a file in a **CacheDirectory**.
+part of the cell_count function, and cache the result of each step into a file in a :code:`CacheDirectory`.
 
 The class supports the following use cases:
 
-1. dask-support. Inputs are expected to be either numpy array, dask array, or cvpl.im.ndblock.NDBlock
-objects. In particular, dask.Array and NDBlock are suitable for parallel or distributed image processing
-workflows.
+1. dask-support. Inputs are expected to be either numpy array, dask array, or
+:code:`cvpl.im.ndblock.NDBlock` objects. In particular, dask.Array and NDBlock are suitable for
+parallel or distributed image processing workflows.
 
-2. integration of Napari. **forward()** function of a SegProcess object has a viewer attribute that
+2. integration of Napari. :code:`forward()` function of a SegProcess object has a viewer attribute that
 defaults to None. By passing a Napari viewer to this parameter, the forward process will add intermediate
-images or centroids to the Napari viewer for easier debugging.
+images or centroids to the Napari viewer for easier debugging. Then after forward process finishes, we
+call :code:`viewer.show()` to display all added images
 
-3. intermediate result caching. **CacheDirectory** class provides a hierarchical caching directory,
-where each **forward()** call will either create a new directory or load from existing cache directory
-based on the **cid** parameter passed to the function.
+3. intermediate result caching. :code:`CacheDirectory` class provides a hierarchical caching directory,
+where each :code:`forward()` call will either create a new directory or load from existing cache directory
+based on the :code:`cid` parameter passed to the function.
 
 Now we discuss how to define such a pipeline.
 
@@ -81,10 +83,10 @@ Extending the Pipeline
 The first step of building a pipeline is to break a segmentation algorithm down to steps that process the
 image in different formats. As an example, we may implement a pipeline as IN -> BS -> OS -> CC, where:
 
-- IN - Input Image (np.float32) between min=0 and max=1, this is the brightness dask image as input
-- BS - Binary Segmentation (3d, np.uint8), this is the binary mask single class segmentation
-- OS - Ordinal Segmentation (3d, np.int32), this is the 0-N where contour 1-N each denotes an object; also single class
-- CC - Cell Count Map (3d, np.float32), a cell count number (estimate, can be float) for each block
+- IN - Input Image (:code:`np.float32`) between min=0 and max=1, this is the brightness dask image as input
+- BS - Binary Segmentation (3d, :code:`np.uint8`), this is the binary mask single class segmentation
+- OS - Ordinal Segmentation (3d, :code:`np.int32`), this is the 0-N where contour 1-N each denotes an object; also single class
+- CC - Cell Count Map (3d, :code:`np.float32`), a cell count number (estimate, can be float) for each block
 
 Mapping from IN to BS comes in two choices. One is to simply take threshold > some number as cells and the
 rest as background. Another is to use a trained machine learned algorithm to do binary segmentation. Mapping
@@ -104,15 +106,16 @@ We can then plan the processing steps we need to define as follows:
 4. watershed_inst_segmentation (BS -> OS)
 5. cell_cnt_from_inst (OS -> CC)
 
-How do we go from this plan to actually code these steps? Subclassing **SegProcess** is the recommended way.
-This means to create a subclass that defines the **forward()** method, which takes arbitrary inputs
+How do we go from this plan to actually code these steps? Subclassing :code:`SegProcess` is the recommended way
+(although one may argue we don't need OOP here).
+This means to create a subclass that defines the :code:`forward()` method, which takes arbitrary inputs
 and two optional parameters: cid and viewer.
 
-- cid specifies the subdirectory under the cache directory (set by the **set_tmpdir** method of the base
-  class) to save intermediate files. If not provided (cid=None),
+- cid specifies the subdirectory under the cache directory (set by the :code:`set_tmpdir` method of the base
+  class) to save intermediate files. If not provided (:code:`cid=None`),
   then the cache will be saved in a temporary directory that will be removed when the CacheDirectory is
-  closed. If provided, this cache file will persist. Within the forward() method, you should use
-  self.tmpdir.cache() and self.tmpdir.cache_im() to create cache files:
+  closed. If provided, this cache file will persist. Within the :code:`forward()` method, you should use
+  :code:`self.tmpdir.cache()` and :code:`self.tmpdir.cache_im()` to create cache files:
 
   .. code-block:: Python
 
@@ -126,13 +129,12 @@ and two optional parameters: cid and viewer.
                   result = compute_result(im)
                   save(cache_path.path, result)
               result = load(cache_path.path)
-
-          # ...
+              return result
 
 - The viewer parameter specifies the napari viewer to display the intermediate results. If not provided
-  (viewer=None), then no computation will be done to visualize the image. Within the forward() method, you
-  should use viewer.add_labels(), lc_interpretable_napari() or temp_directory.cache_im() while passing in
-  viewer_args argument to display your results:
+  (:code:`viewer=None`), then no computation will be done to visualize the image. Within the forward() method, you
+  should use :code:`viewer.add_labels()`, :code:`lc_interpretable_napari()` or :code:`temp_directory.cache_im()`
+  while passing in :code:`viewer_args` argument to display your results:
 
   .. code-block:: Python
 
@@ -147,19 +149,20 @@ and two optional parameters: cid and viewer.
               ))
               return result
 
-  viewer_args is a parameter that allows us to visualize the saved results as part of the caching function. The
-  reason we need this is that displaying the saved result often requires a different (flatter) chunk size for
-  fast loading of cross-sectional image, and also requires downsampling for zooming in/out of larger images.
+  :code:`viewer_args` is a parameter that allows us to visualize the saved results as part of the caching
+  function. The reason we need this is that displaying the saved result often requires a different (flatter)
+  chunk size for fast loading of cross-sectional image, and also requires downsampling for zooming in/out of
+  larger images.
 
 Running the Pipeline
 ********************
 
-See `Boilerplate Code <GettingStarted/boilerplate>`_ to understand boilerplate code used below. It's required
-to do the following example.
+See `Setting Up the Script <GettingStarted/setting_up_the_script>`_ to understand boilerplate code used below.
+It's required to understand the following example.
 
-Now we have defined a ExampleSegProcess class, the next step is to write our script that uses the pipeline to
-segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
-forward() method.
+Now we have defined a :code:`ExampleSegProcess` class, the next step is to write our script that uses the pipeline
+to segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
+:code:`forward()` method.
 
 .. code-block:: Python
 

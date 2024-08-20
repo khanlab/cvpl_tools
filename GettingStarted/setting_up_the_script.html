@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Boilerplate Code &mdash; cvpl_tools 0.4.0 documentation</title>
+  <title>Setting Up the Script &mdash; cvpl_tools 0.4.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -48,7 +48,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Boilerplate Code</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Setting Up the Script</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#dask-cluster-and-temporary-directory">Dask Cluster and temporary directory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#dask-logging-setup">Dask Logging Setup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cachedirectory">CacheDirectory</a></li>
@@ -79,9 +79,9 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Boilerplate Code</li>
+      <li class="breadcrumb-item active">Setting Up the Script</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/GettingStarted/boilerplate.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/GettingStarted/setting_up_the_script.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -89,20 +89,23 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="boilerplate-code">
-<span id="boilerplate"></span><h1>Boilerplate Code<a class="headerlink" href="#boilerplate-code" title="Permalink to this heading"></a></h1>
+  <section id="setting-up-the-script">
+<span id="id1"></span><h1>Setting Up the Script<a class="headerlink" href="#setting-up-the-script" title="Permalink to this heading"></a></h1>
 <p>Writing code using cvpl_tools requires some setup code that configures the dask library and other
 utilities we need for our image processing pipeline. Below gives a brief description for the setup of these
 utilities and how they can be used when we are writing our image processing pipelines with
-cvpl_tools.im.seg_process.SegProcess class.</p>
+<code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.seg_process.SegProcess</span></code> class.</p>
 <section id="dask-cluster-and-temporary-directory">
 <h2>Dask Cluster and temporary directory<a class="headerlink" href="#dask-cluster-and-temporary-directory" title="Permalink to this heading"></a></h2>
-<p>Dask is a multithreaded and distributed computing library, in which temporary results can not all be saved in
-memory. When the intermediate results do not fit in memory, they are written in the temporary directory set in
-the dask config’s temporary_directory variable. When working on HPC system on Compute Canada, make sure
-this path is set to a /scratch directory where number of file allowed to be created is large enough.</p>
-<p>Setting up the client is described in the <a class="reference external" href="https://distributed.dask.org/en/stable/quickstart.html">Dask quickstart</a>
-page. We will use a local cluster setup on a local computer as example.</p>
+<p>Dask is a multithreaded and distributed computing library, in which temporary results may not fit in
+memory. In such cases, they are written in the temporary directory set in
+the dask config’s <code class="code docutils literal notranslate"><span class="pre">temporary_directory</span></code> variable. When working on HPC system on Compute Canada,
+make sure this path is set to a /scratch directory where number of file allowed to be created is large
+enough.</p>
+<p>Dask Client setup is described in the <a class="reference external" href="https://distributed.dask.org/en/stable/quickstart.html">Dask quickstart</a>
+page. See <a class="reference external" href="https://stackoverflow.com/questions/71470336/using-dask-without-client-client">this SO post</a> to
+determine if you need to initialize a client or not. Below examples are modified from the simplest setup
+in the quickstart guide.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">dask</span>
     <span class="kn">import</span> <span class="nn">dask.config</span>
@@ -116,11 +119,11 @@ page. We will use a local cluster setup on a local computer as example.</p>
         <span class="nb">print</span><span class="p">((</span><span class="n">da</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>  <span class="c1"># will output 9</span>
 </pre></div>
 </div>
-<p>Note the <strong>if __name__’ == ‘__main__’:</strong> line is necessary to ensure only the main thread executes the task creation
-code. When dask starts a client in the <strong>Client()</strong> call, it will spawn worker threads that run the same script
-this file is in. This creates threads that re-executes the Client creation code into an dead loop if the guarding
-statement is not present. However, this approach has some complications, one can be seen from the following
-example (one that I’ve encountered with showing large multiscale images):</p>
+<p>The line <code class="code docutils literal notranslate"><span class="pre">if</span> <span class="pre">__name__</span> <span class="pre">==</span> <span class="pre">'__main__':</span></code> ensures only the main thread executes the task creation
+code. The line of the <code class="code docutils literal notranslate"><span class="pre">Client()</span></code> call spawns worker threads that executes exactly the same script back from
+the top. If the guarding statement is not present, the worker re-executes the Client creation code and which
+leads to into an infinite loop. However, some complications may stem from this, one of which is described in the
+following example: (I encountered this when displaying large multiscale images):</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">dask</span>
     <span class="kn">import</span> <span class="nn">dask.config</span>
@@ -136,20 +139,22 @@ example (one that I’ve encountered with showing large multiscale images):</p>
         <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># here all threads available will be used to fetch data to show image</span>
 </pre></div>
 </div>
-<p>Napari will utilize all threads on current process to load image, but
-on a typical dask setup, the <strong>Client()</strong> call will take up all resources available except one thread left for main.
-If image is added to napari and displayed with <strong>viewer.show(block=True)</strong> on the main thread, then Napari
-does not get the rest of the threads, and the loading speed is slow (working but with some lagging).</p>
-<p>solution: the existence of a dask Client object seems to be the cause of the problem, as loading speed is slow
-no matter if threads_per_worker=1 or threads_per_worker=12. Calling client.close() before viewer.show(block=True)
-solves the problem:</p>
+<p>Napari utilizes all threads on the current process to load chunks from the image when we drag mouse to navigation
+across chunks. With typical dask setup, however, worker threads spawned by the <code class="code docutils literal notranslate"><span class="pre">Client()</span></code> call take up all
+threads except one for the main thread. If viewer.show(block=True) is called
+on the main thread, then Napari viewer does not get the rest of the threads, and the loading speed is slow
+(working but with some lagging). The issue is not in adding the image to the viewer, but in the call to
+viewer.show() where the loading happens. I also found that the loading speed is slow regardless if the value
+of threads_per_worker is set to 1 or more in the Client() initialization.</p>
+<p>My solution: Since a running dask Client object seems to be the cause of the problem, calling client.close()
+before viewer.show(block=True) solves the problem:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span><span class="o">.</span><span class="n">add_ome_zarr_array_from_path</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># adding image itself does not take too much time</span>
 <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># here resources are freed up</span>
 <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># threads are now available to fetch data to show image</span>
 </pre></div>
 </div>
-<p>This does mean any dask loading will not use the cluster, but usually things will work. See this
-<a class="reference external" href="https://stackoverflow.com/questions/71470336/using-dask-without-client-client">SO post</a> for explanations</p>
+<p>This does mean any Napari will not use the cluster if images are added as dask arrays, though Dask arrays
+are processed multithreaded by default without the need of a cluster.</p>
 </section>
 <section id="dask-logging-setup">
 <h2>Dask Logging Setup<a class="headerlink" href="#dask-logging-setup" title="Permalink to this heading"></a></h2>
@@ -194,14 +199,14 @@ log_stderr.txt files under your working directory.</p>
 <h2>CacheDirectory<a class="headerlink" href="#cachedirectory" title="Permalink to this heading"></a></h2>
 <p>Different from Dask’s temporary directory, cvpl_tool’s CacheDirectory class provides intermediate result
 caching APIs. A multi-step segmentation pipeline may produce many intermediate results, for some of them we
-may compute once discard, and for the others (like the final output) we may want to cache them on the disk
+may discard once computed, and for the others (like the final output) we may want to cache them on the disk
 for access later without having to redo the computation. In order to cache the result, we need a fixed path
-that do not change across execution of the program. The <strong>CacheDirectory</strong> class is one that manages and
+that do not change across program executions. The <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code> class is one that manages and
 assigns paths for these intermediate results, based on their cache ID (cid) and the parent CacheDirectory
 they belongs to.</p>
 <p>In cvpl_tool’s model of caching, there is a root cache directory that is created or loaded when the program
-starts to run, and every cache directory may contain many sub-cache-directory or data directories within
-which are intermediate files. To create a cache directory, we can write</p>
+starts to run, and every cache directory may contain many sub-cache-directory or data directories in
+which there are intermediate files. To create a cache directory, we write</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">cvpl_tools.im.fs</span> <span class="k">as</span> <span class="nn">imfs</span>
     <span class="k">with</span> <span class="n">imfs</span><span class="o">.</span><span class="n">CacheDirectory</span><span class="p">(</span>
@@ -234,9 +239,9 @@ which are intermediate files. To create a cache directory, we can write</p>
         <span class="n">result</span> <span class="o">=</span> <span class="n">multi_step_computation</span><span class="p">(</span><span class="n">cache_at</span><span class="o">=</span><span class="n">sub_temp_directory</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>After running the above code once, caching file will be created. The second time the code is run, the computation steps
-will be skipped. This sort of hierarchical caching is convenient for working with complex processes that can be broken
-down to smaller and simpler compute steps.</p>
+<p>After running the above code once, caching files will be created. The second time the code is run, the computation
+steps will be skipped. This sort of hierarchical caching is convenient for working with complex processes that
+can be hierarchically broken down to smaller and simpler compute steps.</p>
 </section>
 </section>
 

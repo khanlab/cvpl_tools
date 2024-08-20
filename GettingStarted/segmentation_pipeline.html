@@ -22,7 +22,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="cvpl_tools/napari/zarr.py" href="../API/napari_zarr.html" />
-    <link rel="prev" title="Boilerplate Code" href="boilerplate.html" /> 
+    <link rel="prev" title="Setting Up the Script" href="setting_up_the_script.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -48,7 +48,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
-<li class="toctree-l1"><a class="reference internal" href="boilerplate.html">Boilerplate Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Defining Segmentation Pipeline</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#motivation-microscope-cell-counting-atlas-map-and-object-segmentation">Motivation: Microscope, Cell Counting, Atlas map and Object Segmentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#the-segprocess-class">The SegProcess Class</a></li>
@@ -112,8 +112,9 @@ that are hard to debug and requires tens of minutes or hours if we need to rerun
 </section>
 <section id="the-segprocess-class">
 <h2>The SegProcess Class<a class="headerlink" href="#the-segprocess-class" title="Permalink to this heading"></a></h2>
-<p>The <strong>SegProcess</strong> class in module <strong>cvpl_tools.im.seg_process</strong> provides a convenient way for us to define
-a step in multi-step image processing pipeline for distributed, interpretable and cached image data analysis.</p>
+<p>The <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> class in module <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.seg_process</span></code> provides a convenient way for us
+to define a step in multi-step image processing pipeline for distributed, interpretable and cached image
+data analysis.</p>
 <p>Consider a function that counts the number of cells in a 3d-block of brightness map:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
 <span class="k">def</span> <span class="nf">cell_count</span><span class="p">(</span><span class="n">block3d</span><span class="p">:</span> <span class="n">da</span><span class="o">.</span><span class="n">Array</span><span class="p">):</span>
@@ -136,17 +137,18 @@ not the result may need to be used in different places (visualization, analysis 
 results makes sure computation is done only once, which is necessary when we work with costly algorithms
 on hundreds of GBs of data.</p>
 <p>SegProcess is designed to address these issues, with the basic idea to integrate visualization as
-part of the cell_count function, and cache the result of each step into a file in a <strong>CacheDirectory</strong>.</p>
+part of the cell_count function, and cache the result of each step into a file in a <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code>.</p>
 <p>The class supports the following use cases:</p>
-<p>1. dask-support. Inputs are expected to be either numpy array, dask array, or cvpl.im.ndblock.NDBlock
-objects. In particular, dask.Array and NDBlock are suitable for parallel or distributed image processing
-workflows.</p>
-<p>2. integration of Napari. <strong>forward()</strong> function of a SegProcess object has a viewer attribute that
+<p>1. dask-support. Inputs are expected to be either numpy array, dask array, or
+<code class="code docutils literal notranslate"><span class="pre">cvpl.im.ndblock.NDBlock</span></code> objects. In particular, dask.Array and NDBlock are suitable for
+parallel or distributed image processing workflows.</p>
+<p>2. integration of Napari. <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> function of a SegProcess object has a viewer attribute that
 defaults to None. By passing a Napari viewer to this parameter, the forward process will add intermediate
-images or centroids to the Napari viewer for easier debugging.</p>
-<p>3. intermediate result caching. <strong>CacheDirectory</strong> class provides a hierarchical caching directory,
-where each <strong>forward()</strong> call will either create a new directory or load from existing cache directory
-based on the <strong>cid</strong> parameter passed to the function.</p>
+images or centroids to the Napari viewer for easier debugging. Then after forward process finishes, we
+call <code class="code docutils literal notranslate"><span class="pre">viewer.show()</span></code> to display all added images</p>
+<p>3. intermediate result caching. <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code> class provides a hierarchical caching directory,
+where each <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> call will either create a new directory or load from existing cache directory
+based on the <code class="code docutils literal notranslate"><span class="pre">cid</span></code> parameter passed to the function.</p>
 <p>Now we discuss how to define such a pipeline.</p>
 </section>
 <section id="extending-the-pipeline">
@@ -154,10 +156,10 @@ based on the <strong>cid</strong> parameter passed to the function.</p>
 <p>The first step of building a pipeline is to break a segmentation algorithm down to steps that process the
 image in different formats. As an example, we may implement a pipeline as IN -&gt; BS -&gt; OS -&gt; CC, where:</p>
 <ul class="simple">
-<li><p>IN - Input Image (np.float32) between min=0 and max=1, this is the brightness dask image as input</p></li>
-<li><p>BS - Binary Segmentation (3d, np.uint8), this is the binary mask single class segmentation</p></li>
-<li><p>OS - Ordinal Segmentation (3d, np.int32), this is the 0-N where contour 1-N each denotes an object; also single class</p></li>
-<li><p>CC - Cell Count Map (3d, np.float32), a cell count number (estimate, can be float) for each block</p></li>
+<li><p>IN - Input Image (<code class="code docutils literal notranslate"><span class="pre">np.float32</span></code>) between min=0 and max=1, this is the brightness dask image as input</p></li>
+<li><p>BS - Binary Segmentation (3d, <code class="code docutils literal notranslate"><span class="pre">np.uint8</span></code>), this is the binary mask single class segmentation</p></li>
+<li><p>OS - Ordinal Segmentation (3d, <code class="code docutils literal notranslate"><span class="pre">np.int32</span></code>), this is the 0-N where contour 1-N each denotes an object; also single class</p></li>
+<li><p>CC - Cell Count Map (3d, <code class="code docutils literal notranslate"><span class="pre">np.float32</span></code>), a cell count number (estimate, can be float) for each block</p></li>
 </ul>
 <p>Mapping from IN to BS comes in two choices. One is to simply take threshold &gt; some number as cells and the
 rest as background. Another is to use a trained machine learned algorithm to do binary segmentation. Mapping
@@ -175,15 +177,16 @@ be reused and which part may have variations in the algorithm used.</p>
 <li><p>watershed_inst_segmentation (BS -&gt; OS)</p></li>
 <li><p>cell_cnt_from_inst (OS -&gt; CC)</p></li>
 </ol>
-<p>How do we go from this plan to actually code these steps? Subclassing <strong>SegProcess</strong> is the recommended way.
-This means to create a subclass that defines the <strong>forward()</strong> method, which takes arbitrary inputs
+<p>How do we go from this plan to actually code these steps? Subclassing <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> is the recommended way
+(although one may argue we don’t need OOP here).
+This means to create a subclass that defines the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> method, which takes arbitrary inputs
 and two optional parameters: cid and viewer.</p>
 <ul>
-<li><p>cid specifies the subdirectory under the cache directory (set by the <strong>set_tmpdir</strong> method of the base
-class) to save intermediate files. If not provided (cid=None),
+<li><p>cid specifies the subdirectory under the cache directory (set by the <code class="code docutils literal notranslate"><span class="pre">set_tmpdir</span></code> method of the base
+class) to save intermediate files. If not provided (<code class="code docutils literal notranslate"><span class="pre">cid=None</span></code>),
 then the cache will be saved in a temporary directory that will be removed when the CacheDirectory is
-closed. If provided, this cache file will persist. Within the forward() method, you should use
-self.tmpdir.cache() and self.tmpdir.cache_im() to create cache files:</p>
+closed. If provided, this cache file will persist. Within the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> method, you should use
+<code class="code docutils literal notranslate"><span class="pre">self.tmpdir.cache()</span></code> and <code class="code docutils literal notranslate"><span class="pre">self.tmpdir.cache_im()</span></code> to create cache files:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ExampleSegProcess</span><span class="p">(</span><span class="n">SegProcess</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="n">cache_exists</span><span class="p">,</span> <span class="n">cache_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">is_dir</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">)</span>
@@ -194,15 +197,14 @@ self.tmpdir.cache() and self.tmpdir.cache_im() to create cache files:</p>
             <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
             <span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
-
-    <span class="c1"># ...</span>
+        <span class="k">return</span> <span class="n">result</span>
 </pre></div>
 </div>
 </li>
 <li><p>The viewer parameter specifies the napari viewer to display the intermediate results. If not provided
-(viewer=None), then no computation will be done to visualize the image. Within the forward() method, you
-should use viewer.add_labels(), lc_interpretable_napari() or temp_directory.cache_im() while passing in
-viewer_args argument to display your results:</p>
+(<code class="code docutils literal notranslate"><span class="pre">viewer=None</span></code>), then no computation will be done to visualize the image. Within the forward() method, you
+should use <code class="code docutils literal notranslate"><span class="pre">viewer.add_labels()</span></code>, <code class="code docutils literal notranslate"><span class="pre">lc_interpretable_napari()</span></code> or <code class="code docutils literal notranslate"><span class="pre">temp_directory.cache_im()</span></code>
+while passing in <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> argument to display your results:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ExampleSegProcess</span><span class="p">(</span><span class="n">SegProcess</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
@@ -215,19 +217,20 @@ viewer_args argument to display your results:</p>
         <span class="k">return</span> <span class="n">result</span>
 </pre></div>
 </div>
-<p>viewer_args is a parameter that allows us to visualize the saved results as part of the caching function. The
-reason we need this is that displaying the saved result often requires a different (flatter) chunk size for
-fast loading of cross-sectional image, and also requires downsampling for zooming in/out of larger images.</p>
+<p><code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> is a parameter that allows us to visualize the saved results as part of the caching
+function. The reason we need this is that displaying the saved result often requires a different (flatter)
+chunk size for fast loading of cross-sectional image, and also requires downsampling for zooming in/out of
+larger images.</p>
 </li>
 </ul>
 </section>
 <section id="running-the-pipeline">
 <h2>Running the Pipeline<a class="headerlink" href="#running-the-pipeline" title="Permalink to this heading"></a></h2>
-<p>See <a class="reference external" href="GettingStarted/boilerplate">Boilerplate Code</a> to understand boilerplate code used below. It’s required
-to do the following example.</p>
-<p>Now we have defined a ExampleSegProcess class, the next step is to write our script that uses the pipeline to
-segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
-forward() method.</p>
+<p>See <a class="reference external" href="GettingStarted/setting_up_the_script">Setting Up the Script</a> to understand boilerplate code used below.
+It’s required to understand the following example.</p>
+<p>Now we have defined a <code class="code docutils literal notranslate"><span class="pre">ExampleSegProcess</span></code> class, the next step is to write our script that uses the pipeline
+to segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
+<code class="code docutils literal notranslate"><span class="pre">forward()</span></code> method.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>  <span class="c1"># Only for main thread, worker threads will not run this</span>
     <span class="n">TMP_PATH</span> <span class="o">=</span> <span class="s2">&quot;path/to/temporary/directory&quot;</span>
     <span class="kn">import</span> <span class="nn">dask</span>
@@ -260,7 +263,7 @@ cvpl_tools.im.ndblock modules.</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="boilerplate.html" class="btn btn-neutral float-left" title="Boilerplate Code" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="setting_up_the_script.html" class="btn btn-neutral float-left" title="Setting Up the Script" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="../API/napari_zarr.html" class="btn btn-neutral float-right" title="cvpl_tools/napari/zarr.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

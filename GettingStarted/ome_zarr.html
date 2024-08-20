@@ -21,7 +21,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Boilerplate Code" href="boilerplate.html" />
+    <link rel="next" title="Setting Up the Script" href="setting_up_the_script.html" />
     <link rel="prev" title="Introduction - cvpl_tools documentation" href="../index.html" /> 
 </head>
 
@@ -52,7 +52,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#reading-and-writing-ome-zarr-files">Reading and Writing ome_zarr files</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="boilerplate.html">Boilerplate Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -93,10 +93,10 @@
 <section id="viewing-of-ome-zarr-file">
 <h2>Viewing of ome_zarr file<a class="headerlink" href="#viewing-of-ome-zarr-file" title="Permalink to this heading"></a></h2>
 <p>Viewing of ome_zarr in a directory or as a zip file.</p>
-<p>1.Open Napari with command <strong>napari</strong></p>
+<p>1.Open Napari with command <code class="code docutils literal notranslate"><span class="pre">napari</span></code></p>
 <p>2.Open the command widget with button at the bottom left corner of the window.</p>
 <p>3.After that, type in the command window to invoke functions that add more images as layers.
-To view an ome-zarr file this way with <strong>cvpl_tools</strong>, use the command</p>
+To view an ome-zarr file this way with <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code>, use the command</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.napari.zarr</span> <span class="k">as</span> <span class="nn">cvpl_zarr</span>
 <span class="n">cvpl_zarr</span><span class="o">.</span><span class="n">add_ome_zarr_array_from_path</span><span class="p">(</span><span class="n">viewer</span><span class="p">,</span> <span class="s2">&quot;/absolute/path/to/your/ome.zarr&quot;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;displayed_name_in_ui&quot;</span><span class="p">))</span>
 </pre></div>
@@ -122,10 +122,10 @@ the kwargs as a dictionary.</p></li>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>An extra argument is_label can be passed into the function via kwargs dictionary. This is a
-boolean value that specifies whether to use viewer.add_labels (if True) or viewer.add_image
-(if False) function. This is useful for displaying instance segmentaion masks, where each
-segmented object has a distinct color.</p></li>
+<li><p>An extra argument is_label can be passed into the function via <code class="code docutils literal notranslate"><span class="pre">kwargs</span></code> dictionary.
+This is a boolean value that specifies whether to use <code class="code docutils literal notranslate"><span class="pre">viewer.add_labels</span></code>
+(if <code class="code docutils literal notranslate"><span class="pre">True</span></code>) or <code class="code docutils literal notranslate"><span class="pre">viewer.add_image</span></code> (if <code class="code docutils literal notranslate"><span class="pre">False</span></code>) function. This is useful for
+displaying instance segmentaion masks, where each segmented object has a distinct color.</p></li>
 </ul>
 <p>Similarly, you can open a zip, or an image with multiple labels this way.</p>
 </section>
@@ -157,21 +157,23 @@ will only be one 0/ folder</p></li>
 is not a standard ZARR directory and contains no <strong>.zarray</strong> meta file. Loading an OME ZARR
 image as ZARR will crash, if you forget to specify <strong>0/</strong> subfolder as the path to load</p></li>
 <li><p>When saved as a zip file instead of a directory, the directory structure is the same except that
-the root is zipped. Loading a zipped OME ZARR, cvpl_tools uses ZipStore’s features to directly reading
-individual chunks without having to unpack the entire zip file. However, writing to a ZipStore is
-not supported, due to lack of support by either Python’s zarr or the ome-zarr library.</p></li>
+the root is zipped. Loading a zipped OME ZARR, cvpl_tools uses <code class="code docutils literal notranslate"><span class="pre">ZipStore</span></code>’s features to
+directly reading individual chunks without having to unpack
+the entire zip file. However, writing to a <code class="code docutils literal notranslate"><span class="pre">ZipStore</span></code> is not supported, due to lack of
+support by either Python’s <code class="code docutils literal notranslate"><span class="pre">zarr</span></code> or the <code class="code docutils literal notranslate"><span class="pre">ome-zarr</span></code> library.</p></li>
 <li><p>An HPC system like Compute Canada may work better with one large files than many small files,
 thus the result should be zipped. This can be done by first writing the folder to somewhere
 that allows creating many small files and then zip the result into a single zip in the target
 directory</p></li>
-<li><p>As of the time of writing (2024.8.14), ome-zarr library’s Writer class has a <a class="reference external" href="https://github.com/ome/ome-zarr-py/issues/392">double computation
-issue</a>. To temporary patch this for our
-use case, I’ve added a <strong>write_ome_zarr_image</strong> function to write a dask array as an OME ZARR
+<li><p>As of the time of writing (2024.8.14), ome-zarr library’s <code class="code docutils literal notranslate"><span class="pre">Writer</span></code> class has a
+<a class="reference external" href="https://github.com/ome/ome-zarr-py/issues/392">double computation issue</a>. To temporary patch
+this for our use case, I’ve added a <code class="code docutils literal notranslate"><span class="pre">write_ome_zarr_image</span></code>
+function to write a dask array as an OME ZARR
 file. This function also adds support for reading images stored as a <strong>.zip</strong> file.</p></li>
 </ul>
-<p>See the API page for <a class="reference external" href="API/ome_zarr_io">cvpl_tools.ome_zarr.io.py</a> for how to read and write OME
-ZARR files if you want to use <strong>cvpl_tools</strong> for such tasks. This file provides two functions
-<strong>load_zarr_group_from_path</strong> and <strong>write_ome_zarr_image</strong> which allows you to read and write OME
+<p>See the API page for cvpl_tools.ome_zarr.io.py for how to read and write OME
+ZARR files if you want to use <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code> for such tasks. This file provides two functions
+<code class="code docutils literal notranslate"><span class="pre">load_zarr_group_from_path</span></code> and <code class="code docutils literal notranslate"><span class="pre">write_ome_zarr_image</span></code> which allows you to read and write OME
 ZARR files, respectively.</p>
 </section>
 </section>
@@ -181,7 +183,7 @@ ZARR files, respectively.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../index.html" class="btn btn-neutral float-left" title="Introduction - cvpl_tools documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="boilerplate.html" class="btn btn-neutral float-right" title="Boilerplate Code" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="setting_up_the_script.html" class="btn btn-neutral float-right" title="Setting Up the Script" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

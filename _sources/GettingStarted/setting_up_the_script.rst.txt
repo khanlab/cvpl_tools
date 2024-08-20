@@ -1,23 +1,26 @@
-.. _boilerplate:
+.. _setting_up_the_script:
 
-Boilerplate Code
-################
+Setting Up the Script
+#####################
 
 Writing code using cvpl_tools requires some setup code that configures the dask library and other
 utilities we need for our image processing pipeline. Below gives a brief description for the setup of these
 utilities and how they can be used when we are writing our image processing pipelines with
-cvpl_tools.im.seg_process.SegProcess class.
+:code:`cvpl_tools.im.seg_process.SegProcess` class.
 
 Dask Cluster and temporary directory
 ************************************
 
-Dask is a multithreaded and distributed computing library, in which temporary results can not all be saved in
-memory. When the intermediate results do not fit in memory, they are written in the temporary directory set in
-the dask config's temporary_directory variable. When working on HPC system on Compute Canada, make sure
-this path is set to a /scratch directory where number of file allowed to be created is large enough.
+Dask is a multithreaded and distributed computing library, in which temporary results may not fit in
+memory. In such cases, they are written in the temporary directory set in
+the dask config's :code:`temporary_directory` variable. When working on HPC system on Compute Canada,
+make sure this path is set to a /scratch directory where number of file allowed to be created is large
+enough.
 
-Setting up the client is described in the `Dask quickstart <https://distributed.dask.org/en/stable/quickstart.html>`_
-page. We will use a local cluster setup on a local computer as example.
+Dask Client setup is described in the `Dask quickstart <https://distributed.dask.org/en/stable/quickstart.html>`_
+page. See `this SO post <https://stackoverflow.com/questions/71470336/using-dask-without-client-client>`_ to
+determine if you need to initialize a client or not. Below examples are modified from the simplest setup
+in the quickstart guide.
 
 .. code-block:: Python
 
@@ -33,11 +36,11 @@ page. We will use a local cluster setup on a local computer as example.
 
             print((da.zeros((3, 3)) + 1).compute().sum().item())  # will output 9
 
-Note the **if __name__' == '__main__':** line is necessary to ensure only the main thread executes the task creation
-code. When dask starts a client in the **Client()** call, it will spawn worker threads that run the same script
-this file is in. This creates threads that re-executes the Client creation code into an dead loop if the guarding
-statement is not present. However, this approach has some complications, one can be seen from the following
-example (one that I've encountered with showing large multiscale images):
+The line :code:`if __name__ == '__main__':` ensures only the main thread executes the task creation
+code. The line of the :code:`Client()` call spawns worker threads that executes exactly the same script back from
+the top. If the guarding statement is not present, the worker re-executes the Client creation code and which
+leads to into an infinite loop. However, some complications may stem from this, one of which is described in the
+following example: (I encountered this when displaying large multiscale images):
 
 .. code-block:: Python
 
@@ -55,14 +58,16 @@ example (one that I've encountered with showing large multiscale images):
             viewer.add_ome_zarr_array_from_path(...)  # add a large OME ZARR image
             viewer.show(block=True)  # here all threads available will be used to fetch data to show image
 
-Napari will utilize all threads on current process to load image, but
-on a typical dask setup, the **Client()** call will take up all resources available except one thread left for main.
-If image is added to napari and displayed with **viewer.show(block=True)** on the main thread, then Napari
-does not get the rest of the threads, and the loading speed is slow (working but with some lagging).
+Napari utilizes all threads on the current process to load chunks from the image when we drag mouse to navigation
+across chunks. With typical dask setup, however, worker threads spawned by the :code:`Client()` call take up all
+threads except one for the main thread. If viewer.show(block=True) is called
+on the main thread, then Napari viewer does not get the rest of the threads, and the loading speed is slow
+(working but with some lagging). The issue is not in adding the image to the viewer, but in the call to
+viewer.show() where the loading happens. I also found that the loading speed is slow regardless if the value
+of threads_per_worker is set to 1 or more in the Client() initialization.
 
-solution: the existence of a dask Client object seems to be the cause of the problem, as loading speed is slow
-no matter if threads_per_worker=1 or threads_per_worker=12. Calling client.close() before viewer.show(block=True)
-solves the problem:
+My solution: Since a running dask Client object seems to be the cause of the problem, calling client.close()
+before viewer.show(block=True) solves the problem:
 
 .. code-block:: Python
 
@@ -70,8 +75,8 @@ solves the problem:
     client.close()  # here resources are freed up
     viewer.show(block=True)  # threads are now available to fetch data to show image
 
-This does mean any dask loading will not use the cluster, but usually things will work. See this
-`SO post <https://stackoverflow.com/questions/71470336/using-dask-without-client-client>`_ for explanations
+This does mean any Napari will not use the cluster if images are added as dask arrays, though Dask arrays
+are processed multithreaded by default without the need of a cluster.
 
 Dask Logging Setup
 ******************
@@ -121,15 +126,15 @@ CacheDirectory
 
 Different from Dask's temporary directory, cvpl_tool's CacheDirectory class provides intermediate result
 caching APIs. A multi-step segmentation pipeline may produce many intermediate results, for some of them we
-may compute once discard, and for the others (like the final output) we may want to cache them on the disk
+may discard once computed, and for the others (like the final output) we may want to cache them on the disk
 for access later without having to redo the computation. In order to cache the result, we need a fixed path
-that do not change across execution of the program. The **CacheDirectory** class is one that manages and
+that do not change across program executions. The :code:`CacheDirectory` class is one that manages and
 assigns paths for these intermediate results, based on their cache ID (cid) and the parent CacheDirectory
 they belongs to.
 
 In cvpl_tool's model of caching, there is a root cache directory that is created or loaded when the program
-starts to run, and every cache directory may contain many sub-cache-directory or data directories within
-which are intermediate files. To create a cache directory, we can write
+starts to run, and every cache directory may contain many sub-cache-directory or data directories in
+which there are intermediate files. To create a cache directory, we write
 
 .. code-block:: Python
 
@@ -164,6 +169,6 @@ which are intermediate files. To create a cache directory, we can write
             sub_temp_directory = temp_directory.cache(is_dir=True, cid='mult_step_cache')
             result = multi_step_computation(cache_at=sub_temp_directory)
 
-After running the above code once, caching file will be created. The second time the code is run, the computation steps
-will be skipped. This sort of hierarchical caching is convenient for working with complex processes that can be broken
-down to smaller and simpler compute steps.
+After running the above code once, caching files will be created. The second time the code is run, the computation
+steps will be skipped. This sort of hierarchical caching is convenient for working with complex processes that
+can be hierarchically broken down to smaller and simpler compute steps.
