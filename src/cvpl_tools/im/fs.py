@@ -72,7 +72,7 @@ def save(file: str,
         NDBlock.save(file, NDBlock(im), downsample_level=multiscale)
     elif isinstance(im, NDBlock):
         if im.get_repr_format() == cvpl_ndblock.ReprFormat.DASK_ARRAY and old_chunksize != preferred_chunksize:
-            im = NDBlock(im.arr.rechunk(preferred_chunksize))
+            im = NDBlock(im.get_arr().rechunk(preferred_chunksize))
         NDBlock.save(file, im, downsample_level=multiscale)
     else:
         raise ValueError(f'Unexpected input type im {type(im)}')
@@ -98,15 +98,15 @@ def load(file: str):
         fmt = ImageFormat(int(items[0]))
         old_chunksize, preferred_chunksize = str_to_chunksize(items[1]), str_to_chunksize(items[2])
     if fmt == ImageFormat.NUMPY:
-        im = NDBlock.load(file).arr
+        im = NDBlock.load(file).get_arr()
     elif fmt == ImageFormat.DASK_ARRAY:
-        im = NDBlock.load(file).arr
+        im = NDBlock.load(file).get_arr()
         if old_chunksize != preferred_chunksize:
             im = im.rechunk(old_chunksize)
     elif fmt == ImageFormat.NDBLOCK:
         im = NDBlock.load(file)
         if im.get_repr_format() == cvpl_ndblock.ReprFormat.DASK_ARRAY and old_chunksize != preferred_chunksize:
-            im = NDBlock(im.arr.rechunk(old_chunksize))
+            im = NDBlock(im.get_arr().rechunk(old_chunksize))
     else:
         raise ValueError(f'Unexpected input type im {fmt}')
     return im
@@ -143,7 +143,7 @@ def display(file: str, viewer_args: dict):
     if is_numpy:
         is_label: bool = viewer_args.pop('is_label', False)
         fn = viewer.add_labels if is_label else viewer.add_image
-        im = NDBlock.load(file).arr
+        im = NDBlock.load(file).get_arr()
         fn(im, **viewer_args)
     else:
         # image saved by NDBlock.save(file)
@@ -371,6 +371,8 @@ class CacheDirectory(CachePath):
             self.cur_idx += 1
         else:
             if cid in self.children:
+                file = self.children[cid]
+                assert file.is_dir == is_dir, f'Unexpected file/directory at {file.path}'
                 return True, self.children[cid]
 
         meta = dict(
@@ -412,6 +414,8 @@ class CacheDirectory(CachePath):
         preferred_chunksize = viewer_args.pop('preferred_chunksize', None)
         multiscale = viewer_args.pop('multiscale', 0)
 
+        import time
+        stime = time.time()
         is_cached, cache_path = self.cache(is_dir=False, cid=cid)
         raw_path = cache_path.path
         if not is_cached:
@@ -423,7 +427,9 @@ class CacheDirectory(CachePath):
             name = viewer_args.get('name', cid)  # name of the image layer is defaulted to cid
             display(raw_path, viewer_args | dict(name=name))
 
-        return load_fn(raw_path)
+        loaded = load_fn(raw_path)
+
+        return loaded
 
     def remove_tmp(self):
         """traverse all subnodes and self, removing those with is_tmp=True"""

@@ -7,9 +7,13 @@ import os
 import abc
 import enum
 import json
+import pickle
+import threading
 from typing import Callable, Sequence, Any, Generic, TypeVar
 import copy
 
+import partd
+from dask.distributed import print as dprint
 import numpy as np
 import numpy.typing as npt
 import dask.array as da
@@ -17,6 +21,7 @@ import dask
 import functools
 import operator
 import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
+from cvpl_tools.im.partd_server import SQLitePartd, Server
 
 
 class ReprFormat(enum.Enum):
@@ -33,6 +38,62 @@ class ReprFormat(enum.Enum):
 
 
 ElementType = TypeVar('ElementType')
+
+
+class NDBlockLazyLoadDictBlockInfo:
+    def __init__(self, db_path: str):
+        """Initialize an info object containing information about how to load the NDBlock
+
+        This class is for optimization purpose (lazy loading) where in some cases the computation is not
+        necessary
+
+        Args:
+            db_path: path to the database object where NDBlock.save saves a DICT_BLOCK_INDEX_SLICES object
+        """
+        self.db_path = db_path
+
+    def get_db_path(self):
+        return self.db_path
+
+    def is_just_loaded(self):
+        """Returns True if just loaded from files
+
+        In some cases we save and then load an NDBlock to avoid double computation, but if the NDBlock
+        is just loaded from disk then it is unnecessary to do save and load again. This function is for
+        testing for that to avoid such situation
+        """
+        return True
+
+    def materialize(self, ndblock: NDBlock, force_numpy=False):
+        block_indices = ndblock.properties['block_indices']
+        slices_list = ndblock.properties['slices_list']
+        ndblock.arr = {}
+        if force_numpy:
+            sqlite_file = SQLitePartd(self.db_path)
+
+            for i in range(len(slices_list)):
+                block_index, slices = block_indices[i], slices_list[i]
+
+                block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
+                block = pickle.loads(sqlite_file.get(block_id, lock=False))
+
+                ndblock.arr[block_index] = (block, slices)
+            sqlite_file.close()
+            ndblock.properties['is_numpy'] = True
+        else:
+            @dask.delayed
+            def load_block(block_index):
+                block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
+                sqlite_file = SQLitePartd(self.db_path)
+                block = pickle.loads(sqlite_file.get(block_id, lock=False))
+                assert isinstance(block, np.ndarray)
+                sqlite_file.close()
+                return block
+
+            for i in range(len(slices_list)):
+                block_index, slices = block_indices[i], slices_list[i]
+
+                ndblock.arr[block_index] = (load_block(block_index), slices)
 
 
 class NDBlock(Generic[ElementType], abc.ABC):
@@ -89,6 +150,14 @@ class NDBlock(Generic[ElementType], abc.ABC):
         assert isinstance(numblocks, tuple)
         assert isinstance(numblocks[0], int)
 
+    def get_arr(self):
+        self.ensure_materialized()
+        return self.arr
+
+    def ensure_materialized(self, **kwargs):
+        if isinstance(self.arr, NDBlockLazyLoadDictBlockInfo):
+            self.arr.materialize(self, **kwargs)
+
     @staticmethod
     def save_properties(file: str, properties: dict):
         with open(file, mode='w') as outfile:
@@ -116,6 +185,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
             ndblock: The block which will be saved
             downsample_level: This only applies if ndblock is dask, will write multilevel if non-zero
         """
+        ndblock.ensure_materialized()
+
         fmt = ndblock.get_repr_format()
         os.makedirs(file, exist_ok=False)
         if fmt == ReprFormat.NUMPY_ARRAY:
@@ -124,14 +195,21 @@ class NDBlock(Generic[ElementType], abc.ABC):
             cvpl_ome_zarr_io.write_ome_zarr_image(f'{file}/dask_im', da_arr=ndblock.arr,
                                                   make_zip=False, MAX_LAYER=downsample_level)
         else:
-            os.makedirs(f'{file}/blocks', exist_ok=False)
+            server = Server(f'{file}/blocks_kvstore', available_memory=1e6)
+            server_address = server.address
             @dask.delayed
             def save_block(block_index, block):
-                suffix = '_'.join(str(i) for i in block_index) + '.npy'
-                np.save(f'{file}/blocks/{suffix}', block)
+                block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
+                store = partd.Client(server_address)
+                store.append({
+                    block_id: pickle.dumps(block)
+                })
+                store.close()
 
             tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
             dask.compute(*tasks)
+            server.close()
+
         NDBlock.save_properties(f'{file}/properties.json', ndblock.properties)
 
     @staticmethod
@@ -173,22 +251,11 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 level=0
             ))
         else:
-            @dask.delayed
-            def load_block(block_index):
-                suffix = '_'.join(str(i) for i in block_index) + '.npy'
-                return np.load(f'{file}/blocks/{suffix}')
-
-            ndblock.arr = {}
-            block_indices = properties['block_indices']
-            slices_list = properties['slices_list']
-            for i in range(len(slices_list)):
-                block_index, slices = block_indices[i], slices_list[i]
-
-                ndblock.arr[block_index] = (load_block(block_index), slices)
+            ndblock.arr = NDBlockLazyLoadDictBlockInfo(db_path=f'{file}/blocks_kvstore')
         return ndblock
 
     def is_numpy(self) -> bool:
-        """Returns if this is Numpy array
+        """Returns True if this is Numpy array
 
         Note besides type ReprFormat.NUMPY, ReprFormat.DICT_BLOCK_INDEX_SLICES may have either Numpy arrays as each
         block, or Dask delayed objects each returning a Numpy array; in the former case is_numpy() will return True,
@@ -219,21 +286,15 @@ class NDBlock(Generic[ElementType], abc.ABC):
         chunksize = tuple(s.stop - s.start + 1 for s in slices)
         return chunksize
 
-    def as_numpy(self) -> da.Array:
-        if self.properties['repr_format'] == ReprFormat.NUMPY_ARRAY:
-            return self.arr
-        else:
-            other = NDBlock(self)
-            other.to_numpy_array()
-            return other.arr
+    def as_numpy(self) -> npt.NDArray:
+        other = NDBlock(self)
+        other.to_numpy_array()
+        return other.arr
 
     def as_dask_array(self, tmp_dirpath: str | None = None) -> da.Array:
-        if self.properties['repr_format'] == ReprFormat.DASK_ARRAY:
-            return self.arr
-        else:
-            other = NDBlock(self)
-            other.to_dask_array(tmp_dirpath)
-            return other.arr
+        other = NDBlock(self)
+        other.to_dask_array(tmp_dirpath)
+        return other.arr
 
     @staticmethod
     def _copy_properties(properties: dict):
@@ -282,13 +343,15 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     def to_numpy_array(self):
         """Convert representation format to numpy array"""
-        if self.properties['repr_format'] == ReprFormat.DICT_BLOCK_INDEX_SLICES:
-            # TODO: optimize this
-            self.to_dask_array()
-
         rformat = self.properties['repr_format']
         if rformat == ReprFormat.NUMPY_ARRAY:
             return
+
+        self.ensure_materialized()
+
+        if rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES:
+            # TODO: optimize this
+            self.to_dask_array()
 
         assert rformat == ReprFormat.DASK_ARRAY
         self.arr = self.arr.compute()
@@ -305,9 +368,13 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 is ReprFormat.DICT_BLOCK_INDEX_SLICES and is dask instead of numpy, and you want to
                 avoid repeated computations
         """
+
         rformat = self.properties['repr_format']
         if rformat == ReprFormat.DASK_ARRAY:
             return
+
+        just_loaded_flag = isinstance(self.arr, NDBlockLazyLoadDictBlockInfo) and self.arr.is_just_loaded()
+        self.ensure_materialized()
 
         if rformat == ReprFormat.NUMPY_ARRAY:
             self.arr = da.from_array(self.arr)
@@ -316,7 +383,21 @@ class NDBlock(Generic[ElementType], abc.ABC):
             numblocks = self.get_numblocks()
             dtype = self.get_dtype()
 
-            if not self.properties['is_numpy'] and tmp_dirpath is not None:
+            if not self.properties['is_numpy'] and tmp_dirpath is not None and not just_loaded_flag:
+                """Explanation of the branching statement: this if branch is optional and purely for 
+                optimization purpose i.e. some dask computation may be triggered twice unexpectedly and 
+                this avoids it
+                
+                not self.properties['is_numpy']
+                - If numpy, the array is already computed and no double computation possible
+                
+                tmp_dirpath is not None
+                - If tmp_dirpath is None, then we don't have a place to put our temporary save files
+                
+                not just_loaded_flag
+                - Tests if the array if just loaded from disk; if it is, then no double computation possible since 
+                    there are no intermediate steps in the first place
+                """
                 if not os.path.exists(tmp_dirpath):
                     NDBlock.save(tmp_dirpath, self)
                 ndblock_to_be_combined = NDBlock.load(tmp_dirpath)
@@ -340,6 +421,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
         rformat = self.properties['repr_format']
         if rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             return
+
+        self.ensure_materialized()
 
         slices_list = self.properties['slices_list']
         block_indices = self.properties['block_indices']
@@ -370,26 +453,31 @@ class NDBlock(Generic[ElementType], abc.ABC):
         Returns:
             The concatenated result, is Numpy if previous array is Numpy, or if force_numpy is True
         """
-        if self.properties['repr_format'] == ReprFormat.NUMPY_ARRAY:
-            return np.copy(self.arr)
+        other = NDBlock(self)
+        other.ensure_materialized(force_numpy=force_numpy)
+
+        if other.properties['repr_format'] == ReprFormat.NUMPY_ARRAY:
+            return np.copy(other.arr)
         else:
-            other = NDBlock(self)
             other.to_dict_block_index_slices()
 
-            shape = None
-            for block_index, (block, slices) in other.arr.items():
-                if not isinstance(block, np.ndarray):
-                    block = block.compute()
-                shape = (np.nan,) + block.shape[1:]
-                break
-            blocks = [da.from_delayed(block,
-                                      shape=shape,
-                                      dtype=self.get_dtype())
-                      for block_index, (block, slices) in other.arr.items()]
-            assert len(blocks) > 0, 'Need at least one row for NDBlock to be reduced'
             if other.is_numpy():
+                blocks = [block for _, (block, _) in other.arr.items()]
+                assert len(blocks) > 0, 'Need at least one row for NDBlock to be reduced'
                 return np.concatenate(blocks, axis=0)
             else:
+                shape = None
+                for block_index, (block, slices) in other.arr.items():
+                    if not isinstance(block, np.ndarray):
+                        block = block.compute()
+                    shape = (np.nan,) + block.shape[1:]
+                    break
+                blocks = [da.from_delayed(block,
+                                          shape=shape,
+                                          dtype=other.get_dtype())
+                          for block_index, (block, slices) in other.arr.items()]
+                assert len(blocks) > 0, 'Need at least one row for NDBlock to be reduced'
+
                 reduced = da.concatenate(blocks, axis=0)
                 if force_numpy:
                     return reduced.compute()
@@ -399,6 +487,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
     def sum(self, axis: Sequence | None = None, keepdims: bool = False):
         """sum over axes for each block"""
         new_ndblock = NDBlock(self)
+        new_ndblock.ensure_materialized()
         if self.properties['repr_format'] == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             for block_index, (block, slices) in self.arr.items():
                 new_ndblock.arr[block_index] = (block.sum(axis=axis, keepdims=keepdims), slices)
@@ -452,12 +541,11 @@ class NDBlock(Generic[ElementType], abc.ABC):
         # we can assume the inputs are all dask, now turn them all into block iterator
         block_iterators = []
         for ndblock in inputs:
+            new_block = NDBlock(ndblock)
+            new_block.ensure_materialized()
             if ndblock.get_repr_format() != ReprFormat.DICT_BLOCK_INDEX_SLICES:
-                new_block = NDBlock(ndblock)
                 new_block.to_dict_block_index_slices()
-                block_iterators.append(new_block)
-            else:
-                block_iterators.append(ndblock)
+            block_iterators.append(new_block)
 
         @dask.delayed
         def delayed_fn(*blocks, block_info):
@@ -495,13 +583,13 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     def select_columns(self, cols: slice | Sequence[int] | int) -> NDBlock:
         """Performs columns selection on a 2d array"""
+        ndblock = NDBlock(self)
+        ndblock.ensure_materialized()
         if self.properties['repr_format'] == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             results = {
-                block_index: (block[:, cols], slices) for block_index, (block, slices) in self.arr.items()
+                block_index: (block[:, cols], slices) for block_index, (block, slices) in ndblock.arr.items()
             }
-            ndblock = NDBlock(self)
             ndblock.arr = results
         else:
-            ndblock = NDBlock(self)
             ndblock.arr = ndblock.arr[:, cols]
         return ndblock

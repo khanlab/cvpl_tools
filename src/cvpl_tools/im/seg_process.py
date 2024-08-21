@@ -63,6 +63,7 @@ images for debugging purpose.
 import abc
 import enum
 import logging
+import shutil
 from typing import Callable, Any, Sequence, final, Iterator
 
 import cvpl_tools.im.fs as imfs
@@ -123,6 +124,8 @@ def lc_interpretable_napari(layer_name: str,
         'color': text_color,
         'anchor': 'center',
     }
+    import time
+    stime = time.time()
     viewer.add_points(lc[:, :ndim],
                       size=1.,
                       ndim=ndim,
@@ -297,12 +300,15 @@ class BlobDog(SegProcess):
 
 
 class ScaledSumIntensity(SegProcess):
-    def __init__(self, scale: float = .008, min_thres: float = 0., reduce: bool = True, spatial_box_width: int = 8):
+    def __init__(self, scale: float = .008, min_thres: float = 0., reduce: bool = True,
+                 spatial_box_width: int | None = None):
         """Summing up the intensity and scale it to obtain number of cells, directly
 
         Args:
             scale: Scale the sum of intensity by this to get number of cells
             min_thres: Intensity below this threshold is excluded (set to 0 before summing)
+            reduce: reduce result when calling forward
+            spatial_box_width: If not None, will use this as the box width for adding points to Napari
         """
         assert scale >= 0, f'{scale}'
         assert 0. <= min_thres <= 1., f'{min_thres}'
@@ -357,6 +363,8 @@ class ScaledSumIntensity(SegProcess):
             -> NDBlock | npt.NDArray:
         cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
 
+        import time
+        stime = time.time()
         if viewer:
             mask = cache_path.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
                                        viewer_args=dict(
@@ -366,12 +374,13 @@ class ScaledSumIntensity(SegProcess):
                                            multiscale=4 if viewer else 0,
                                        ))
 
-            ssi = cache_path.cache_im(
-                fn=lambda: self.feature_forward(
-                    im, spatial_block_width=self.spatial_box_width).reduce(force_numpy=True),
-                cid='ssi'
-            )
-            lc_interpretable_napari('ssi_block', ssi, viewer, im.ndim, ['ncells'])
+            if self.spatial_box_width is not None:
+                ssi = cache_path.cache_im(
+                    fn=lambda: self.feature_forward(
+                        im, spatial_block_width=self.spatial_box_width).reduce(force_numpy=True),
+                    cid='ssi'
+                )
+                lc_interpretable_napari('ssi_block', ssi, viewer, im.ndim, ['ncells'])
 
         def fn():
             ndblock = self.feature_forward(im)
@@ -380,7 +389,9 @@ class ScaledSumIntensity(SegProcess):
                 ndblock = ndblock.reduce(force_numpy=False)
             return ndblock
 
-        return cache_path.cache_im(fn=fn, cid='ssi_result')
+        ssi_result = cache_path.cache_im(fn=fn, cid='ssi_result')
+
+        return ssi_result
 
 
 # ---------------------------Convert Binary Mask to Instance Mask------------------------------
@@ -738,18 +749,26 @@ class CountLCEdgePenalized(SegProcess):
         assert lc.get_numblocks() == self.numblocks, ('numblocks could not match up for the chunks argument '
                                                       f'provided, expected {self.numblocks} but got '
                                                       f'{lc.get_numblocks()}')
+        cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
 
-        ndblock = self.tmpdir.cache_im(fn=lambda: self.feature_forward(lc), cid=cid)
+        import time
+        ndblock = cache_path.cache_im(fn=lambda: self.feature_forward(lc), cid='lc_cc_edge_penalized')
         if viewer:
-            # TODO: cache the checkerboard
-            checkerboard: da.Array = cvpl_ome_zarr_io.dask_checkerboard(self.chunks)
-            viewer.add_labels(checkerboard, name='edge_penalized_checkerboards')
+            checkerboard = cache_path.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
+                                               cid='checkerboard',
+                                               viewer_args=dict(
+                                                   viewer=viewer,
+                                                   is_label=True,
+                                                   preferred_chunksize=(1, 4096, 4096),
+                                                   multiscale=4 if viewer else 0,
+                                               ))
 
             features = ndblock.reduce(force_numpy=True)
-            lc_interpretable_napari('edge_penalized_centroids', features, viewer,
+            lc_interpretable_napari('lc_cc_edge_penalized', features, viewer,
                                     len(self.chunks), ['ncells'])
 
-            aggregate_features = map_ncell_vector_to_total(ndblock).reduce(force_numpy=True)
+            aggregate_features = cache_path.cache_im(
+                fn=lambda: map_ncell_vector_to_total(ndblock).reduce(force_numpy=True), cid='block_cell_count')
             lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
                                     len(self.chunks), ['ncells'], text_color='red')
 
@@ -849,7 +868,8 @@ class CountOSBySize(SegProcess):
                 cid: str = None,
                 viewer: napari.Viewer = None
                 ) -> npt.NDArray[np.float32]:
-        ndblock = self.tmpdir.cache_im(fn=lambda: self.feature_forward(im), cid=cid)
+        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
+        ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(im), cid='os_by_size_features')
 
         if viewer:
             features = ndblock.reduce(force_numpy=True)
@@ -857,7 +877,10 @@ class CountOSBySize(SegProcess):
             lc_interpretable_napari('bysize_ncells',
                                     features, viewer, im.ndim, ['ncells'])
 
-            aggregate_features = map_ncell_vector_to_total(ndblock).reduce(force_numpy=True)
+            aggregate_features = cache_dir.cache_im(
+                fn=lambda: map_ncell_vector_to_total(ndblock).reduce(force_numpy=True),
+                cid='os_by_size_aggregate'
+            )
             lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
                                     im.ndim, ['ncells'], text_color='red')
 
