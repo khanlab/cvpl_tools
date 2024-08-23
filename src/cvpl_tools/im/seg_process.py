@@ -213,6 +213,7 @@ class BlockToBlockProcess(SegProcess):
 
         result = self.tmpdir.cache_im(lambda: result,
                                       cid=cid,
+                                      cache_level=1,
                                       viewer_args=viewer_args | dict(is_label=self.is_label))
         return result
 
@@ -289,7 +290,7 @@ class BlobDog(SegProcess):
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
-        ndblock = self.tmpdir.cache_im(lambda: self.feature_forward(im), cid=cid)
+        ndblock = self.tmpdir.cache_im(lambda: self.feature_forward(im), cid=cid, cache_level=1)
 
         if viewer and viewer_args.get('display_points', True):
             blobdog = ndblock.reduce(force_numpy=True)
@@ -371,17 +372,17 @@ class ScaledSumIntensity(SegProcess):
         viewer = viewer_args.get('viewer', None)
         cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
 
-        import time
-        stime = time.time()
         if viewer:
             mask = cache_path.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
+                                       cache_level=2,
                                        viewer_args=viewer_args | dict(is_label=True))
 
             if self.spatial_box_width is not None and viewer_args.get('display_points', True):
                 ssi = cache_path.cache_im(
                     fn=lambda: self.feature_forward(
                         im, spatial_block_width=self.spatial_box_width).reduce(force_numpy=True),
-                    cid='ssi'
+                    cid='ssi',
+                    cache_level=2
                 )
                 lc_interpretable_napari('ssi_block', ssi, viewer, im.ndim, ['ncells'])
 
@@ -392,7 +393,7 @@ class ScaledSumIntensity(SegProcess):
                 ndblock = ndblock.reduce(force_numpy=False)
             return ndblock
 
-        ssi_result = cache_path.cache_im(fn=fn, cid='ssi_result')
+        ssi_result = cache_path.cache_im(fn=fn, cid='ssi_result', cache_level=1)
 
         return ssi_result
 
@@ -565,6 +566,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 return lbl_im
 
             lbl_im = cache_path.cache_im(fn=compute_lbl, cid='before_split',
+                                         cache_level=2,
                                          viewer_args=viewer_args | dict(is_label=True))
 
         def compute_result():
@@ -587,7 +589,9 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 result = ndblock.as_dask_array(tmp_path)
             return result
 
-        result = cache_path.cache_im(fn=compute_result, cid='result', viewer_args=viewer_args | dict(is_label=True))
+        result = cache_path.cache_im(fn=compute_result, cid='result',
+                                     cache_level=1,
+                                     viewer_args=viewer_args | dict(is_label=True))
         return result
 
 
@@ -635,7 +639,9 @@ class DirectOSToLC(SegProcess):
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
-        ndblock = self.tmpdir.cache_im(fn=lambda: self.feature_forward(im), cid=cid)
+        ndblock = self.tmpdir.cache_im(fn=lambda: self.feature_forward(im),
+                                       cache_level=1,
+                                       cid=cid)
 
         if viewer and viewer_args.get('display_points', True):
             features = ndblock.reduce(force_numpy=True)
@@ -759,11 +765,13 @@ class CountLCEdgePenalized(SegProcess):
         cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
 
         import time
-        ndblock = cache_path.cache_im(fn=lambda: self.feature_forward(lc), cid='lc_cc_edge_penalized')
+        ndblock = cache_path.cache_im(fn=lambda: self.feature_forward(lc), cid='lc_cc_edge_penalized',
+                                      cache_level=1)
         if viewer and viewer_args.get('display_points', True):
             if viewer_args.get('display_checkerboard', True):
                 checkerboard = cache_path.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
                                                    cid='checkerboard',
+                                                   cache_level=2,
                                                    viewer_args=viewer_args | dict(is_label=True))
 
             features = ndblock.reduce(force_numpy=True)
@@ -771,7 +779,9 @@ class CountLCEdgePenalized(SegProcess):
                                     len(self.chunks), ['ncells'])
 
             aggregate_features = cache_path.cache_im(
-                fn=lambda: map_ncell_vector_to_total(ndblock).reduce(force_numpy=True), cid='block_cell_count')
+                fn=lambda: map_ncell_vector_to_total(ndblock).reduce(force_numpy=True), cid='block_cell_count',
+                cache_level=2
+            )
             lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
                                     len(self.chunks), ['ncells'], text_color='red')
 
@@ -875,7 +885,8 @@ class CountOSBySize(SegProcess):
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
         cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
-        ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(im), cid='os_by_size_features')
+        ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(im), cid='os_by_size_features',
+                                     cache_level=1)
 
         if viewer and viewer_args.get('display_points', True):
             features = ndblock.reduce(force_numpy=True)
@@ -885,7 +896,8 @@ class CountOSBySize(SegProcess):
 
             aggregate_features = cache_dir.cache_im(
                 fn=lambda: map_ncell_vector_to_total(ndblock).reduce(force_numpy=True),
-                cid='os_by_size_aggregate'
+                cid='os_by_size_aggregate',
+                cache_level=2
             )
             lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
                                     im.ndim, ['ncells'], text_color='red')

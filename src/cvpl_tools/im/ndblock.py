@@ -374,9 +374,9 @@ class NDBlock(Generic[ElementType], abc.ABC):
             return
 
         just_loaded_flag = isinstance(self.arr, NDBlockLazyLoadDictBlockInfo) and self.arr.is_just_loaded()
-        self.ensure_materialized()
 
         if rformat == ReprFormat.NUMPY_ARRAY:
+            self.ensure_materialized()
             self.arr = da.from_array(self.arr)
         else:
             assert rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES
@@ -403,6 +403,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 ndblock_to_be_combined = NDBlock.load(tmp_dirpath)
             else:
                 ndblock_to_be_combined = self
+            ndblock_to_be_combined.ensure_materialized()
 
             # reference: https://github.com/dask/dask-image/blob/adcb217de766dd6fef99895ed1a33bf78a97d14b/dask_image/ndmeasure/__init__.py#L299
             ndlists = np.empty(numblocks, dtype=object)

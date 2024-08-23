@@ -270,7 +270,8 @@ class CacheDirectory(CachePath):
     CachePath and CacheDirectory are two classes that implements the file-directory programming pattern.
     """
 
-    def __init__(self, path: str, remove_when_done: bool = True, read_if_exists: bool = True):
+    def __init__(self, path: str, remove_when_done: bool = True, read_if_exists: bool = True,
+                 cache_level: int | float = np.inf):
         """Creates a CacheDirectory instance
 
         Args:
@@ -279,6 +280,8 @@ class CacheDirectory(CachePath):
                 False, then only the temporary folders within the directory will be removed. (The entire subtree
                 will be traversed to find any file or directory whose is_tmp is True and they will be removed)
             read_if_exists: If True, will read from the existing directory at the given path
+            cache_level: specifies how much caching to be done; caching operations with level > this will be ignored;
+                default to inf (cache all)
         """
 
         super().__init__(path, dict(
@@ -288,12 +291,13 @@ class CacheDirectory(CachePath):
         ))
         self.cur_idx = 0
         self.read_if_exists = read_if_exists
+        self.cache_level = cache_level
         self.children: dict[str, CachePath] = {}
 
         ensure_dir_exists(path, remove_if_already_exists=False)
         path = self.path
         if self.read_if_exists:
-            self.children = CacheDirectory.children_from_path(path)
+            self.children = CacheDirectory.children_from_path(path, self.cache_level)
         else:
             for _ in os.listdir(path):
                 raise FileExistsError('when read_if_exists=False, directory must not contain existing files, '
@@ -316,11 +320,12 @@ class CacheDirectory(CachePath):
         return json.dumps(self.get_children_json(), indent=2)
 
     @staticmethod
-    def children_from_path(path: str) -> dict[str, CachePath]:
+    def children_from_path(path: str, cache_level: int | float = np.inf) -> dict[str, CachePath]:
         """Examine an existing directory path, return recursively all files and directories as json.
 
         Args:
             path: The path to be examined
+            cache_level: Level of caching to assign to all descendants
 
         Returns:
             Returned json dictionary contains a hierarchical str -> CachePath map; use CachePath.is_dir to
@@ -332,8 +337,11 @@ class CacheDirectory(CachePath):
             meta = CachePath.meta_from_filename(filename, return_none_if_malform=True)
             if meta is not None:
                 if meta['is_dir']:
-                    child = CacheDirectory(subpath, remove_when_done=meta['is_tmp'], read_if_exists=True)
-                    child.children = CacheDirectory.children_from_path(subpath)
+                    child = CacheDirectory(subpath,
+                                           remove_when_done=meta['is_tmp'],
+                                           read_if_exists=True,
+                                           cache_level=cache_level)
+                    child.children = CacheDirectory.children_from_path(subpath, cache_level)
                 else:
                     child = CachePath(subpath, meta)
                 children[meta['cid']] = child
@@ -396,6 +404,7 @@ class CacheDirectory(CachePath):
                  cid: str = None,
                  save_fn=save,
                  load_fn=load,
+                 cache_level: int | float = 0,
                  viewer_args: dict = None):
         """Caches an image object
 
@@ -404,6 +413,8 @@ class CacheDirectory(CachePath):
             cid: The cache ID within this directory
             save_fn: fn(file: str, im) Used to save the image to file
             load_fn: fn(file: str) Used to load the image from file
+            cache_level: cache level of this operation; note even if the caching is skipped, if there is
+                a cache file already available on disk then the file will still be read
             viewer_args: contains viewer and arguments passed to the viewer's add image functions
 
         Returns:
@@ -413,17 +424,21 @@ class CacheDirectory(CachePath):
             viewer_args = {}
         else:
             viewer_args = copy.copy(viewer_args)  # since we will pop off some attributes
+
         preferred_chunksize = viewer_args.pop('preferred_chunksize', None)
         multiscale = viewer_args.pop('multiscale', 0)
 
         is_cached, cache_path = self.cache(is_dir=False, cid=cid)
         raw_path = cache_path.path
+        skip_cache = viewer_args.get('skip_cache', False) or cache_level > self.cache_level
         if not is_cached:
             im = fn()
+            if skip_cache:
+                return im
             save_fn(raw_path, im, preferred_chunksize=preferred_chunksize, multiscale=multiscale)
 
         assert os.path.exists(raw_path), f'Directory should be created at path {raw_path}, but it is not found'
-        if viewer_args.get('viewer', None) is not None:
+        if not skip_cache and viewer_args.get('viewer', None) is not None:
             viewer_args['layer_args'] = copy.copy(viewer_args.get('layer_args', {}))
             viewer_args['layer_args'].setdefault('name', cid)
             display(raw_path, viewer_args)
