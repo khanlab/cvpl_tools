@@ -123,6 +123,7 @@ def display(file: str, viewer_args: dict):
     """
     viewer_args = copy.copy(viewer_args)
     viewer: napari.Viewer = viewer_args.pop('viewer')
+    layer_args = viewer_args.get('layer_args', {})
 
     with open(f'{file}/.save_meta.txt') as outfile:
         fmt = ImageFormat(int(outfile.read().split('\n')[0]))
@@ -140,14 +141,15 @@ def display(file: str, viewer_args: dict):
         else:
             raise ValueError(f'Image to be displayed can not be a dict of blocks that is {repr_fmt}')
 
+    is_label: bool = viewer_args.pop('is_label', False)
     if is_numpy:
-        is_label: bool = viewer_args.pop('is_label', False)
         fn = viewer.add_labels if is_label else viewer.add_image
         im = NDBlock.load(file).get_arr()
-        fn(im, **viewer_args)
+        fn(im, **layer_args)
     else:
         # image saved by NDBlock.save(file)
-        add_ome_zarr_array_from_path(viewer, f'{file}/dask_im', use_zip=False, kwargs=viewer_args)
+        add_ome_zarr_array_from_path(viewer, f'{file}/dask_im', use_zip=False,
+                                     kwargs=layer_args | dict(is_label=is_label))
 
 
 class CachePath:
@@ -414,8 +416,6 @@ class CacheDirectory(CachePath):
         preferred_chunksize = viewer_args.pop('preferred_chunksize', None)
         multiscale = viewer_args.pop('multiscale', 0)
 
-        import time
-        stime = time.time()
         is_cached, cache_path = self.cache(is_dir=False, cid=cid)
         raw_path = cache_path.path
         if not is_cached:
@@ -424,8 +424,9 @@ class CacheDirectory(CachePath):
 
         assert os.path.exists(raw_path), f'Directory should be created at path {raw_path}, but it is not found'
         if viewer_args.get('viewer', None) is not None:
-            name = viewer_args.get('name', cid)  # name of the image layer is defaulted to cid
-            display(raw_path, viewer_args | dict(name=name))
+            viewer_args['layer_args'] = copy.copy(viewer_args.get('layer_args', {}))
+            viewer_args['layer_args'].setdefault('name', cid)
+            display(raw_path, viewer_args)
 
         loaded = load_fn(raw_path)
 

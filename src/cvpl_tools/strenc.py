@@ -44,7 +44,7 @@ def get_decoder_hook():
 
 def init():
     from cvpl_tools.fs import ImReadSetting, ImWriteSetting
-    from cvpl_tools.array_key_dict import ArrayKeyDict
+    from cvpl_tools.tools.array_key_dict import ArrayKeyDict
     from cvpl_tools.dataset_reference import DatapointReference, DatasetReference
     from dataclasses import fields
 
@@ -61,7 +61,7 @@ def init():
     def to_json_encodable(o: Any):
         if isinstance(o, ArrayKeyDict):
             d = {key: to_json_encodable(o[key]) for key in o}
-            d['__type__'] = 'array_key_dict.ArrayKeyDict'
+            d['__type__'] = 'array_key_dict.tools.ArrayKeyDict'
             return d
         elif isinstance(o, datetime):
             d = {
@@ -101,7 +101,7 @@ def init():
     def decoder_hook_def(o):
         if isinstance(o, dict) and '__type__' in o:
             ty = o.pop('__type__')
-            if ty == 'array_key_dict.ArrayKeyDict':
+            if ty == 'array_key_dict.tools.ArrayKeyDict':
                 return ArrayKeyDict((key, decoder_hook_def(o[key])) for key in o)
             elif ty == 'datetime.datetime':
                 return datetime.fromisoformat(o['v1'])

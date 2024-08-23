@@ -21,7 +21,7 @@ import nibabel as nib
 from PIL import Image
 import scipy
 from dataclasses import dataclass, field
-from cvpl_tools.array_key_dict import ArrayKeyDict
+from cvpl_tools.tools.array_key_dict import ArrayKeyDict
 from nibabel import load as nib_load
 import sys
 

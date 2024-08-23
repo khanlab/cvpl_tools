@@ -10,7 +10,7 @@ to make the workload reproducible.
 
 
 from datetime import datetime
-from cvpl_tools.array_key_dict import ArrayKeyDict
+from cvpl_tools.tools.array_key_dict import ArrayKeyDict
 import cvpl_tools.fs as fs
 import numpy as np
 import numpy.typing as npt

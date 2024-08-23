@@ -61,9 +61,7 @@ images for debugging purpose.
 """
 
 import abc
-import enum
 import logging
-import shutil
 from typing import Callable, Any, Sequence, final, Iterator
 
 import cvpl_tools.im.fs as imfs
@@ -175,8 +173,8 @@ class SegProcess(abc.ABC):
 
         Args:
             *args: args inputs to forward()
-            viewer: If None, this is just a forward step; if not None, visualization of the step
-                underlying working mechanism will be displayed in Napari viewer object for
+            viewer_args: If not specified, this is just a forward step; if specified, visualization of the step
+                underlying working mechanism will be displayed in Napari viewer object viewer_args['viewer'] for
                 interpretation of results and debugging purposes
             **kwargs: kwargs inputs to forward
 
@@ -193,8 +191,10 @@ class BlockToBlockProcess(SegProcess):
         self.is_label = is_label
 
     @final
-    def forward(self, im: npt.NDArray | da.Array, cid: str | None = None, viewer: napari.Viewer = None) \
+    def forward(self, im: npt.NDArray | da.Array, cid: str | None = None, viewer_args=None) \
             -> npt.NDArray | da.Array:
+        if viewer_args is None:
+            viewer_args = {}
         if isinstance(im, np.ndarray):
             result = self.np_forward(im)
         elif isinstance(im, da.Array):
@@ -203,15 +203,17 @@ class BlockToBlockProcess(SegProcess):
                 meta=np.array(tuple(), dtype=self.out_dtype),
                 dtype=self.out_dtype
             )
+        elif isinstance(im, NDBlock):
+            result = NDBlock.map_ndblocks([im],
+                                          self.np_forward,
+                                          out_dtype=self.out_dtype,
+                                          use_input_index_as_arrloc=0)
         else:
             raise TypeError(f'Invalid im type: {type(im)}')
 
-        result = self.tmpdir.cache_im(lambda: result, cid=cid, viewer_args=dict(
-            viewer=viewer,
-            is_label=self.is_label,
-            preferred_chunksize=(1, 4096, 4096),
-            multiscale=4 if viewer else 0,
-        ))
+        result = self.tmpdir.cache_im(lambda: result,
+                                      cid=cid,
+                                      viewer_args=viewer_args | dict(is_label=self.is_label))
         return result
 
     @abc.abstractmethod
@@ -282,11 +284,14 @@ class BlobDog(SegProcess):
     def forward(self,
                 im: npt.NDArray[np.float32] | da.Array,
                 cid: str = None,
-                viewer: napari.Viewer = None
+                viewer_args: dict = None
                 ) -> NDBlock:
+        if viewer_args is None:
+            viewer_args = {}
+        viewer = viewer_args.get('viewer', None)
         ndblock = self.tmpdir.cache_im(lambda: self.feature_forward(im), cid=cid)
 
-        if viewer:
+        if viewer and viewer_args.get('display_points', True):
             blobdog = ndblock.reduce(force_numpy=True)
             lc_interpretable_napari('blobdog_centroids', blobdog, viewer, im.ndim, ['sigma'])
 
@@ -359,22 +364,20 @@ class ScaledSumIntensity(SegProcess):
 
         return NDBlock.map_ndblocks([NDBlock(im)], map_fn, out_dtype=np.float32)
 
-    def forward(self, im: npt.NDArray | da.Array, cid: str = None, viewer: napari.Viewer = None) \
+    def forward(self, im: npt.NDArray | da.Array, cid: str = None, viewer_args: dict = None) \
             -> NDBlock | npt.NDArray:
+        if viewer_args is None:
+            viewer_args = {}
+        viewer = viewer_args.get('viewer', None)
         cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
 
         import time
         stime = time.time()
         if viewer:
             mask = cache_path.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
-                                       viewer_args=dict(
-                                           viewer=viewer,
-                                           is_label=True,
-                                           preferred_chunksize=(1, 4096, 4096),
-                                           multiscale=4 if viewer else 0,
-                                       ))
+                                       viewer_args=viewer_args | dict(is_label=True))
 
-            if self.spatial_box_width is not None:
+            if self.spatial_box_width is not None and viewer_args.get('display_points', True):
                 ssi = cache_path.cache_im(
                     fn=lambda: self.feature_forward(
                         im, spatial_block_width=self.spatial_box_width).reduce(force_numpy=True),
@@ -544,16 +547,13 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 bs: npt.NDArray[np.uint8] | da.Array,
                 lc: NDBlock[np.float32],
                 cid: str | None = None,
-                viewer: napari.Viewer = None
+                viewer_args: dict = None
                 ) -> npt.NDArray[np.int32] | da.Array:
+        if viewer_args is None:
+            viewer_args = {}
+        viewer = viewer_args.get('viewer', None)
         cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
 
-        viewer_args = dict(
-            viewer=viewer,
-            is_label=True,
-            preferred_chunksize=(1, 4096, 4096),
-            multiscale=4 if viewer else 0,
-        )
         if viewer:
             def compute_lbl():
                 if isinstance(bs, np.ndarray):
@@ -564,7 +564,8 @@ class BinaryAndCentroidListToInstance(SegProcess):
                     )
                 return lbl_im
 
-            lbl_im = cache_path.cache_im(fn=compute_lbl, cid='before_split', viewer_args=viewer_args)
+            lbl_im = cache_path.cache_im(fn=compute_lbl, cid='before_split',
+                                         viewer_args=viewer_args | dict(is_label=True))
 
         def compute_result():
             nonlocal bs, lc
@@ -586,7 +587,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 result = ndblock.as_dask_array(tmp_path)
             return result
 
-        result = cache_path.cache_im(fn=compute_result, cid='result', viewer_args=viewer_args)
+        result = cache_path.cache_im(fn=compute_result, cid='result', viewer_args=viewer_args | dict(is_label=True))
         return result
 
 
@@ -630,10 +631,13 @@ class DirectOSToLC(SegProcess):
     def forward(self,
                 im: npt.NDArray[np.int32] | da.Array,
                 cid: str = None,
-                viewer: napari.Viewer = None) -> NDBlock[np.float32]:
+                viewer_args: dict = None) -> NDBlock[np.float32]:
+        if viewer_args is None:
+            viewer_args = {}
+        viewer = viewer_args.get('viewer', None)
         ndblock = self.tmpdir.cache_im(fn=lambda: self.feature_forward(im), cid=cid)
 
-        if viewer:
+        if viewer and viewer_args.get('display_points', True):
             features = ndblock.reduce(force_numpy=True)
             lc_interpretable_napari('os_to_lc_centroids', features, viewer, im.ndim, [])
 
@@ -745,7 +749,10 @@ class CountLCEdgePenalized(SegProcess):
     def forward(self,
                 lc: NDBlock[np.float32],
                 cid: str = None,
-                viewer: napari.Viewer = None) -> NDBlock[np.float32]:
+                viewer_args: dict = None) -> NDBlock[np.float32]:
+        if viewer_args is None:
+            viewer_args = {}
+        viewer = viewer_args.get('viewer', None)
         assert lc.get_numblocks() == self.numblocks, ('numblocks could not match up for the chunks argument '
                                                       f'provided, expected {self.numblocks} but got '
                                                       f'{lc.get_numblocks()}')
@@ -753,15 +760,11 @@ class CountLCEdgePenalized(SegProcess):
 
         import time
         ndblock = cache_path.cache_im(fn=lambda: self.feature_forward(lc), cid='lc_cc_edge_penalized')
-        if viewer:
-            checkerboard = cache_path.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
-                                               cid='checkerboard',
-                                               viewer_args=dict(
-                                                   viewer=viewer,
-                                                   is_label=True,
-                                                   preferred_chunksize=(1, 4096, 4096),
-                                                   multiscale=4 if viewer else 0,
-                                               ))
+        if viewer and viewer_args.get('display_points', True):
+            if viewer_args.get('display_checkerboard', True):
+                checkerboard = cache_path.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
+                                                   cid='checkerboard',
+                                                   viewer_args=viewer_args | dict(is_label=True))
 
             features = ndblock.reduce(force_numpy=True)
             lc_interpretable_napari('lc_cc_edge_penalized', features, viewer,
@@ -866,12 +869,15 @@ class CountOSBySize(SegProcess):
     def forward(self,
                 im: npt.NDArray[np.int32] | da.Array,
                 cid: str = None,
-                viewer: napari.Viewer = None
+                viewer_args: dict = None
                 ) -> npt.NDArray[np.float32]:
+        if viewer_args is None:
+            viewer_args = {}
+        viewer = viewer_args.get('viewer', None)
         cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
         ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(im), cid='os_by_size_features')
 
-        if viewer:
+        if viewer and viewer_args.get('display_points', True):
             features = ndblock.reduce(force_numpy=True)
             features = features[features[:, -1] > 0., :]
             lc_interpretable_napari('bysize_ncells',

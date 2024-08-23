@@ -109,7 +109,7 @@ We can then plan the processing steps we need to define as follows:
 How do we go from this plan to actually code these steps? Subclassing :code:`SegProcess` is the recommended way
 (although one may argue we don't need OOP here).
 This means to create a subclass that defines the :code:`forward()` method, which takes arbitrary inputs
-and two optional parameters: cid and viewer.
+and two optional parameters: cid and viewer_args.
 
 - cid specifies the subdirectory under the cache directory (set by the :code:`set_tmpdir` method of the base
   class) to save intermediate files. If not provided (:code:`cid=None`),
@@ -131,23 +131,30 @@ and two optional parameters: cid and viewer.
               result = load(cache_path.path)
               return result
 
-- The viewer parameter specifies the napari viewer to display the intermediate results. If not provided
-  (:code:`viewer=None`), then no computation will be done to visualize the image. Within the forward() method, you
+- The :code:`viewer_args` parameter specifies the napari viewer to display the intermediate results. If not provided
+  (:code:`viewer_args=None`), then no computation will be done to visualize the image. Within the forward() method, you
   should use :code:`viewer.add_labels()`, :code:`lc_interpretable_napari()` or :code:`temp_directory.cache_im()`
   while passing in :code:`viewer_args` argument to display your results:
 
   .. code-block:: Python
 
       class ExampleSegProcess(SegProcess):
-          def forward(self, im, cid: str = None, viewer: napari.Viewer = None):
+          def forward(self, im, cid: str = None, viewer_args: dict = None):
+              if viewer_args is None:
+                  viewer_args = {}
               result = compute_result(im)
-              result = self.tmpdir.cache_im(lambda: result, cid=cid, viewer_args=dict(
-                  viewer=viewer,  # The napari viewer, visualization will be skipped if viewer is None
-                  is_label=True,  # If True, viewer.add_labels() will be called; if False, viewer.add_image() will be called
-                  preferred_chunksize=(1, 4096, 4096),  # image will be converted to this chunksize when saved, and converted back when loaded
-                  multiscale=4 if viewer else 0,  # maximum downsampling level of OME ZARR files, necessary for very large images
-              ))
+              result = self.tmpdir.cache_im(lambda: result, cid=cid, viewer_args=viewer_args)
               return result
+      # ...
+      viewer = napari.Viewer(ndisplay=2)
+      viewer_args = dict(
+          viewer=viewer,  # The napari viewer, visualization will be skipped if viewer is None
+          is_label=True,  # If True, viewer.add_labels() will be called; if False, viewer.add_image() will be called
+          preferred_chunksize=(1, 4096, 4096),  # image will be converted to this chunksize when saved, and converted back when loaded
+          multiscale=4 if viewer else 0,  # maximum downsampling level of OME ZARR files, necessary for very large images
+      )
+      process = ExampleSegProcess()
+      process.forward(im, cid=cid, viewer_args=viewer_args)
 
   :code:`viewer_args` is a parameter that allows us to visualize the saved results as part of the caching
   function. The reason we need this is that displaying the saved result often requires a different (flatter)
@@ -182,11 +189,10 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
             im = load_im(path)  # this is our input dask.Array object to be segmented
             process = ExampleSegProcess()
             viewer = napari.Viewer()
-            process.forward(im, cid='cell_count_cache', viewer=viewer)
-
-            viewer.show(block=True)
+            process.forward(im, cid='cell_count_cache', viewer_args=dict(viewer=viewer))
 
             client.close()
+            viewer.show(block=True)
 
 To learn more, see the API pages for cvpl_tools.im.seg_process, cvpl_tools.im.fs and
 cvpl_tools.im.ndblock modules.
