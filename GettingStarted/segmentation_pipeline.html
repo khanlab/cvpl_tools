@@ -180,7 +180,7 @@ be reused and which part may have variations in the algorithm used.</p>
 <p>How do we go from this plan to actually code these steps? Subclassing <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> is the recommended way
 (although one may argue we don’t need OOP here).
 This means to create a subclass that defines the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> method, which takes arbitrary inputs
-and two optional parameters: cid and viewer.</p>
+and two optional parameters: cid and viewer_args.</p>
 <ul>
 <li><p>cid specifies the subdirectory under the cache directory (set by the <code class="code docutils literal notranslate"><span class="pre">set_tmpdir</span></code> method of the base
 class) to save intermediate files. If not provided (<code class="code docutils literal notranslate"><span class="pre">cid=None</span></code>),
@@ -201,20 +201,27 @@ closed. If provided, this cache file will persist. Within the <code class="code 
 </pre></div>
 </div>
 </li>
-<li><p>The viewer parameter specifies the napari viewer to display the intermediate results. If not provided
-(<code class="code docutils literal notranslate"><span class="pre">viewer=None</span></code>), then no computation will be done to visualize the image. Within the forward() method, you
+<li><p>The <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> parameter specifies the napari viewer to display the intermediate results. If not provided
+(<code class="code docutils literal notranslate"><span class="pre">viewer_args=None</span></code>), then no computation will be done to visualize the image. Within the forward() method, you
 should use <code class="code docutils literal notranslate"><span class="pre">viewer.add_labels()</span></code>, <code class="code docutils literal notranslate"><span class="pre">lc_interpretable_napari()</span></code> or <code class="code docutils literal notranslate"><span class="pre">temp_directory.cache_im()</span></code>
 while passing in <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> argument to display your results:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ExampleSegProcess</span><span class="p">(</span><span class="n">SegProcess</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">viewer_args</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">viewer_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">viewer_args</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">cache_im</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
-            <span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">,</span>  <span class="c1"># The napari viewer, visualization will be skipped if viewer is None</span>
-            <span class="n">is_label</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># If True, viewer.add_labels() will be called; if False, viewer.add_image() will be called</span>
-            <span class="n">preferred_chunksize</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">),</span>  <span class="c1"># image will be converted to this chunksize when saved, and converted back when loaded</span>
-            <span class="n">multiscale</span><span class="o">=</span><span class="mi">4</span> <span class="k">if</span> <span class="n">viewer</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># maximum downsampling level of OME ZARR files, necessary for very large images</span>
-        <span class="p">))</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">cache_im</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
+<span class="c1"># ...</span>
+<span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">(</span><span class="n">ndisplay</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">viewer_args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">,</span>  <span class="c1"># The napari viewer, visualization will be skipped if viewer is None</span>
+    <span class="n">is_label</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># If True, viewer.add_labels() will be called; if False, viewer.add_image() will be called</span>
+    <span class="n">preferred_chunksize</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">),</span>  <span class="c1"># image will be converted to this chunksize when saved, and converted back when loaded</span>
+    <span class="n">multiscale</span><span class="o">=</span><span class="mi">4</span> <span class="k">if</span> <span class="n">viewer</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># maximum downsampling level of OME ZARR files, necessary for very large images</span>
+<span class="p">)</span>
+<span class="n">process</span> <span class="o">=</span> <span class="n">ExampleSegProcess</span><span class="p">()</span>
+<span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> is a parameter that allows us to visualize the saved results as part of the caching
@@ -247,11 +254,10 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
         <span class="n">im</span> <span class="o">=</span> <span class="n">load_im</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>  <span class="c1"># this is our input dask.Array object to be segmented</span>
         <span class="n">process</span> <span class="o">=</span> <span class="n">ExampleSegProcess</span><span class="p">()</span>
         <span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">()</span>
-        <span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;cell_count_cache&#39;</span><span class="p">,</span> <span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">)</span>
-
-        <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;cell_count_cache&#39;</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">))</span>
 
         <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>To learn more, see the API pages for cvpl_tools.im.seg_process, cvpl_tools.im.fs and
