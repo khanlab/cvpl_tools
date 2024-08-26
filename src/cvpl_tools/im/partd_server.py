@@ -55,12 +55,43 @@ class SQLiteKVStore:
         self.conn.close()
 
 
+# ------------------------------------------Part 2: Partd Class-----------------------------------------------
+"""
+Copyright (c) 2015, Continuum Analytics, Inc. and contributors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+Neither the name of Continuum Analytics nor the names of any contributors
+may be used to endorse or promote products derived from this software
+without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGE.
+
+SQLitePartd class is modified from the partd class below:
+reference: https://github.com/dask/partd/blob/main/partd/file.py commit hash: efa78b4
+"""
+
+
 class SQLitePartd(Interface):
-    """reference: https://github.com/dask/partd/blob/main/partd/file.py
-
-    commit hash: efa78b4
-    """
-
     def __init__(self, path: str):
         self.path = path
         os.makedirs(path, exist_ok=True)
@@ -136,7 +167,7 @@ class SQLitePartd(Interface):
         self.kv_store.close()
 
 
-# --------------------------------------------Part 2: Server------------------------------------------------
+# --------------------------------------------Part 3: Server------------------------------------------------
 
 
 tuple_sep = b'-|-'
@@ -155,7 +186,10 @@ def logerrors():
 
 
 class Server:
-    """Modified from https://github.com/dask/partd/blob/main/partd/zmq.py"""
+    """
+    Server class is modified from the Server/Client class file below:
+    https://github.com/dask/partd/blob/main/partd/zmq.py
+    """
     def __init__(self, path, bind=None, available_memory=None):
         self.context = zmq.Context()
 
