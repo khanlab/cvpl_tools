@@ -101,11 +101,14 @@ image and label(s) can be opened together with a single <code class="code docuti
 <dt class="sig sig-object py" id="cvpl_tools.napari.zarr.add_ome_zarr_group">
 <span class="sig-prename descclassname"><span class="pre">cvpl_tools.napari.zarr.</span></span><span class="sig-name descname"><span class="pre">add_ome_zarr_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zarr_group</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Group</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lbl_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.napari.zarr.add_ome_zarr_group" title="Permalink to this definition"></a></dt>
 <dd><p>Add an ome zarr image (if exists) along with its labels (if exist) to viewer.</p>
-<dl class="simple">
-<dt>Args</dt><dd><p>viewer: Napari viewer object to attach image to
-zarr_group: The zarr group that contains the ome zarr file
-kwargs: dictionary, keyword arguments to be passed to viewer.add_image for root image
-lbl_kwargs: dictionary, keyword arguments to be passed to viewer.add_image for label images</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>viewer</strong> – Napari viewer object to attach image to</p></li>
+<li><p><strong>zarr_group</strong> – The zarr group that contains the ome zarr file</p></li>
+<li><p><strong>kwargs</strong> – dictionary, keyword arguments to be passed to viewer.add_image for root image</p></li>
+<li><p><strong>lbl_kwargs</strong> – dictionary, keyword arguments to be passed to viewer.add_image for label images</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>

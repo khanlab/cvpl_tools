@@ -58,12 +58,15 @@
 <li class="toctree-l1"><a class="reference internal" href="imfs.html">cvpl_tools.im.fs.py</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.im.ndblock.py</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock"><code class="docutils literal notranslate"><span class="pre">NDBlock</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.is_numpy"><code class="docutils literal notranslate"><span class="pre">NDBlock.is_numpy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.load"><code class="docutils literal notranslate"><span class="pre">NDBlock.load()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.map_ndblocks"><code class="docutils literal notranslate"><span class="pre">NDBlock.map_ndblocks()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.reduce"><code class="docutils literal notranslate"><span class="pre">NDBlock.reduce()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.save"><code class="docutils literal notranslate"><span class="pre">NDBlock.save()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.select_columns"><code class="docutils literal notranslate"><span class="pre">NDBlock.select_columns()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.sum"><code class="docutils literal notranslate"><span class="pre">NDBlock.sum()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.to_dask_array"><code class="docutils literal notranslate"><span class="pre">NDBlock.to_dask_array()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.to_dict_block_index_slices"><code class="docutils literal notranslate"><span class="pre">NDBlock.to_dict_block_index_slices()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.to_numpy_array"><code class="docutils literal notranslate"><span class="pre">NDBlock.to_numpy_array()</span></code></a></li>
 </ul>
 </li>
@@ -104,19 +107,55 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.ndblock.</span></span><span class="sig-name descname"><span class="pre">NDBlock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock" title="Permalink to this definition"></a></dt>
-<dd><p>This class represents a nd arrangement of arbitrarily sized blocks</p>
+<dd><p>This class represents an N-dimensional grid, each block in the grid is of arbitrary ndarray shape</p>
+<p>When the grid is of size 1 in all axes, it represents a Numpy array;
+When the grid has blocks of matching size on all axes, it represents a Dask array;
+In the general case the blocks can be of varying sizes e.g. A block of size (2, 2) may be neighboring to a block
+of size (5, 10)</p>
 <p>Currently, we assume block_index is a list always ordered in (0, …, 0), (0, …, 1)… (N, …, M-1) Increasing
 from the side of the tail first</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.is_numpy">
+<span class="sig-name descname"><span class="pre">is_numpy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.is_numpy" title="Permalink to this definition"></a></dt>
+<dd><p>Returns True if this is Numpy array</p>
+<p>Note besides type ReprFormat.NUMPY, ReprFormat.DICT_BLOCK_INDEX_SLICES may have either Numpy arrays as each
+block, or Dask delayed objects each returning a Numpy array; in the former case is_numpy() will return True,
+and in the latter case is_numpy() will return False.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns True if this is Numpy array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.load">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.load" title="Permalink to this definition"></a></dt>
+<dd><p>Load the NDBlock from the given path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file</strong> – The path to load from, same as used in the save() function</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The loaded NDBlock. Guaranteed to have the same properties as the saved one, and the content of each
+block will be the same as when they are saved.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.map_ndblocks">
 <em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">map_ndblocks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inputs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_input_index_as_arrloc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.map_ndblocks" title="Permalink to this definition"></a></dt>
-<dd><p>similar to da.map_blocks but works with NDBlock</p>
+<dd><p>Similar to da.map_blocks, but works with NDBlock.</p>
+<p>Different from dask array’s map_blocks: For each input i, the block_info[i] provided to the mapping function
+will contain only two keys, ‘chunk-location’ and ‘array-location’.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>inputs</strong> – A list of inputs to be mapped, either all dask or all numpy; All inputs must have the same number
 of blocks, block indices, and over the same slices as well if inputs are dask images</p></li>
-<li><p><strong>fn</strong> – fn(<a href="#id1"><span class="problematic" id="id2">*</span></a>block, block_info) maps input blocks to an output block</p></li>
+<li><p><strong>fn</strong> – fn(*block, block_info) maps input blocks to an output block</p></li>
+<li><p><strong>out_dtype</strong> – Output block type (provide a Numpy dtype to this)</p></li>
 <li><p><strong>use_input_index_as_arrloc</strong> – output slices_list will be the same as this input (ignore this for variable
 sized blocks)</p></li>
 </ul>
@@ -130,7 +169,16 @@ sized blocks)</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.reduce">
 <span class="sig-name descname"><span class="pre">reduce</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">force_numpy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.reduce" title="Permalink to this definition"></a></dt>
-<dd><p>concatenate all blocks on the first axis</p>
+<dd><p>Concatenate all blocks on the first axis</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>force_numpy</strong> – If True, the result will be forced from dask to a numpy array, if not already; useful for
+outputting to analysis that requires numpy input</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The concatenated result, is Numpy if previous array is Numpy, or if force_numpy is True</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -175,6 +223,12 @@ avoid repeated computations</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.to_dict_block_index_slices">
+<span class="sig-name descname"><span class="pre">to_dict_block_index_slices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.to_dict_block_index_slices" title="Permalink to this definition"></a></dt>
+<dd><p>Convert representation format to ReprFormat.DICT_BLOCK_INDEX_SLICES</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.to_numpy_array">
 <span class="sig-name descname"><span class="pre">to_numpy_array</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.to_numpy_array" title="Permalink to this definition"></a></dt>
 <dd><p>Convert representation format to numpy array</p>
@@ -185,7 +239,11 @@ avoid repeated computations</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.ReprFormat">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.ndblock.</span></span><span class="sig-name descname"><span class="pre">ReprFormat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.ndblock.ReprFormat" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>ReprFormat specifies all possible NDBlock formats to use.</p>
+<p>NUMPY_ARRAY = 0
+DASK_ARRAY = 1
+DICT_BLOCK_INDEX_SLICES = 2  # block can be either numpy or dask</p>
+</dd></dl>
 
 </section>
 
