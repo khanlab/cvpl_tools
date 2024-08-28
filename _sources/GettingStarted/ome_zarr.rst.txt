@@ -17,7 +17,7 @@ To view an ome-zarr file this way with :code:`cvpl_tools`, use the command
 
 ::
 
-    import cvpl_tools.napari.zarr as cvpl_zarr
+    import cvpl_tools.ome_zarr.napari.zarr_viewer as cvpl_zarr
     cvpl_zarr.add_ome_zarr_array_from_path(viewer, "/absolute/path/to/your/ome.zarr", kwargs=dict(name="displayed_name_in_ui"))
 
 - This will create a new layer named **displayed_name_in_ui** which displays your ome zarr array.
@@ -32,7 +32,7 @@ To view an ome-zarr file this way with :code:`cvpl_tools`, use the command
 
 .. code-block:: Python
 
-    import cvpl_tools.napari.zarr as cvpl_zarr
+    import cvpl_tools.ome_zarr.napari.zarr_viewer as cvpl_zarr
     import gcsfs
     import zarr
     gfs = gcsfs.GCSFileSystem(token=None)

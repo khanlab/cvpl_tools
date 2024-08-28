@@ -57,7 +57,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.napari.zarr.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.ome_zarr.napari.zarr_viewer.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
@@ -97,7 +97,7 @@
 <p>2.Open the command widget with button at the bottom left corner of the window.</p>
 <p>3.After that, type in the command window to invoke functions that add more images as layers.
 To view an ome-zarr file this way with <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code>, use the command</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.napari.zarr</span> <span class="k">as</span> <span class="nn">cvpl_zarr</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.ome_zarr.napari.zarr_viewer</span> <span class="k">as</span> <span class="nn">cvpl_zarr</span>
 <span class="n">cvpl_zarr</span><span class="o">.</span><span class="n">add_ome_zarr_array_from_path</span><span class="p">(</span><span class="n">viewer</span><span class="p">,</span> <span class="s2">&quot;/absolute/path/to/your/ome.zarr&quot;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;displayed_name_in_ui&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
@@ -112,7 +112,7 @@ as specified by the ome zarr standard, use cvpl_zarr.add_ome_zarr_group_from_pat
 the kwargs as a dictionary.</p></li>
 <li><p>To open an OME ZARR image on Google cloud storage, use the following code instead</p></li>
 </ul>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.napari.zarr</span> <span class="k">as</span> <span class="nn">cvpl_zarr</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.ome_zarr.napari.zarr_viewer</span> <span class="k">as</span> <span class="nn">cvpl_zarr</span>
 <span class="kn">import</span> <span class="nn">gcsfs</span>
 <span class="kn">import</span> <span class="nn">zarr</span>
 <span class="n">gfs</span> <span class="o">=</span> <span class="n">gcsfs</span><span class="o">.</span><span class="n">GCSFileSystem</span><span class="p">(</span><span class="n">token</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
