@@ -113,7 +113,10 @@ def find_np3d_from_bs(mask: npt.NDArray[np.uint8]) -> list[npt.NDArray[np.int64]
     return npindices_from_os(lbl_im)
 
 
-def npindices_from_os(lbl_im: npt.NDArray[np.int32]) -> list[npt.NDArray[np.int64]]:
+def npindices_from_os(
+        lbl_im: npt.NDArray[np.int32],
+        return_object_slices=False
+) -> list[npt.NDArray[np.int64]]:
     """Find sparse representation of the contour locations for a contour mask.
 
     "os"=ordinal segmentation mask
@@ -142,7 +145,10 @@ def npindices_from_os(lbl_im: npt.NDArray[np.int32]) -> list[npt.NDArray[np.int6
         mask_np3d = np.argwhere(lbl_im[slices] == i)
         mask_np3d += np.array(tuple(s.start for s in slices), dtype=np.int64)
         result.append(mask_np3d)
-    return result
+    if return_object_slices:
+        return result, object_slices
+    else:
+        return result
 
 
 # ------------------------------------------Watershed------------------------------------------

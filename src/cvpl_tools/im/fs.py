@@ -15,7 +15,7 @@ import dask.array as da
 import shutil
 import os
 from cvpl_tools.fs import ensure_dir_exists as ensure_dir_exists
-from cvpl_tools.napari.zarr import add_ome_zarr_array_from_path
+from cvpl_tools.ome_zarr.napari.zarr_viewer import add_ome_zarr_array_from_path
 
 
 class ImageFormat(enum.Enum):

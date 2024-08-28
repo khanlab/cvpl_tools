@@ -11,7 +11,7 @@ image and label(s) can be opened together with a single :code:`add_ome_zarr_grou
 
 .. rubric:: APIs
 
-.. autofunction:: cvpl_tools.napari.zarr.add_ome_zarr_group
-.. autofunction:: cvpl_tools.napari.zarr.add_ome_zarr_array
-.. autofunction:: cvpl_tools.napari.zarr.add_ome_zarr_group_from_path
-.. autofunction:: cvpl_tools.napari.zarr.add_ome_zarr_array_from_path
+.. autofunction:: cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_group
+.. autofunction:: cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_array
+.. autofunction:: cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_group_from_path
+.. autofunction:: cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_array_from_path
