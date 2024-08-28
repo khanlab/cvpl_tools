@@ -31,7 +31,7 @@ output shape of that block, use :code:`BlockToBlockProcess`.
     :members:
 .. autoclass:: cvpl_tools.im.seg_process.BlobDog
     :members:
-.. autoclass:: cvpl_tools.im.seg_process.ScaledSumIntensity
+.. autoclass:: cvpl_tools.im.seg_process.SumScaledIntensity
     :members:
 .. autoclass:: cvpl_tools.im.seg_process.DirectBSToOS
     :members:
