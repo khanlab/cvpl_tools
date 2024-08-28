@@ -282,8 +282,13 @@ class NDBlock(Generic[ElementType], abc.ABC):
         return self.properties['dtype']
 
     def get_chunksize(self) -> tuple[int, ...]:
+        """Get a single tuple of chunk size on each axis
+
+        Returns:
+            A tuple of int of length ndim
+        """
         slices = self.properties['slices_list'][0]
-        chunksize = tuple(s.stop - s.start + 1 for s in slices)
+        chunksize = tuple(s.stop - s.start for s in slices)
         return chunksize
 
     def as_numpy(self) -> npt.NDArray:
@@ -352,6 +357,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
         if rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             # TODO: optimize this
             self.to_dask_array()
+            rformat = self.get_repr_format()
 
         assert rformat == ReprFormat.DASK_ARRAY
         self.arr = self.arr.compute()

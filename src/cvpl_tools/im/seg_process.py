@@ -305,7 +305,7 @@ class BlobDog(SegProcess):
 # -------------------------------Direct Cell Count Prediction----------------------------------
 
 
-class ScaledSumIntensity(SegProcess):
+class SumScaledIntensity(SegProcess):
     def __init__(self, scale: float = .008, min_thres: float = 0., reduce: bool = True,
                  spatial_box_width: int | None = None):
         """Summing up the intensity and scale it to obtain number of cells, directly
@@ -370,30 +370,41 @@ class ScaledSumIntensity(SegProcess):
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
-        cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
+        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
+
+        forwarded = cache_dir.cache_im(
+            fn=lambda: self.feature_forward(im),
+            cid='forwarded',
+            cache_level=2
+        )
 
         if viewer:
-            mask = cache_path.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
+            mask = cache_dir.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
                                        cache_level=2,
                                        viewer_args=viewer_args | dict(is_label=True))
-
             if self.spatial_box_width is not None and viewer_args.get('display_points', True):
-                ssi = cache_path.cache_im(
-                    fn=lambda: self.feature_forward(
-                        im, spatial_block_width=self.spatial_box_width).reduce(force_numpy=True),
+                ssi = cache_dir.cache_im(
+                    fn=lambda: self.feature_forward(im, spatial_block_width=self.spatial_box_width).reduce(force_numpy=True),
                     cid='ssi',
                     cache_level=2
                 )
                 lc_interpretable_napari('ssi_block', ssi, viewer, im.ndim, ['ncells'])
 
+            aggregate_ndblock: NDBlock[np.float32] = cache_dir.cache_im(
+                fn=lambda: map_ncell_vector_to_total(forwarded), cid='aggregate_ndblock',
+                cache_level=2
+            )
+            heatmap_cache_exists, heatmap_cache_dir = cache_dir.cache(is_dir=True, cid='cell_density_map')
+            chunk_size = NDBlock(im).get_chunksize()
+            heatmap_logging(aggregate_ndblock, heatmap_cache_exists, heatmap_cache_dir, viewer_args, chunk_size)
+
         def fn():
-            ndblock = self.feature_forward(im)
-            ndblock = ndblock.select_columns([-1])
+            ndblock = forwarded.select_columns([-1])
             if self.reduce:
                 ndblock = ndblock.reduce(force_numpy=False)
             return ndblock
 
-        ssi_result = cache_path.cache_im(fn=fn, cid='ssi_result', cache_level=1)
+        ssi_result = cache_dir.cache_im(fn=fn, cid='ssi_result', cache_level=1)
 
         return ssi_result
 
@@ -553,7 +564,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
-        cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
+        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
 
         if viewer:
             def compute_lbl():
@@ -565,7 +576,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
                     )
                 return lbl_im
 
-            lbl_im = cache_path.cache_im(fn=compute_lbl, cid='before_split',
+            lbl_im = cache_dir.cache_im(fn=compute_lbl, cid='before_split',
                                          cache_level=2,
                                          viewer_args=viewer_args | dict(is_label=True))
 
@@ -589,7 +600,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 result = ndblock.as_dask_array(tmp_path)
             return result
 
-        result = cache_path.cache_im(fn=compute_result, cid='result',
+        result = cache_dir.cache_im(fn=compute_result, cid='result',
                                      cache_level=1,
                                      viewer_args=viewer_args | dict(is_label=True))
         return result
@@ -673,6 +684,32 @@ def map_ncell_vector_to_total(ndblock: NDBlock[np.float32]) -> NDBlock[np.float3
         result[0, -1] = block[:, -1].sum()
         return result
     return NDBlock.map_ndblocks([ndblock], map_fn, out_dtype=np.float32)
+
+
+def heatmap_logging(aggregate_ndblock: NDBlock[np.float32],
+                    cache_exists: bool,
+                    cache_dir: imfs.CacheDirectory,
+                    viewer_args: dict,
+                    chunk_size: tuple):
+    np_arr_path = f'{cache_dir.path}/density_map.npy'
+    if not cache_exists:
+        block = aggregate_ndblock.select_columns([-1])
+        ndim = block.get_ndim()
+        def map_fn(block: npt.NDArray[np.float32], block_info=None):
+            return block.reshape((1,) * ndim)
+        block = block.map_ndblocks([block], map_fn, out_dtype=np.float32)
+        block = block.as_numpy()
+        np.save(np_arr_path, block)
+
+    if viewer_args is None:
+        viewer_args = {}
+    viewer: napari.Viewer = viewer_args.get('viewer', None)
+
+    block = np.load(np_arr_path)
+    if viewer:
+        block = np.log2(block + 1.)
+        viewer.add_image(block, name='cell_density_map', scale=chunk_size, blending='additive', colormap='red',
+                         translate=tuple(sz / 2 for sz in chunk_size))
 
 
 class CountLCEdgePenalized(SegProcess):
@@ -762,14 +799,14 @@ class CountLCEdgePenalized(SegProcess):
         assert lc.get_numblocks() == self.numblocks, ('numblocks could not match up for the chunks argument '
                                                       f'provided, expected {self.numblocks} but got '
                                                       f'{lc.get_numblocks()}')
-        cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
+        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
 
         import time
-        ndblock = cache_path.cache_im(fn=lambda: self.feature_forward(lc), cid='lc_cc_edge_penalized',
+        ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(lc), cid='lc_cc_edge_penalized',
                                       cache_level=1)
         if viewer and viewer_args.get('display_points', True):
             if viewer_args.get('display_checkerboard', True):
-                checkerboard = cache_path.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
+                checkerboard = cache_dir.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
                                                    cid='checkerboard',
                                                    cache_level=2,
                                                    viewer_args=viewer_args | dict(is_label=True))
@@ -778,17 +815,26 @@ class CountLCEdgePenalized(SegProcess):
             lc_interpretable_napari('lc_cc_edge_penalized', features, viewer,
                                     len(self.chunks), ['ncells'])
 
-            aggregate_features = cache_path.cache_im(
-                fn=lambda: map_ncell_vector_to_total(ndblock).reduce(force_numpy=True), cid='block_cell_count',
+            aggregate_ndblock: NDBlock[np.float32] = cache_dir.cache_im(
+                fn=lambda: map_ncell_vector_to_total(ndblock), cid='aggregate_ndblock',
+                cache_level=2
+            )
+            aggregate_features: npt.NDArray[np.float32] = cache_dir.cache_im(
+                fn=lambda: aggregate_ndblock.reduce(force_numpy=True), cid='block_cell_count',
                 cache_level=2
             )
             lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
                                     len(self.chunks), ['ncells'], text_color='red')
 
+            heatmap_cache_exists, heatmap_cache_dir = cache_dir.cache(is_dir=True, cid='cell_density_map')
+            chunk_size = tuple(ax[0] for ax in self.chunks)
+            heatmap_logging(aggregate_ndblock, heatmap_cache_exists, heatmap_cache_dir, viewer_args, chunk_size)
+
         ndblock = ndblock.select_columns([-1])
         if self.reduce:
             ndblock = ndblock.reduce(force_numpy=False)
-        return ndblock.sum(keepdims=True)
+        ndblock = ndblock.sum(keepdims=True)
+        return ndblock
 
 
 # --------------------------Convert Ordinal Mask to Cell Count Estimate------------------------
@@ -894,16 +940,24 @@ class CountOSBySize(SegProcess):
             lc_interpretable_napari('bysize_ncells',
                                     features, viewer, im.ndim, ['ncells'])
 
-            aggregate_features = cache_dir.cache_im(
-                fn=lambda: map_ncell_vector_to_total(ndblock).reduce(force_numpy=True),
-                cid='os_by_size_aggregate',
+            aggregate_ndblock: NDBlock[np.float32] = cache_dir.cache_im(
+                fn=lambda: map_ncell_vector_to_total(ndblock), cid='aggregate_ndblock',
+                cache_level=2
+            )
+            aggregate_features: npt.NDArray[np.float32] = cache_dir.cache_im(
+                fn=lambda: aggregate_ndblock.reduce(force_numpy=True), cid='block_cell_count',
                 cache_level=2
             )
             lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
                                     im.ndim, ['ncells'], text_color='red')
 
+            heatmap_cache_exists, heatmap_cache_dir = cache_dir.cache(is_dir=True, cid='cell_density_map')
+            chunk_size = NDBlock(im).get_chunksize()
+            heatmap_logging(aggregate_ndblock, heatmap_cache_exists, heatmap_cache_dir, viewer_args, chunk_size)
+
         ndblock = ndblock.select_columns([-1])
 
         if self.reduce:
             ndblock = ndblock.reduce(force_numpy=False)
-        return ndblock.sum(keepdims=True)
+        ndblock = ndblock.sum(keepdims=True)
+        return ndblock

@@ -51,6 +51,8 @@ def add_ome_zarr_group(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group,
     if '0' in zarr_group:
         add_ome_zarr_array(viewer, zarr_group, **kwargs)
     if 'labels' in zarr_group:
+        if lbl_kwargs is None:
+            lbl_kwargs = {}
         lbls_group = zarr_group['labels']
         for group_key in lbls_group.group_keys():
             lbl_group = lbls_group[group_key]
