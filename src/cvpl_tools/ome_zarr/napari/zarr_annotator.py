@@ -36,38 +36,36 @@ def mask_from_path(viewer: napari.Viewer, mask_path, viewer_args: dict, im_shape
 
 def annotate(ome_zarr_path: str, output_dir: str):
     im_scale = read_scale(ome_zarr_path)
+    im_scale[0] *= 2  # TODO: remove this in a real dataset
     im_shape = read_arr_shape(ome_zarr_path)
     im_shape[1:] //= 4
     im_shape_slices = tuple(slice(0, s.item()) for s in im_shape)
     record_manager = AnnotationRecordManager(output_dir)
     try:
         viewer = napari.Viewer(ndisplay=2)
-        cvpl_napari_zarr.add_ome_zarr_group_from_path(viewer, ome_zarr_path)
-        cvpl_napari_zarr.add_ome_zarr_group_from_path(viewer, 'C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp/ch2_64_stack.zip')
-        viewer.show(block=True)
 
-        im_zarr_group = cvpl_ome_zarr_io.load_zarr_group_from_path(ome_zarr_path, level=0)
-        im_arr = da.from_zarr(im_zarr_group)[im_shape_slices].compute()
+        im_zarr_group = cvpl_ome_zarr_io.load_zarr_group_from_path(ome_zarr_path, level=0, mode='r')
+        im_arr = np.clip(da.from_zarr(im_zarr_group)[im_shape_slices].compute() / 1000., 0., 1.)
         im_layer = viewer.add_image(im_arr, name='lightsheet', scale=im_scale, contrast_limits=(0., 1.))
 
         # load images
         sid = record_manager.get_sid()
-        mask_path = f'{output_dir}/annotation_mask_{sid - 1}'
-        mask, mask_layer = mask_from_path(viewer,
-                                          mask_path if sid > 1 else None,
-                                          dict(
-                                              name='annotation_mask',
-                                              scale=im_scale,
-                                          ),
-                                          im_shape,
-                                          dtype=np.int32)
+        # mask_path = f'{output_dir}/annotation_mask_{sid - 1}'
+        # mask, mask_layer = mask_from_path(viewer,
+        #                                   mask_path if sid > 1 else None,
+        #                                   dict(
+        #                                       name='annotation_mask',
+        #                                       scale=im_scale,
+        #                                   ),
+        #                                   im_shape,
+        #                                   dtype=np.int32)
         completed_path = f'{output_dir}/completed_{sid - 1}'
         completed, completed_layer = mask_from_path(viewer,
                                                     completed_path if sid > 1 else None,
                                                     dict(
                                                         name='completed_mask',
                                                         scale=(im_scale * 64).astype(np.int64),
-                                                        translate=(32, 32, 32)
+                                                        translate=tuple(s // 2 for s in im_shape)
                                                     ),
                                                     im_shape // 64,
                                                     dtype=np.uint8)
@@ -84,15 +82,15 @@ def annotate(ome_zarr_path: str, output_dir: str):
                 on_close=lambda: None,  # TODO: change this to save onto disk
                 layer=im_layer
             ),
-            dict(
-                arr=mask,
-                name='annotated_mask',
-                path=mask_path,
-                is_numpy=True,
-                on_update=lambda: mask_layer.refresh(),
-                on_close=lambda: None,  # TODO: change this to save onto disk
-                layer=mask_layer
-            ),
+            # dict(
+            #     arr=mask,
+            #     name='annotated_mask',
+            #     path=mask_path,
+            #     is_numpy=True,
+            #     on_update=lambda: mask_layer.refresh(),
+            #     on_close=lambda: None,  # TODO: change this to save onto disk
+            #     layer=mask_layer
+            # ),
             dict(
                 arr=completed,
                 name='completed_mask',

@@ -63,7 +63,9 @@ class AnnotationRecordManager:
         )
         ''')
 
+        print(self.get_attr_count('num_sessions'))
         self.sid = self.inc_attr_count('num_sessions')
+        print(self.get_attr_count('num_sessions'))
 
         self.cursor.execute('''
         INSERT INTO session VALUES (?, DATE('NOW'), ?)

@@ -88,6 +88,21 @@ def pad_to_multiple(arr: npt.NDArray, n: int) -> npt.NDArray:
                   mode='constant')
 
 
+def setdiff2d(A, B):
+    """An extension of np.setdiff1d to 2d array
+
+    copied from
+    https://stackoverflow.com/questions/64414944/hot-to-get-the-set-difference-of-two-2d-numpy-arrays-or-equivalent-of-np-setdif
+    """
+    nrows, ncols = A.shape
+    dtype = dict(
+        names=['f{}'.format(i) for i in range(ncols)],
+        formats=ncols * [A.dtype]
+    )
+    C = np.setdiff1d(A.copy().view(dtype), B.copy().view(dtype))
+    return C
+
+
 # ----------------------------Specific Image Processing Algorithms-----------------------------
 
 
@@ -131,11 +146,15 @@ def npindices_from_os(
         A list of contours, each represented in a Mi * d ndarray of type np.int64. Each row is a location
         vector indicating the pixel location, and there are Mi pixels making up the ith contour.
 
-        If some number < N in lbl_im corresponds to no pixels in the array, the corresponding entry will
+        If some number in lbl_im corresponds to no pixels in the array, the corresponding entry will
         be None. This function will not label lbl_im == 0 (which is assumed to be the background class)
+
+        The returned result list's index 0 correspond to the first non-background instance; if slices are
+        returned, the ith index of result list will correspond to the ith index of slices list
     """
     object_slices = find_objects(lbl_im)
     result = []
+    result_slices = []
     for slices in object_slices:
         if slices is None:
             result.append(None)
@@ -145,8 +164,9 @@ def npindices_from_os(
         mask_np3d = np.argwhere(lbl_im[slices] == i)
         mask_np3d += np.array(tuple(s.start for s in slices), dtype=np.int64)
         result.append(mask_np3d)
+        result_slices.append(slices)
     if return_object_slices:
-        return result, object_slices
+        return result, result_slices
     else:
         return result
 
