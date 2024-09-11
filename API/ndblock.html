@@ -58,6 +58,7 @@
 <li class="toctree-l1"><a class="reference internal" href="imfs.html">cvpl_tools.im.fs.py</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.im.ndblock.py</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock"><code class="docutils literal notranslate"><span class="pre">NDBlock</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.get_chunksize"><code class="docutils literal notranslate"><span class="pre">NDBlock.get_chunksize()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.is_numpy"><code class="docutils literal notranslate"><span class="pre">NDBlock.is_numpy()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.load"><code class="docutils literal notranslate"><span class="pre">NDBlock.load()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.map_ndblocks"><code class="docutils literal notranslate"><span class="pre">NDBlock.map_ndblocks()</span></code></a></li>
@@ -114,6 +115,17 @@ In the general case the blocks can be of varying sizes e.g. A block of size (2, 
 of size (5, 10)</p>
 <p>Currently, we assume block_index is a list always ordered in (0, …, 0), (0, …, 1)… (N, …, M-1) Increasing
 from the side of the tail first</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.get_chunksize">
+<span class="sig-name descname"><span class="pre">get_chunksize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.get_chunksize" title="Permalink to this definition"></a></dt>
+<dd><p>Get a single tuple of chunk size on each axis</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A tuple of int of length ndim</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.is_numpy">
 <span class="sig-name descname"><span class="pre">is_numpy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.is_numpy" title="Permalink to this definition"></a></dt>

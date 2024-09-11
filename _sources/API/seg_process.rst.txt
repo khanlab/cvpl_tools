@@ -33,10 +33,6 @@ output shape of that block, use :code:`BlockToBlockProcess`.
     :members:
 .. autoclass:: cvpl_tools.im.seg_process.SumScaledIntensity
     :members:
-.. autoclass:: cvpl_tools.im.seg_process.DirectBSToOS
-    :members:
-.. autoclass:: cvpl_tools.im.seg_process.Watershed3SizesBSToOS
-    :members:
 .. autoclass:: cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance
     :members:
 .. autoclass:: cvpl_tools.im.seg_process.DirectOSToLC

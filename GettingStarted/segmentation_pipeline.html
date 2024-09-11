@@ -159,7 +159,7 @@ image in different formats. As an example, we may implement a pipeline as IN -&g
 <li><p>IN - Input Image (<code class="code docutils literal notranslate"><span class="pre">np.float32</span></code>) between min=0 and max=1, this is the brightness dask image as input</p></li>
 <li><p>BS - Binary Segmentation (3d, <code class="code docutils literal notranslate"><span class="pre">np.uint8</span></code>), this is the binary mask single class segmentation</p></li>
 <li><p>OS - Ordinal Segmentation (3d, <code class="code docutils literal notranslate"><span class="pre">np.int32</span></code>), this is the 0-N where contour 1-N each denotes an object; also single class</p></li>
-<li><p>CC - Cell Count Map (3d, <code class="code docutils literal notranslate"><span class="pre">np.float32</span></code>), a cell count number (estimate, can be float) for each block</p></li>
+<li><p>CC - Cell Count Map (3d, <code class="code docutils literal notranslate"><span class="pre">np.float64</span></code>), a cell count number (estimate, can be float) for each block</p></li>
 </ul>
 <p>Mapping from IN to BS comes in two choices. One is to simply take threshold &gt; some number as cells and the
 rest as background. Another is to use a trained machine learned algorithm to do binary segmentation. Mapping
@@ -253,15 +253,30 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
 
         <span class="n">im</span> <span class="o">=</span> <span class="n">load_im</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>  <span class="c1"># this is our input dask.Array object to be segmented</span>
         <span class="n">process</span> <span class="o">=</span> <span class="n">ExampleSegProcess</span><span class="p">()</span>
+        <span class="n">process</span><span class="o">.</span><span class="n">set_tmpdir</span><span class="p">(</span><span class="n">temp_directory</span><span class="p">)</span>
         <span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">()</span>
-        <span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;cell_count_cache&#39;</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">))</span>
+        <span class="n">viewer_args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">)</span>
+        <span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;cell_count_cache&#39;</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>
 
         <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>To learn more, see the API pages for cvpl_tools.im.seg_process, cvpl_tools.im.fs and
-cvpl_tools.im.ndblock modules.</p>
+<p>At this point you may have a better understanding of how these pipeline steps work. When you pass in
+<code class="code docutils literal notranslate"><span class="pre">viewer_args=None</span></code> the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> function does nothing but processes the image and cache
+it.</p>
+<ul class="simple">
+<li><p>For parameters that changes how the images are processed, cvpl_tools’ preference is to pass them</p></li>
+</ul>
+<p>through the <code class="code docutils literal notranslate"><span class="pre">__init__</span></code> method of the <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> subclass.</p>
+<ul class="simple">
+<li><p>For parameters that changes how the viewer displays the image, or how the image is cached (caching is</p></li>
+</ul>
+<p>often related to display e.g. storing chunks as flat images will allow faster cross section display in
+Napari), these parameters are provided through the <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> argument of the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code>
+function.</p>
+<p>To learn more, see the API pages for <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.seg_process</span></code>, <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.fs</span></code> and
+<code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.ndblock</span></code> modules.</p>
 </section>
 </section>
 

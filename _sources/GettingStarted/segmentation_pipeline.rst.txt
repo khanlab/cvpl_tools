@@ -86,7 +86,7 @@ image in different formats. As an example, we may implement a pipeline as IN -> 
 - IN - Input Image (:code:`np.float32`) between min=0 and max=1, this is the brightness dask image as input
 - BS - Binary Segmentation (3d, :code:`np.uint8`), this is the binary mask single class segmentation
 - OS - Ordinal Segmentation (3d, :code:`np.int32`), this is the 0-N where contour 1-N each denotes an object; also single class
-- CC - Cell Count Map (3d, :code:`np.float32`), a cell count number (estimate, can be float) for each block
+- CC - Cell Count Map (3d, :code:`np.float64`), a cell count number (estimate, can be float) for each block
 
 Mapping from IN to BS comes in two choices. One is to simply take threshold > some number as cells and the
 rest as background. Another is to use a trained machine learned algorithm to do binary segmentation. Mapping
@@ -188,11 +188,25 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
 
             im = load_im(path)  # this is our input dask.Array object to be segmented
             process = ExampleSegProcess()
+            process.set_tmpdir(temp_directory)
             viewer = napari.Viewer()
-            process.forward(im, cid='cell_count_cache', viewer_args=dict(viewer=viewer))
+            viewer_args = dict(viewer=viewer)
+            process.forward(im, cid='cell_count_cache', viewer_args=viewer_args)
 
             client.close()
             viewer.show(block=True)
 
-To learn more, see the API pages for cvpl_tools.im.seg_process, cvpl_tools.im.fs and
-cvpl_tools.im.ndblock modules.
+At this point you may have a better understanding of how these pipeline steps work. When you pass in
+:code:`viewer_args=None` the :code:`forward()` function does nothing but processes the image and cache
+it.
+
+- For parameters that changes how the images are processed, cvpl_tools' preference is to pass them
+through the :code:`__init__` method of the :code:`SegProcess` subclass.
+
+- For parameters that changes how the viewer displays the image, or how the image is cached (caching is
+often related to display e.g. storing chunks as flat images will allow faster cross section display in
+Napari), these parameters are provided through the :code:`viewer_args` argument of the :code:`forward()`
+function.
+
+To learn more, see the API pages for :code:`cvpl_tools.im.seg_process`, :code:`cvpl_tools.im.fs` and
+:code:`cvpl_tools.im.ndblock` modules.
