@@ -16,8 +16,8 @@ IN - Input Image (np.float32) between min=0 and max=1, this is the brightness da
 BS - Binary Segmentation (3d, np.uint8), this is the binary mask single class segmentation
 OS - Ordinal Segmentation (3d, np.int32), this is the 0-N where contour 1-N each denotes an object; also single class
 LC - List of Centroids, this contains a list of centroids for each block in the original image
-CC - Cell Count Map (3d, np.float32), a cell count number (estimate, can be float) for each block
-CD - Cell Density Map (3d, np.float32), this is a down sampled map of the cell density of the brain
+CC - Cell Count Map (3d, np.float64), a cell count number (estimate, can be float) for each block
+CD - Cell Density Map (3d, np.float64), this is a down sampled map of the cell density of the brain
 ATLAS_MAP - A function that maps from the pixel location within brain to brain regions
 ATLAS_CD - Atlas, this summarizes cell density about the brain grouped by region of the brain
 
@@ -62,10 +62,9 @@ images for debugging purpose.
 
 import abc
 import logging
-from typing import Callable, Any, Sequence, final, Iterator
+from typing import Callable, Any, Sequence
 
 import cvpl_tools.im.fs as imfs
-import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
 import cvpl_tools.im.algorithms as algorithms
 import cvpl_tools.im.ndblock as ndblock
 from cvpl_tools.im.ndblock import NDBlock
@@ -108,7 +107,7 @@ def lc_interpretable_napari(layer_name: str,
     assert lc.ndim == 2, (f'Wrong dimension for list of centroids, expected ndim=2, but got lc={lc} and '
                           f'lc.shape={lc.shape}')
     assert lc.shape[1] == nextra + ndim, (f'Wrong number of features for list of centroids, expected length along '
-                                          f'first dimension to be nextra + ndim={nextra + ndim} but got lc={lc} and '
+                                          f'first dimension to be nextra+ndim={nextra + ndim} but got '
                                           f'lc.shape={lc.shape}')
 
     features = {
@@ -185,36 +184,54 @@ class SegProcess(abc.ABC):
 
 
 class BlockToBlockProcess(SegProcess):
-    def __init__(self, out_dtype: np.dtype, is_label=False):
+    def __init__(self, out_dtype: np.dtype = None, is_label=False, compute_chunk_sizes=False):
         super().__init__()
         self.out_dtype = out_dtype
         self.is_label = is_label
+        self.compute_chunk_sizes = compute_chunk_sizes
 
-    @final
-    def forward(self, im: npt.NDArray | da.Array, cid: str | None = None, viewer_args=None) \
-            -> npt.NDArray | da.Array:
+    def set_out_dtype(self, out_dtype: np.dtype | None):
+        self.out_dtype = out_dtype
+
+    def set_is_label(self, is_label: bool | None):
+        self.is_label = is_label
+
+    def forward(self, im: npt.NDArray | da.Array | NDBlock, cid: str | None = None, viewer_args=None) \
+            -> npt.NDArray | da.Array | NDBlock:
         if viewer_args is None:
             viewer_args = {}
-        if isinstance(im, np.ndarray):
-            result = self.np_forward(im)
-        elif isinstance(im, da.Array):
-            result = im.map_blocks(
-                self.np_forward,
-                meta=np.array(tuple(), dtype=self.out_dtype),
-                dtype=self.out_dtype
-            )
-        elif isinstance(im, NDBlock):
-            result = NDBlock.map_ndblocks([im],
-                                          self.np_forward,
-                                          out_dtype=self.out_dtype,
-                                          use_input_index_as_arrloc=0)
-        else:
-            raise TypeError(f'Invalid im type: {type(im)}')
 
-        result = self.tmpdir.cache_im(lambda: result,
+        def compute():
+            if isinstance(im, np.ndarray):
+                result = self.np_forward(im)
+            elif isinstance(im, da.Array):
+                result = im.map_blocks(
+                    self.np_forward,
+                    meta=np.array(tuple(), dtype=self.out_dtype),
+                    dtype=self.out_dtype
+                )
+                if self.compute_chunk_sizes:
+                    result.compute_chunk_sizes()
+            elif isinstance(im, NDBlock):
+                result = NDBlock.map_ndblocks([im],
+                                              self.np_forward,
+                                              out_dtype=self.out_dtype,
+                                              use_input_index_as_arrloc=0)
+                if not result.is_numpy() and self.compute_chunk_sizes:
+                    result = result.arr
+                    result.compute_chunk_sizes()
+                    result = NDBlock(result)
+            else:
+                raise TypeError(f'Invalid im type: {type(im)}')
+            return result
+
+        patched = viewer_args
+        if self.is_label is not None:
+            patched |= dict(is_label=self.is_label)
+        result = self.tmpdir.cache_im(compute,
                                       cid=cid,
                                       cache_level=1,
-                                      viewer_args=viewer_args | dict(is_label=self.is_label))
+                                      viewer_args=patched)
         return result
 
     @abc.abstractmethod
@@ -272,15 +289,15 @@ class BlobDog(SegProcess):
             lc = skimage.feature.blob_dog(np.array(block * 255, dtype=np.uint8),
                                           min_sigma=self.min_sigma,
                                           max_sigma=self.max_sigma,
-                                          threshold=self.threshold).astype(np.float32)  # N * (ndim + 1) ndarray
-            start_pos = np.array([slices[i].start for i in range(len(slices))], dtype=np.float32)
+                                          threshold=self.threshold).astype(np.float64)  # N * (ndim + 1) ndarray
+            start_pos = np.array([slices[i].start for i in range(len(slices))], dtype=np.float64)
             lc[:, :block.ndim] += start_pos[None, :]
             return lc
         else:
             return block
 
-    def feature_forward(self, im: npt.NDArray[np.float32] | da.Array) -> NDBlock[np.float32]:
-        return NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float32)
+    def feature_forward(self, im: npt.NDArray[np.float32] | da.Array) -> NDBlock[np.float64]:
+        return NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float64)
 
     def forward(self,
                 im: npt.NDArray[np.float32] | da.Array,
@@ -325,7 +342,7 @@ class SumScaledIntensity(SegProcess):
         self.spatial_box_width = spatial_box_width
 
     def np_features(self, block: npt.NDArray[np.float32], block_info=None, spatial_box_width=None) \
-            -> npt.NDArray[np.float32]:
+            -> npt.NDArray[np.float64]:
         if block_info is not None:
             slices = block_info[0]['array-location']
             if spatial_box_width is not None:
@@ -335,35 +352,35 @@ class SumScaledIntensity(SegProcess):
             masked = padded_block * (padded_block > self.min_thres)
             if slices is not None:
                 startpoint = np.array([slices[i].start for i in range(len(slices))],
-                                      dtype=np.float32)
+                                      dtype=np.float64)
             else:
-                startpoint = np.zeros((block.ndim,), dtype=np.float32)
+                startpoint = np.zeros((block.ndim,), dtype=np.float64)
 
             if spatial_box_width is not None:
                 subblock_shape = (spatial_box_width,) * block.ndim
                 masked = algorithms.np_map_block(masked, block_sz=subblock_shape)
                 masked: npt.NDArray = masked.sum(axis=tuple(range(block.ndim, block.ndim * 2)))
 
-                features = np.zeros((masked.size, block.ndim + 1), dtype=np.float32)
-                inds = np.array(np.indices(masked.shape, dtype=np.float32))
+                features = np.zeros((masked.size, block.ndim + 1), dtype=np.float64)
+                inds = np.array(np.indices(masked.shape, dtype=np.float64))
                 transpose_axes = tuple(range(1, block.ndim + 1)) + (0,)
                 inds = inds.transpose(transpose_axes).reshape(-1, block.ndim)
                 features[:, -1] = masked.flatten() * self.scale
-                features[:, :-1] = startpoint[None, :] + (inds + .5) * np.array(subblock_shape, dtype=np.float32)
+                features[:, :-1] = startpoint[None, :] + (inds + .5) * np.array(subblock_shape, dtype=np.float64)
             else:
-                features = np.zeros((1, block.ndim + 1), dtype=np.float32)
+                features = np.zeros((1, block.ndim + 1), dtype=np.float64)
                 features[0, -1] = masked.sum() * self.scale
-                features[:, :-1] = startpoint[None, :] + np.array(block.shape, dtype=np.float32) / 2
+                features[:, :-1] = startpoint[None, :] + np.array(block.shape, dtype=np.float64) / 2
             return features
         else:
             return block
 
     def feature_forward(self, im: npt.NDArray[np.float32] | da.Array, spatial_block_width: int = None) \
-            -> NDBlock[np.float32]:
+            -> NDBlock[np.float64]:
         def map_fn(b, block_info):
             return self.np_features(b, block_info, spatial_block_width)
 
-        return NDBlock.map_ndblocks([NDBlock(im)], map_fn, out_dtype=np.float32)
+        return NDBlock.map_ndblocks([NDBlock(im)], map_fn, out_dtype=np.float64)
 
     def forward(self, im: npt.NDArray | da.Array, cid: str = None, viewer_args: dict = None) \
             -> NDBlock | npt.NDArray:
@@ -390,7 +407,7 @@ class SumScaledIntensity(SegProcess):
                 )
                 lc_interpretable_napari('ssi_block', ssi, viewer, im.ndim, ['ncells'])
 
-            aggregate_ndblock: NDBlock[np.float32] = cache_dir.cache_im(
+            aggregate_ndblock: NDBlock[np.float64] = cache_dir.cache_im(
                 fn=lambda: map_ncell_vector_to_total(forwarded), cid='aggregate_ndblock',
                 cache_level=2
             )
@@ -409,48 +426,7 @@ class SumScaledIntensity(SegProcess):
         return ssi_result
 
 
-# ---------------------------Convert Binary Mask to Instance Mask------------------------------
-
-
-class DirectBSToOS(BlockToBlockProcess):
-    def __init__(self):
-        super().__init__(np.int32, is_label=True)
-
-    def np_forward(self, bs: npt.NDArray[np.uint8], block_info=None) -> npt.NDArray[np.int32]:
-        lbl_im, nlbl = instance_label(bs)
-        return lbl_im
-
-
-class Watershed3SizesBSToOS(BlockToBlockProcess):
-    def __init__(self,
-                 size_thres=60.,
-                 dist_thres=1.,
-                 rst=None,
-                 size_thres2=100.,
-                 dist_thres2=1.5,
-                 rst2=60.):
-        super().__init__(np.int32, is_label=True)
-        self.size_thres = size_thres
-        self.dist_thres = dist_thres
-        self.rst = rst
-        self.size_thres2 = size_thres2
-        self.dist_thres2 = dist_thres2
-        self.rst2 = rst2
-
-    def np_forward(self, bs: npt.NDArray[np.uint8], block_info=None) -> npt.NDArray[np.int32]:
-        lbl_im = algorithms.round_object_detection_3sizes(bs,
-                                                          size_thres=self.size_thres,
-                                                          dist_thres=self.dist_thres,
-                                                          rst=self.rst,
-                                                          size_thres2=self.size_thres2,
-                                                          dist_thres2=self.dist_thres2,
-                                                          rst2=self.rst2,
-                                                          remap_indices=True)
-        return lbl_im
-    # TODO: better visualization of this stage
-
-
-# ---------------------------Convert Binary Mask to Instance Mask------------------------------
+# --------------------Convert Binary and Centroid list to Instance Mask------------------------
 
 
 class BinaryAndCentroidListToInstance(SegProcess):
@@ -505,7 +481,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
 
     def bacl_forward(self,
                      bs: npt.NDArray[np.uint8],
-                     lc: npt.NDArray[np.float32],
+                     lc: npt.NDArray[np.float64],
                      block_info=None) -> npt.NDArray[np.int32]:
         """For a numpy block and list of centroids in block, return segmentation based on centroids"""
 
@@ -557,7 +533,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
 
     def forward(self,
                 bs: npt.NDArray[np.uint8] | da.Array,
-                lc: NDBlock[np.float32],
+                lc: NDBlock[np.float64],
                 cid: str | None = None,
                 viewer_args: dict = None
                 ) -> npt.NDArray[np.int32] | da.Array:
@@ -606,67 +582,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
         return result
 
 
-# ---------------------------Ordinal Segmentation to List of Centroids-------------------------
-
-
-class DirectOSToLC(SegProcess):
-    """Convert a 0-N contour mask to a list of N centroids, one for each contour
-
-    The converted list of centroids is in the same order as the original contour order (The contour labeled
-    1 will come first and before contour labeled 2, 3 and so on)
-    """
-
-    def __init__(self, min_size: int = 0, reduce=False):
-        super().__init__()
-        self.reduce = reduce
-        self.min_size = min_size
-
-    def np_features(self, block: npt.NDArray[np.int32], block_info=None) \
-            -> npt.NDArray[np.float32]:
-        if block_info is not None:
-            slices = block_info[0]['array-location']
-            contours_np3d = algorithms.npindices_from_os(block)
-            lc = [contour.astype(np.float32).mean(axis=0) for contour in contours_np3d
-                  if len(contour) > self.min_size]
-
-            if len(lc) == 0:
-                lc = np.zeros((0, block.ndim), dtype=np.float32)
-            else:
-                lc = np.array(lc, dtype=np.float32)
-            if slices is not None:
-                start_pos = np.array([slices[i].start for i in range(len(slices))], dtype=np.float32)
-                lc[:, :block.ndim] += start_pos[None, :]
-            return lc
-        else:
-            return np.zeros(block.shape, dtype=np.float32)
-
-    def feature_forward(self, im: npt.NDArray[np.int32] | da.Array) -> NDBlock[np.float32]:
-        return NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float32)
-
-    def forward(self,
-                im: npt.NDArray[np.int32] | da.Array,
-                cid: str = None,
-                viewer_args: dict = None) -> NDBlock[np.float32]:
-        if viewer_args is None:
-            viewer_args = {}
-        viewer = viewer_args.get('viewer', None)
-        ndblock = self.tmpdir.cache_im(fn=lambda: self.feature_forward(im),
-                                       cache_level=1,
-                                       cid=cid)
-
-        if viewer and viewer_args.get('display_points', True):
-            features = ndblock.reduce(force_numpy=True)
-            lc_interpretable_napari('os_to_lc_centroids', features, viewer, im.ndim, [])
-
-        if self.reduce:
-            ndblock = ndblock.reduce(force_numpy=False)
-        return ndblock
-
-
-# -----------------------Convert List of Centroids to Cell Count Estimate----------------------
-
-
-def map_ncell_vector_to_total(ndblock: NDBlock[np.float32]) -> NDBlock[np.float32]:
+def map_ncell_vector_to_total(ndblock: NDBlock[np.float64]) -> NDBlock[np.float64]:
     """Aggregate the counts in ncell vector to get a single ncell estimate
 
     Args:
@@ -675,18 +591,18 @@ def map_ncell_vector_to_total(ndblock: NDBlock[np.float32]) -> NDBlock[np.float3
     Returns:
         The summed ncell by block; coordinates of each ncell is the center of the block
     """
-    def map_fn(block: npt.NDArray[np.float32], block_info):
+    def map_fn(block: npt.NDArray[np.float64], block_info):
         slices = block_info[0]['array-location']
-        midpoint = np.array(tuple((s.stop - s.start + 1) / 2 + s.start for s in slices), dtype=np.float32)
+        midpoint = np.array(tuple((s.stop - s.start + 1) / 2 + s.start for s in slices), dtype=np.float64)
         ndim = midpoint.shape[0]
-        result = np.zeros((1, ndim + 1), dtype=np.float32)
+        result = np.zeros((1, ndim + 1), dtype=np.float64)
         result[0, :-1] = midpoint
         result[0, -1] = block[:, -1].sum()
         return result
-    return NDBlock.map_ndblocks([ndblock], map_fn, out_dtype=np.float32)
+    return NDBlock.map_ndblocks([ndblock], map_fn, out_dtype=np.float64)
 
 
-def heatmap_logging(aggregate_ndblock: NDBlock[np.float32],
+def heatmap_logging(aggregate_ndblock: NDBlock[np.float64],
                     cache_exists: bool,
                     cache_dir: imfs.CacheDirectory,
                     viewer_args: dict,
@@ -695,9 +611,9 @@ def heatmap_logging(aggregate_ndblock: NDBlock[np.float32],
     if not cache_exists:
         block = aggregate_ndblock.select_columns([-1])
         ndim = block.get_ndim()
-        def map_fn(block: npt.NDArray[np.float32], block_info=None):
+        def map_fn(block: npt.NDArray[np.float64], block_info=None):
             return block.reshape((1,) * ndim)
-        block = block.map_ndblocks([block], map_fn, out_dtype=np.float32)
+        block = block.map_ndblocks([block], map_fn, out_dtype=np.float64)
         block = block.as_numpy()
         np.save(np_arr_path, block)
 
@@ -710,254 +626,3 @@ def heatmap_logging(aggregate_ndblock: NDBlock[np.float32],
         block = np.log2(block + 1.)
         viewer.add_image(block, name='cell_density_map', scale=chunk_size, blending='additive', colormap='red',
                          translate=tuple(sz / 2 for sz in chunk_size))
-
-
-class CountLCEdgePenalized(SegProcess):
-    """From a list of cell centroid locations, calculate a cell count estimate
-    
-    You need to provide an image_shape parameter due to the fact that lc does not contain
-    information about input image shape
-
-    Each centroid is simply treated as 1 cell when they are sufficiently far from the edge,
-    but as they get closer to the edge the divisor becomes >1. and their estimate decreases
-    towards 0, since cells near the edge may be double-counted (or triple or more counted
-    if at a corner etc.)
-    """
-
-    def __init__(self,
-                 chunks: Sequence[Sequence[int]] | Sequence[int],
-                 border_params: tuple[float, float, float] = (3., -.5, 2.),
-                 reduce: bool = False):
-        """Initialize a CountLCEdgePenalized object
-
-        Args:
-            chunks: Shape of the blocks over each axis
-            border_params: Specify how the cells on the border gets discounted. Formula is:
-                intercept, dist_coeff, div_max = self.border_params
-                mults = 1 / np.clip(intercept - border_dists * dist_coeff, 1., div_max)
-                cc_list = np.prod(mults, axis=1)
-            reduce: If True, reduce the results into a Numpy 2d array calling forward()
-        """
-        super().__init__()
-        if isinstance(chunks[0], int):
-            # Turn Sequence[int] to Sequence[Sequence[int]]
-            # assume single numpy block, at index (0, 0, 0)
-            chunks = tuple((chunks[i],) for i in range(len(chunks)))
-        self.chunks = chunks
-        self.numblocks = tuple(len(c) for c in chunks)
-        self.border_params = border_params
-        self.reduce = reduce
-
-        intercept, dist_coeff, div_max = border_params
-        assert intercept >= 1., f'intercept has to be >= 1. as divisor must be >= 1! (intercept={intercept})'
-        assert dist_coeff <= 0., (f'The dist_coeff needs to be non-positive so divisor decreases as cell is further '
-                                  f'from the edge')
-        assert div_max >= 1., f'The divisor is >= 1, but got div_max < 1! (div_max={div_max})'
-
-    def cc_list(self,
-                lc: npt.NDArray[np.float32],
-                block_index: tuple) -> npt.NDArray[np.float32]:
-        """Returns a cell count estimate for each contour in the list of centroids
-
-        Args:
-            lc: The list of centroids to be given cell estimates for
-            block_index: The index of the block which this lc corresponds to
-
-        Returns:
-            A 1-d list, each element is a scalar cell count for the corresponding contour centroid in lc
-        """
-        block_shape = np.array(
-            tuple(self.chunks[i][block_index[i]] for i in range(len(self.chunks))),
-            dtype=np.float32
-        )
-        midpoint = (block_shape * .5)[None, :]
-
-        # compute border distances in each axis direction
-        border_dists = np.abs((lc + midpoint) % block_shape - (midpoint - .5))
-
-        intercept, dist_coeff, div_max = self.border_params
-        mults = 1 / np.clip(intercept + border_dists * dist_coeff, 1., div_max)
-        cc_list = np.prod(mults, axis=1)
-        return cc_list
-
-    def np_features(self, lc: npt.NDArray[np.float32], block_info=None) -> npt.NDArray[np.float32]:
-        """Calculate cell counts, then concat centroid locations to the left of cell counts"""
-        cc_list = self.cc_list(lc, block_info[0]['chunk-location'])
-        features = np.concatenate((lc, cc_list[:, None]), axis=1)
-        return features
-
-    def feature_forward(self, lc: NDBlock[np.float32]) -> NDBlock[np.float32]:
-        return NDBlock.map_ndblocks([lc], self.np_features, out_dtype=np.float32)
-
-    def forward(self,
-                lc: NDBlock[np.float32],
-                cid: str = None,
-                viewer_args: dict = None) -> NDBlock[np.float32]:
-        if viewer_args is None:
-            viewer_args = {}
-        viewer = viewer_args.get('viewer', None)
-        assert lc.get_numblocks() == self.numblocks, ('numblocks could not match up for the chunks argument '
-                                                      f'provided, expected {self.numblocks} but got '
-                                                      f'{lc.get_numblocks()}')
-        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
-
-        import time
-        ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(lc), cid='lc_cc_edge_penalized',
-                                      cache_level=1)
-        if viewer and viewer_args.get('display_points', True):
-            if viewer_args.get('display_checkerboard', True):
-                checkerboard = cache_dir.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
-                                                   cid='checkerboard',
-                                                   cache_level=2,
-                                                   viewer_args=viewer_args | dict(is_label=True))
-
-            features = ndblock.reduce(force_numpy=True)
-            lc_interpretable_napari('lc_cc_edge_penalized', features, viewer,
-                                    len(self.chunks), ['ncells'])
-
-            aggregate_ndblock: NDBlock[np.float32] = cache_dir.cache_im(
-                fn=lambda: map_ncell_vector_to_total(ndblock), cid='aggregate_ndblock',
-                cache_level=2
-            )
-            aggregate_features: npt.NDArray[np.float32] = cache_dir.cache_im(
-                fn=lambda: aggregate_ndblock.reduce(force_numpy=True), cid='block_cell_count',
-                cache_level=2
-            )
-            lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
-                                    len(self.chunks), ['ncells'], text_color='red')
-
-            heatmap_cache_exists, heatmap_cache_dir = cache_dir.cache(is_dir=True, cid='cell_density_map')
-            chunk_size = tuple(ax[0] for ax in self.chunks)
-            heatmap_logging(aggregate_ndblock, heatmap_cache_exists, heatmap_cache_dir, viewer_args, chunk_size)
-
-        ndblock = ndblock.select_columns([-1])
-        if self.reduce:
-            ndblock = ndblock.reduce(force_numpy=False)
-        ndblock = ndblock.sum(keepdims=True)
-        return ndblock
-
-
-# --------------------------Convert Ordinal Mask to Cell Count Estimate------------------------
-
-
-class CountOSBySize(SegProcess):
-    """Counting ordinal segmentation contours
-
-    Several features:
-    1. A size threshold, below which each contour is counted as a single cell (or part of a single cell,
-    in the case it is neighbor to boundary of the image)
-    2. Above size threshold, the contour is seen as a cluster of cells an estimate of cell count is given
-    based on the volume of the contour
-    3. For cells on the boundary location, their estimated ncell is penalized according to the distance
-    between the cell centroid and the boundary of the image; if the voxels of the cell do not touch
-    edge, this penalty does not apply
-    4. A min_size threshold, below (<=) which the contour is simply discarded because it's likely just
-    an artifact
-    """
-
-    def __init__(self,
-                 size_threshold: int | float = 25.,
-                 volume_weight: float = 6e-3,
-                 border_params: tuple[float, float, float] = (3., -.5, 2.),
-                 min_size: int | float = 0,
-                 reduce: bool = False):
-        super().__init__()
-        self.size_threshold = size_threshold
-        self.volume_weight = volume_weight
-        self.border_params = border_params
-        self.min_size = min_size
-        self.reduce = reduce
-
-    def cc_list(self, os: npt.NDArray[np.int32]) -> npt.NDArray[np.float32]:
-        contours_np3d = algorithms.npindices_from_os(os)
-        ncells = {}
-        dc = []
-        dc_idx_to_centroid_idx = {}
-        idx_max = np.array(tuple(d - 1 for d in os.shape), dtype=np.int64)
-        for i in range(len(contours_np3d)):
-            contour = contours_np3d[i]
-            nvoxel = contour.shape[0]
-            if nvoxel <= self.min_size:
-                ncells[i] = 0.
-            else:
-                ncells[i] = 0.
-
-                # if no voxel touch the boundary, we do not want to apply the edge penalty
-                on_edge = (contour == 0).astype(np.uint8) + (contour == idx_max[None, :]).astype(np.uint8)
-                on_edge = on_edge.sum().item() > 0
-                if on_edge:
-                    dc_idx_to_centroid_idx[len(dc)] = i
-                    dc.append(contour.astype(np.float32).mean(axis=0))
-                else:
-                    ncells[i] = 1
-
-                if nvoxel > self.size_threshold:
-                    ncells[i] += (nvoxel - self.size_threshold) * self.volume_weight
-        ps = CountLCEdgePenalized(os.shape, self.border_params)
-
-        if len(dc) == 0:
-            dc_centroids = np.zeros((0, os.ndim), dtype=np.float32)
-        else:
-            dc_centroids = np.array(dc, dtype=np.float32)
-        dc_ncells = ps.cc_list(dc_centroids, (0,) * os.ndim)
-        for dc_idx in dc_idx_to_centroid_idx:
-            i = dc_idx_to_centroid_idx[dc_idx]
-            ncells[i] += dc_ncells[dc_idx]
-        ncells = np.array([ncells[i] for i in range(len(ncells))], dtype=np.float32)
-        return ncells
-
-    def np_features(self,
-                    os: npt.NDArray[np.int32],
-                    block_info=None) -> npt.NDArray[np.float32]:
-        if block_info is None:
-            return np.zeros(tuple(), dtype=np.float32)
-
-        # slices = block_info[0]['array-location']
-        ps = DirectOSToLC(reduce=True)
-        lc = ps.np_features(os, block_info)
-        cc_list = self.cc_list(os)
-        features = np.concatenate((lc, cc_list[:, None]), axis=1)
-        return features
-
-    def feature_forward(self, im: npt.NDArray | da.Array) -> NDBlock[np.float32]:
-        return NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float32)
-
-    def forward(self,
-                im: npt.NDArray[np.int32] | da.Array,
-                cid: str = None,
-                viewer_args: dict = None
-                ) -> npt.NDArray[np.float32]:
-        if viewer_args is None:
-            viewer_args = {}
-        viewer = viewer_args.get('viewer', None)
-        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
-        ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(im), cid='os_by_size_features',
-                                     cache_level=1)
-
-        if viewer and viewer_args.get('display_points', True):
-            features = ndblock.reduce(force_numpy=True)
-            features = features[features[:, -1] > 0., :]
-            lc_interpretable_napari('bysize_ncells',
-                                    features, viewer, im.ndim, ['ncells'])
-
-            aggregate_ndblock: NDBlock[np.float32] = cache_dir.cache_im(
-                fn=lambda: map_ncell_vector_to_total(ndblock), cid='aggregate_ndblock',
-                cache_level=2
-            )
-            aggregate_features: npt.NDArray[np.float32] = cache_dir.cache_im(
-                fn=lambda: aggregate_ndblock.reduce(force_numpy=True), cid='block_cell_count',
-                cache_level=2
-            )
-            lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
-                                    im.ndim, ['ncells'], text_color='red')
-
-            heatmap_cache_exists, heatmap_cache_dir = cache_dir.cache(is_dir=True, cid='cell_density_map')
-            chunk_size = NDBlock(im).get_chunksize()
-            heatmap_logging(aggregate_ndblock, heatmap_cache_exists, heatmap_cache_dir, viewer_args, chunk_size)
-
-        ndblock = ndblock.select_columns([-1])
-
-        if self.reduce:
-            ndblock = ndblock.reduce(force_numpy=False)
-        ndblock = ndblock.sum(keepdims=True)
-        return ndblock

@@ -68,7 +68,7 @@ class NDBlockLazyLoadDictBlockInfo:
         block_indices = ndblock.properties['block_indices']
         slices_list = ndblock.properties['slices_list']
         ndblock.arr = {}
-        if force_numpy:
+        if force_numpy or ndblock.properties['is_numpy']:
             sqlite_file = SQLitePartd(self.db_path)
 
             for i in range(len(slices_list)):
@@ -131,6 +131,19 @@ class NDBlock(Generic[ElementType], abc.ABC):
             assert isinstance(arr, NDBlock), f'Unexpected type {type(arr)}'
             self.arr = arr.arr
             self.properties = NDBlock._copy_properties(arr.properties)
+
+    @staticmethod
+    def create_from_dict_and_properties(d: dict, properties: dict[str, Any]):
+        ndblock = NDBlock(None)
+        ndblock.arr = d
+        ndblock.properties = NDBlock._copy_properties(properties)
+        is_numpy = False
+        for block_index, (block, slices) in d.items():
+            is_numpy = isinstance(block, np.ndarray)
+            break
+        assert properties['is_numpy'] == is_numpy, (f"Got is_numpy={properties['is_numpy']} in properties but "
+                                                    f"is_numpy={is_numpy} for dictionary of blocks")
+        return ndblock
 
     @staticmethod
     def properties_consistency_check(properties: dict[str, Any]):
@@ -266,6 +279,9 @@ class NDBlock(Generic[ElementType], abc.ABC):
         """
         return self.properties['is_numpy']
 
+    def get_properties(self) -> dict[str, Any]:
+        return self.properties
+
     def get_repr_format(self) -> ReprFormat:
         return self.properties['repr_format']
 
@@ -277,6 +293,9 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     def get_block_indices(self) -> list:
         return self.properties['block_indices']
+
+    def get_slices_list(self) -> list:
+        return self.properties['slices_list']
 
     def get_dtype(self):
         return self.properties['dtype']
@@ -297,6 +316,14 @@ class NDBlock(Generic[ElementType], abc.ABC):
         return other.arr
 
     def as_dask_array(self, tmp_dirpath: str | None = None) -> da.Array:
+        """Get a copy of the array value as dask array
+
+        Args:
+            tmp_dirpath: Avoid double computation, best provided if input format
+                is ReprFormat.DICT_BLOCK_INDEX_SLICES and is dask instead of numpy
+        Returns:
+            converted/retrieved dask array
+        """
         other = NDBlock(self)
         other.to_dask_array(tmp_dirpath)
         return other.arr
@@ -471,6 +498,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             if other.is_numpy():
                 blocks = [block for _, (block, _) in other.arr.items()]
                 assert len(blocks) > 0, 'Need at least one row for NDBlock to be reduced'
+                assert isinstance(blocks[0], np.ndarray), f'Expected ndarray, got type(blocks[0])={type(blocks[0])}'
                 return np.concatenate(blocks, axis=0)
             else:
                 shape = None
@@ -528,11 +556,12 @@ class NDBlock(Generic[ElementType], abc.ABC):
         inputs = list(inputs)
         assert len(inputs) > 0, 'Must have at least one input!'
 
-        is_numpy = inputs[0].is_numpy()
+        is_numpy = inputs[0].get_repr_format() == ReprFormat.NUMPY_ARRAY
         for i in range(1, len(inputs)):
-            assert is_numpy == inputs[i].is_numpy(), ('All inputs must either be all dask or all Numpy, expected '
-                                                      f'is_numpy={is_numpy} but found wrong typed input at '
-                                                      f'location {i}')
+            assert is_numpy == (inputs[i].get_repr_format() == ReprFormat.NUMPY_ARRAY), \
+                ('All inputs must either be all dask or all Numpy, expected '
+                  f'is_numpy={is_numpy} but found wrong typed input at '
+                  f'location {i}')
 
         if is_numpy:
             block_info = []

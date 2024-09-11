@@ -192,8 +192,10 @@ class UserInputBuffer:
             for i in range(len(im_shape)):
                 off_screen = off_screen | (pts[:, i] < 0) | (pts[:, i] >= im_shape[i])
             pts = pts[~off_screen]
+        else:
+            pts = np.zeros((0, 3), dtype=np.int32)
 
-            self.update_uin_layer(pts)
+        self.update_uin_layer(pts)
 
     def update_uin_layer(self, pts: npt.NDArray[np.int32]):
         lblinfo = self.lblinfo

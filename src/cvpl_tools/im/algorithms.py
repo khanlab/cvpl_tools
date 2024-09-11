@@ -64,6 +64,22 @@ def np_map_block(im: npt.NDArray, block_sz) -> npt.NDArray:
     return expanded_im.transpose(ax_order)
 
 
+def np_unique(lbl_im: npt.NDArray[np.int32], return_index: bool = False,
+              return_inverse: bool = False, return_counts: bool = False,
+              axis=None, *,
+              equal_nan: bool = False):
+    """Before 2.0.0, numpy will return an array of 1d regardless of input shape
+    
+    This function fixes this by forcing the function signature working the same as version 2
+    """
+    # this function fixes this by forcing the function signature working the same as version 2
+    ret = np.unique(lbl_im, return_index, return_inverse, return_counts, axis, equal_nan=equal_nan)
+    if return_inverse and np.__version__ < '2.0.0':
+        im_shape = lbl_im.shape
+        ret = ret[:-1] + (ret[-1].reshape(im_shape),)
+    return ret
+
+
 def pad_to_multiple(arr: npt.NDArray, n: int) -> npt.NDArray:
     """Numpy, pad an array on each axis to a multiple of n.
 
@@ -125,13 +141,14 @@ def find_np3d_from_bs(mask: npt.NDArray[np.uint8]) -> list[npt.NDArray[np.int64]
         be None. This function will not label lbl_im == 0 (which is assumed to be the background class)
     """
     lbl_im = instance_label(mask)[0]
-    return npindices_from_os(lbl_im)
+    return npindices_from_os(lbl_im)[0]
 
 
 def npindices_from_os(
         lbl_im: npt.NDArray[np.int32],
-        return_object_slices=False
-) -> list[npt.NDArray[np.int64]]:
+        return_object_slices: bool = False,
+        is_sparse: bool = False,
+) -> tuple:
     """Find sparse representation of the contour locations for a contour mask.
 
     "os"=ordinal segmentation mask
@@ -141,6 +158,9 @@ def npindices_from_os(
 
     Args:
         lbl_im: The image with pixel values 0-N, each number 1-N correspond to a separate object.
+        return_object_slices: If True, return the boundbox used to find the corresponding mask image
+        is_sparse: If True, input index labels may be large int but only a few indices are present; also
+            return the corresponding indices after the other returning data
 
     Returns:
         A list of contours, each represented in a Mi * d ndarray of type np.int64. Each row is a location
@@ -152,6 +172,12 @@ def npindices_from_os(
         The returned result list's index 0 correspond to the first non-background instance; if slices are
         returned, the ith index of result list will correspond to the ith index of slices list
     """
+    lbl_ndim = lbl_im.ndim
+    if is_sparse:
+        unique, unique_inverse = np_unique(lbl_im, return_inverse=True)
+        unique = unique[1:]  # remove 0 = background class
+        lbl_im = unique_inverse
+
     object_slices = find_objects(lbl_im)
     result = []
     result_slices = []
@@ -161,14 +187,20 @@ def npindices_from_os(
             continue
 
         i = len(result) + 1
-        mask_np3d = np.argwhere(lbl_im[slices] == i)
-        mask_np3d += np.array(tuple(s.start for s in slices), dtype=np.int64)
-        result.append(mask_np3d)
+        mask_argwhere = np.argwhere(lbl_im[slices] == i)
+        mask_argwhere += np.array(tuple(s.start for s in slices), dtype=np.int64)
+        result.append(mask_argwhere)
         result_slices.append(slices)
+        assert mask_argwhere.shape[1] == lbl_ndim, (f'Expected row length to match label ndim, got shape '
+                                                    f'{mask_argwhere.shape} and ndim={lbl_ndim}')
+
+    ret = (result,)
     if return_object_slices:
-        return result, result_slices
-    else:
-        return result
+        ret += (result_slices,)
+    if is_sparse:
+        assert len(result) == len(unique), f'Expected equal length, got {len(result)}, {len(unique)}'
+        ret += (unique,)
+    return ret
 
 
 # ------------------------------------------Watershed------------------------------------------
@@ -273,12 +305,7 @@ def round_object_detection_3sizes(seg, size_thres, dist_thres, rst, size_thres2,
     # lbl_im = (lbl_im2 > 0) * 1 + (lbl_im > 0) * 2 + small_mask * 3
 
     if remap_indices:
-        if np.__version__ < '2.0.0':  # before 2.0.0, numpy will return a array of 1d regardless of input shape
-            im_shape = lbl_im.shape
-            _, lbl_im = np.unique(lbl_im, return_inverse=True)
-            lbl_im = lbl_im.reshape(im_shape)
-        else:
-            _, lbl_im = np.unique(lbl_im, return_inverse=True)
+        _, lbl_im = np_unique(lbl_im, return_inverse=True)
 
     return lbl_im
 
@@ -318,7 +345,7 @@ def Stats_MAE(counted, gt):
     Returns
         the mean absolute difference between counted and gt
     """
-    return np.abs(np.array(counted, dtype=np.float32) - np.array(gt, dtype=np.float32)).mean().item()
+    return np.abs(np.array(counted, dtype=np.float64) - np.array(gt, dtype=np.float64)).mean().item()
 
 
 def Stats_ShowScatterPairComparisons(counted: np.array, gt, enumType: Type[enum.Enum]) -> None:
@@ -334,7 +361,7 @@ def Stats_ShowScatterPairComparisons(counted: np.array, gt, enumType: Type[enum.
     nrow = int((len(counting_method_inverse_dict) - 1) / 6) + 1
     fig, axes = plt.subplots(nrow, 6, figsize=(24, nrow * 4), sharex=True, sharey=True)
 
-    gt_arr = np.array(gt, dtype=np.float32)
+    gt_arr = np.array(gt, dtype=np.float64)
     for i in range(counted.shape[0]):
         X, Y = gt_arr, counted[i]
 
@@ -359,3 +386,15 @@ if __name__ == '__main__':
     )
     assert (colored == reference).sum().item() == colored.size, f'got array {colored}'
 
+    # lbl_im = np.array(
+    #     (((1, 3),
+    #       (0, 0)),
+    #      ((0, 0),
+    #       (0, 2))),
+    #     dtype=np.int32
+    # )
+    # _contours_np3d, _ids = npindices_from_os(lbl_im, is_sparse=True)
+    # for cnt in _contours_np3d:
+    #     print('contour')
+    #     print(cnt, cnt.shape)
+    # print(_ids)
