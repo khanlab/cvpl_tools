@@ -32,13 +32,13 @@ To view an ome-zarr file this way with :code:`cvpl_tools`, use the command
 
 .. code-block:: Python
 
-    import cvpl_tools.ome_zarr.napari.zarr_viewer as cvpl_zarr
+    import cvpl_tools.ome_zarr.napari.zarr_viewer as zarr_viewer
     import gcsfs
     import zarr
     gfs = gcsfs.GCSFileSystem(token=None)
     store = gfs.get_mapper('gs://path_to_your.ome.zarr')
     zarr_group = zarr.open(store, mode='r')
-    cvpl_zarr.add_ome_zarr_group(viewer, zarr_group, dict(name="displayed_name_in_ui"))
+    zarr_viewer.add_ome_zarr_group(viewer, zarr_group, kwargs=dict(name="displayed_name_in_ui"))
 
 - An extra argument is_label can be passed into the function via :code:`kwargs` dictionary.
   This is a boolean value that specifies whether to use :code:`viewer.add_labels`

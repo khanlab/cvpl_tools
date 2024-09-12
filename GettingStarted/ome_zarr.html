@@ -112,13 +112,13 @@ as specified by the ome zarr standard, use cvpl_zarr.add_ome_zarr_group_from_pat
 the kwargs as a dictionary.</p></li>
 <li><p>To open an OME ZARR image on Google cloud storage, use the following code instead</p></li>
 </ul>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.ome_zarr.napari.zarr_viewer</span> <span class="k">as</span> <span class="nn">cvpl_zarr</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.ome_zarr.napari.zarr_viewer</span> <span class="k">as</span> <span class="nn">zarr_viewer</span>
 <span class="kn">import</span> <span class="nn">gcsfs</span>
 <span class="kn">import</span> <span class="nn">zarr</span>
 <span class="n">gfs</span> <span class="o">=</span> <span class="n">gcsfs</span><span class="o">.</span><span class="n">GCSFileSystem</span><span class="p">(</span><span class="n">token</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 <span class="n">store</span> <span class="o">=</span> <span class="n">gfs</span><span class="o">.</span><span class="n">get_mapper</span><span class="p">(</span><span class="s1">&#39;gs://path_to_your.ome.zarr&#39;</span><span class="p">)</span>
 <span class="n">zarr_group</span> <span class="o">=</span> <span class="n">zarr</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
-<span class="n">cvpl_zarr</span><span class="o">.</span><span class="n">add_ome_zarr_group</span><span class="p">(</span><span class="n">viewer</span><span class="p">,</span> <span class="n">zarr_group</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;displayed_name_in_ui&quot;</span><span class="p">))</span>
+<span class="n">zarr_viewer</span><span class="o">.</span><span class="n">add_ome_zarr_group</span><span class="p">(</span><span class="n">viewer</span><span class="p">,</span> <span class="n">zarr_group</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;displayed_name_in_ui&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 <ul class="simple">
