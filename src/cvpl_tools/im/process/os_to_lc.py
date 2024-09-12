@@ -163,8 +163,12 @@ class DirectOSToLC(SegProcess):
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
 
+        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
+
         def compute():
-            self._ndblock = self.feature_forward(im)
+            self._ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(im),
+                                               cache_level=1,
+                                               cid='block_level_lc_ndblock')
             if self.is_global:
                 # update and aggregate the rows in ndblock that correspond to the same contour
                 self.aggregate_by_id()
@@ -172,9 +176,9 @@ class DirectOSToLC(SegProcess):
                 self._reduced_np_features = None
             return self._ndblock
 
-        self._ndblock = self.tmpdir.cache_im(fn=compute,
-                                             cache_level=1,
-                                             cid=cid)
+        self._ndblock = cache_dir.cache_im(fn=compute,
+                                           cache_level=1,
+                                           cid='lc_ndblock')
 
         if viewer and viewer_args.get('display_points', True):
             if self.is_global:

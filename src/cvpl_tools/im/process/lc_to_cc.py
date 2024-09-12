@@ -222,57 +222,41 @@ class CountLCEdgePenalized(SegProcess):
                                                       f'{lc.get_numblocks()}')
         cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
 
-        print('1')
-
         ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(lc), cid='lc_cc_edge_penalized',
                                      cache_level=1)
 
-        print('2')
-
         dp = viewer_args.get('display_points', True)
         if viewer:
-            print('3')
             if viewer_args.get('display_checkerboard', True):
                 checkerboard = cache_dir.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
                                                   cid='checkerboard',
                                                   cache_level=2,
                                                   viewer_args=viewer_args | dict(is_label=True))
-            print('4')
 
             if dp:
-                print('5')
                 features = ndblock.reduce(force_numpy=True)
                 lc_interpretable_napari('lc_cc_edge_penalized', features, viewer,
                                         len(self.chunks), ['ncells'])
-                print('6')
 
             aggregate_ndblock: NDBlock[np.float64] = cache_dir.cache_im(
                 fn=lambda: map_ncell_vector_to_total(ndblock), cid='aggregate_ndblock',
                 cache_level=2
             )
-            print('7')
             if dp:
-                print('8')
                 aggregate_features: npt.NDArray[np.float64] = cache_dir.cache_im(
                     fn=lambda: aggregate_ndblock.reduce(force_numpy=True), cid='block_cell_count',
                     cache_level=2
                 )
                 lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
                                         len(self.chunks), ['ncells'], text_color='red')
-                print('9')
 
             heatmap_cache_exists, heatmap_cache_dir = cache_dir.cache(is_dir=True, cid='cell_density_map')
             chunk_size = tuple(ax[0] for ax in self.chunks)
             heatmap_logging(aggregate_ndblock, heatmap_cache_exists, heatmap_cache_dir, viewer_args, chunk_size)
-            print('10')
 
         ndblock = ndblock.select_columns([-1])
-        print('11')
         if self.reduce:
-            print('12')
             ndblock = ndblock.reduce(force_numpy=False)
-            print('13')
         ndblock = ndblock.sum(keepdims=True)
-        print('14')
         return ndblock
 

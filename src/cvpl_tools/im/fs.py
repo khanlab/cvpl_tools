@@ -148,7 +148,7 @@ def display(file: str, viewer_args: dict):
         fn(im, **layer_args)
     else:
         # image saved by NDBlock.save(file)
-        add_ome_zarr_array_from_path(viewer, f'{file}/dask_im', use_zip=False,
+        add_ome_zarr_array_from_path(viewer, f'{file}/dask_im', use_zip=False, merge_channels=True,
                                      kwargs=layer_args | dict(is_label=is_label))
 
 
