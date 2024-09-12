@@ -11,7 +11,7 @@ from dask.distributed import print as dprint
 
 
 class DownsamplingByIntFactor(SegProcess):
-    def __init__(self, factor: int = 2 | tuple):
+    def __init__(self, factor: int | tuple = 2):
         """Creates a DownsamplingByIntFactor object
 
         Args:
