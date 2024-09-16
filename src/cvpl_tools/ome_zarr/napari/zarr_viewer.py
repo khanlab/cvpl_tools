@@ -113,6 +113,10 @@ def add_ome_zarr_array(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group,
         _add_ch(viewer, zarr_group, lambda g: da.from_zarr(g), start_level, is_label, **kwargs)
     else:
         nchan = arr_shape[0]
+        assert nchan <= 20, (f'More than 20 channels (nchan={nchan}) found for add_ome_zarr_array, are you sure '
+                             f'this is not a mistake? The function takes in a merge_channels option for images '
+                             f'that are not multi-channel; by default the first axis of the image will be '
+                             f'treated as channel dimension!')
         name = kwargs.get('name', 'ome_zarr')
         for i in range(nchan):
             ch_name = f'{name}_ch{i}'

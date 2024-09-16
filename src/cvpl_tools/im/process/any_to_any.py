@@ -2,7 +2,12 @@
 This file defines SegProcess subclasses which converts any image to any other image of the same type (same type in
 terms of the classification of different data types defined in the top of seg_process.py)
 """
-from cvpl_tools.im.seg_process import SegProcess, BlockToBlockProcess, lc_interpretable_napari
+from cvpl_tools.im.seg_process import (
+    SegProcess,
+    BlockToBlockProcess,
+    block_to_block_forward,
+    lc_interpretable_napari
+)
 import numpy.typing as npt
 import dask.array as da
 import numpy as np
@@ -102,7 +107,12 @@ class UpsamplingByIntFactor(BlockToBlockProcess):
         Returns:
             The up-sampled image
         """
-        self.set_out_dtype(im.dtype)
-        self.set_is_label(viewer_args.get('is_label', False))
-        im = super().forward(im, cid, viewer_args)
-        return im
+        return block_to_block_forward(
+            tmpdir=self.tmpdir,
+            np_forward=self.np_forward,
+            im=im,
+            viewer_args=viewer_args,
+            out_dtype=None,
+            is_label=viewer_args.get('is_label', False),
+            compute_chunk_sizes=True
+        )

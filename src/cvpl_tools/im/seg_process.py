@@ -183,6 +183,55 @@ class SegProcess(abc.ABC):
         raise NotImplementedError("SegProcess base class does not implement forward()!")
 
 
+def block_to_block_forward(tmpdir: imfs.CacheDirectory,
+                           np_forward: Callable, im: npt.NDArray | da.Array | NDBlock,
+                           cid: str | None = None, viewer_args=None,
+                           out_dtype: np.dtype = None, is_label: bool = False,
+                           compute_chunk_sizes: bool = False):
+    if viewer_args is None:
+        viewer_args = {}
+
+    def compute():
+        nonlocal out_dtype, compute_chunk_sizes
+        if isinstance(im, np.ndarray):
+            result = np_forward(im)
+        elif isinstance(im, da.Array):
+            assert im is not None
+            if out_dtype is None:
+                out_dtype = im.dtype
+            result = im.map_blocks(
+                np_forward,
+                meta=np.array(tuple(), dtype=out_dtype),
+                dtype=out_dtype
+            )
+            if compute_chunk_sizes:
+                result.compute_chunk_sizes()
+        elif isinstance(im, NDBlock):
+            assert im is not None
+            if out_dtype is None:
+                out_dtype = im.get_dtype()
+            result = NDBlock.map_ndblocks([im],
+                                          np_forward,
+                                          out_dtype=out_dtype,
+                                          use_input_index_as_arrloc=0)
+            if not result.is_numpy() and compute_chunk_sizes:
+                result = result.arr
+                result.compute_chunk_sizes()
+                result = NDBlock(result)
+        else:
+            raise TypeError(f'Invalid im type: {type(im)}')
+        return result
+
+    patched = viewer_args
+    if is_label is not None:
+        patched |= dict(is_label=is_label)
+    result = tmpdir.cache_im(compute,
+                             cid=cid,
+                             cache_level=1,
+                             viewer_args=patched)
+    return result
+
+
 class BlockToBlockProcess(SegProcess):
     def __init__(self, out_dtype: np.dtype = None, is_label=False, compute_chunk_sizes=False):
         super().__init__()
@@ -198,41 +247,14 @@ class BlockToBlockProcess(SegProcess):
 
     def forward(self, im: npt.NDArray | da.Array | NDBlock, cid: str | None = None, viewer_args=None) \
             -> npt.NDArray | da.Array | NDBlock:
-        if viewer_args is None:
-            viewer_args = {}
-
-        def compute():
-            if isinstance(im, np.ndarray):
-                result = self.np_forward(im)
-            elif isinstance(im, da.Array):
-                result = im.map_blocks(
-                    self.np_forward,
-                    meta=np.array(tuple(), dtype=self.out_dtype),
-                    dtype=self.out_dtype
-                )
-                if self.compute_chunk_sizes:
-                    result.compute_chunk_sizes()
-            elif isinstance(im, NDBlock):
-                result = NDBlock.map_ndblocks([im],
-                                              self.np_forward,
-                                              out_dtype=self.out_dtype,
-                                              use_input_index_as_arrloc=0)
-                if not result.is_numpy() and self.compute_chunk_sizes:
-                    result = result.arr
-                    result.compute_chunk_sizes()
-                    result = NDBlock(result)
-            else:
-                raise TypeError(f'Invalid im type: {type(im)}')
-            return result
-
-        patched = viewer_args
-        if self.is_label is not None:
-            patched |= dict(is_label=self.is_label)
-        result = self.tmpdir.cache_im(compute,
+        return block_to_block_forward(tmpdir=self.tmpdir,
+                                      np_forward=self.np_forward,
+                                      im=im,
                                       cid=cid,
-                                      cache_level=1,
-                                      viewer_args=patched)
-        return result
+                                      viewer_args=viewer_args,
+                                      out_dtype=self.out_dtype,
+                                      is_label=self.is_label,
+                                      compute_chunk_sizes=self.compute_chunk_sizes)
 
     @abc.abstractmethod
     def np_forward(self, im: npt.NDArray, block_info=None) -> npt.NDArray:
@@ -397,11 +419,12 @@ class SumScaledIntensity(SegProcess):
 
         if viewer:
             mask = cache_dir.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
-                                       cache_level=2,
-                                       viewer_args=viewer_args | dict(is_label=True))
+                                      cache_level=2,
+                                      viewer_args=viewer_args | dict(is_label=True))
             if self.spatial_box_width is not None and viewer_args.get('display_points', True):
                 ssi = cache_dir.cache_im(
-                    fn=lambda: self.feature_forward(im, spatial_block_width=self.spatial_box_width).reduce(force_numpy=True),
+                    fn=lambda: self.feature_forward(im, spatial_block_width=self.spatial_box_width).reduce(
+                        force_numpy=True),
                     cid='ssi',
                     cache_level=2
                 )
@@ -553,8 +576,8 @@ class BinaryAndCentroidListToInstance(SegProcess):
                 return lbl_im
 
             lbl_im = cache_dir.cache_im(fn=compute_lbl, cid='before_split',
-                                         cache_level=2,
-                                         viewer_args=viewer_args | dict(is_label=True))
+                                        cache_level=2,
+                                        viewer_args=viewer_args | dict(is_label=True))
 
         def compute_result():
             nonlocal bs, lc
@@ -577,8 +600,8 @@ class BinaryAndCentroidListToInstance(SegProcess):
             return result
 
         result = cache_dir.cache_im(fn=compute_result, cid='result',
-                                     cache_level=1,
-                                     viewer_args=viewer_args | dict(is_label=True))
+                                    cache_level=1,
+                                    viewer_args=viewer_args | dict(is_label=True))
         return result
 
 
@@ -591,6 +614,7 @@ def map_ncell_vector_to_total(ndblock: NDBlock[np.float64]) -> NDBlock[np.float6
     Returns:
         The summed ncell by block; coordinates of each ncell is the center of the block
     """
+
     def map_fn(block: npt.NDArray[np.float64], block_info):
         slices = block_info[0]['array-location']
         midpoint = np.array(tuple((s.stop - s.start + 1) / 2 + s.start for s in slices), dtype=np.float64)
@@ -599,6 +623,7 @@ def map_ncell_vector_to_total(ndblock: NDBlock[np.float64]) -> NDBlock[np.float6
         result[0, :-1] = midpoint
         result[0, -1] = block[:, -1].sum()
         return result
+
     return NDBlock.map_ndblocks([ndblock], map_fn, out_dtype=np.float64)
 
 
@@ -611,8 +636,10 @@ def heatmap_logging(aggregate_ndblock: NDBlock[np.float64],
     if not cache_exists:
         block = aggregate_ndblock.select_columns([-1])
         ndim = block.get_ndim()
+
         def map_fn(block: npt.NDArray[np.float64], block_info=None):
             return block.reshape((1,) * ndim)
+
         block = block.map_ndblocks([block], map_fn, out_dtype=np.float64)
         block = block.as_numpy()
         np.save(np_arr_path, block)

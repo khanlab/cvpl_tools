@@ -1,6 +1,6 @@
 ## Computer Vision Pipeline Tools
 
-[`cvpl_tools` documentation](https://www.khanlab.ca/cvpl_tools/API/napari_zarr.html)
+[`cvpl_tools` documentation](https://www.khanlab.ca/cvpl_tools/index.html)
 
 cvpl_tools is a Python package for utilities and classes related to the file I/O, dataset record keeping for image processing and computer vision.
 
