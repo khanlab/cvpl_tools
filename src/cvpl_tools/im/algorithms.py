@@ -67,7 +67,7 @@ def np_map_block(im: npt.NDArray, block_sz) -> npt.NDArray:
 def np_unique(lbl_im: npt.NDArray[np.int32], return_index: bool = False,
               return_inverse: bool = False, return_counts: bool = False,
               axis=None, *,
-              equal_nan: bool = False):
+              equal_nan: bool = False) -> npt.NDArray:
     """Before 2.0.0, numpy will return an array of 1d regardless of input shape
     
     This function fixes this by forcing the function signature working the same as version 2

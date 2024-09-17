@@ -4,10 +4,10 @@ import numpy.typing as npt
 import dask.array as da
 from cvpl_tools.im.ndblock import NDBlock
 import cvpl_tools.im.algorithms as algorithms
+import cvpl_tools.im.dask_label as dask_label
 from scipy.ndimage import (
     label as instance_label
 )
-from dask_image.ndmeasure import label as dask_label
 
 
 class DirectBSToOS(BlockToBlockProcess):
@@ -37,25 +37,19 @@ class DirectBSToOS(BlockToBlockProcess):
         if not self.is_global or isinstance(im, np.ndarray):
             return super().forward(im, cid, viewer_args)
 
+        _, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
+
         if viewer_args is None:
             viewer_args = {}
 
-        def compute():
-            nonlocal im
-            if isinstance(im, NDBlock):
-                is_ndblock = True
-                im = im.as_dask_array()
-            else:
-                is_ndblock = False
-            im, nlbl = dask_label(im)
-            if is_ndblock:
-                im = NDBlock(im)
-            return im
-
-        im = self.tmpdir.cache_im(compute,
-                                  cid=cid,
-                                  cache_level=1,
-                                  viewer_args=viewer_args | dict(is_label=self.is_label))
+        im = cache_dir.cache_im(lambda: dask_label.label(im,
+                                                         cache_dir=cache_dir,
+                                                         output_dtype=np.int32,
+                                                         viewer_args=dict(logging=True,
+                                                                          client=viewer_args['client']))[0],
+                                cid='global_os',
+                                cache_level=1,
+                                viewer_args=viewer_args | dict(is_label=self.is_label))
         return im
 
     def np_forward(self, bs: npt.NDArray[np.uint8], block_info=None) -> npt.NDArray[np.int32]:

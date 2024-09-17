@@ -14,8 +14,24 @@ from cvpl_tools.im.ndblock import NDBlock
 import dask.array as da
 import shutil
 import os
-from cvpl_tools.fs import ensure_dir_exists as ensure_dir_exists
 from cvpl_tools.ome_zarr.napari.zarr_viewer import add_ome_zarr_array_from_path
+
+
+def ensure_dir_exists(dir_path, remove_if_already_exists):
+    """
+    If a directory does not exist, make a new directory with the name.
+    This assumes the parent directory must exists; otherwise a path not
+    found error will be thrown.
+    Args:
+        dir_path: The path of folder
+        remove_if_already_exists: if True and the folder already exists, then remove it and make a new one.
+    """
+    if os.path.exists(dir_path):
+        if remove_if_already_exists:
+            shutil.rmtree(dir_path)
+            os.mkdir(dir_path)
+    else:
+        os.mkdir(dir_path)
 
 
 class ImageFormat(enum.Enum):
@@ -362,7 +378,8 @@ class CacheDirectory(CachePath):
         """Return a directory that is guaranteed to be empty within the temporary directory
 
         This is the interface to create new CachePath or CacheDirectory within this directory.
-        The directory will not be immediately created but need to be done manually if is_dir=False
+        The directory will not be immediately created but need to be done manually if is_dir=False.
+        When cid=None, the first returned variable (is_cached) will always be False
 
         Args:
             is_dir: If False, this creates a subfolder that have no children; if True, this creates

@@ -1,3 +1,8 @@
+"""
+*DEPRECATED*
+"""
+
+
 from cvpl_tools.fs import ImFileType, ImReadSetting, ImIO
 
 

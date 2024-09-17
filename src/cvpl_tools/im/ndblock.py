@@ -21,7 +21,7 @@ import dask
 import functools
 import operator
 import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
-from cvpl_tools.im.partd_server import SQLitePartd, Server
+from cvpl_tools.im.partd_server import SQLitePartd, SqliteServer
 
 
 class ReprFormat(enum.Enum):
@@ -208,19 +208,25 @@ class NDBlock(Generic[ElementType], abc.ABC):
             cvpl_ome_zarr_io.write_ome_zarr_image(f'{file}/dask_im', da_arr=ndblock.arr,
                                                   make_zip=False, MAX_LAYER=downsample_level)
         else:
-            server = Server(f'{file}/blocks_kvstore', available_memory=1e6)
+            server = SqliteServer(f'{file}/blocks_kvstore', available_memory=1e6)
             server_address = server.address
+
             @dask.delayed
             def save_block(block_index, block):
                 block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
+                dprint(f'saving_____{block_id}')
                 store = partd.Client(server_address)
                 store.append({
                     block_id: pickle.dumps(block)
                 })
                 store.close()
 
+            for block_index, (block, _) in ndblock.arr.items():
+                print('TO BE SAVED', block_index)
             tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
             dask.compute(*tasks)
+            import time
+            time.sleep(1)  # TODO: find out why this is needed? Fix this
             server.close()
 
         NDBlock.save_properties(f'{file}/properties.json', ndblock.properties)
@@ -284,6 +290,10 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     def get_repr_format(self) -> ReprFormat:
         return self.properties['repr_format']
+
+    @property
+    def ndim(self) -> int:
+        return self.properties['ndim']
 
     def get_ndim(self) -> int:
         return self.properties['ndim']
@@ -383,6 +393,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
         if rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             # TODO: optimize this
+            print('BRANCH DICT TAKEN')
             self.to_dask_array()
             rformat = self.get_repr_format()
 
@@ -431,10 +442,12 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 - Tests if the array if just loaded from disk; if it is, then no double computation possible since 
                     there are no intermediate steps in the first place
                 """
+                print('BRANCH A')
                 if not os.path.exists(tmp_dirpath):
                     NDBlock.save(tmp_dirpath, self)
                 ndblock_to_be_combined = NDBlock.load(tmp_dirpath)
             else:
+                print('BRANCH B')
                 ndblock_to_be_combined = self
             ndblock_to_be_combined.ensure_materialized()
 
@@ -532,10 +545,12 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     @staticmethod
     def map_ndblocks(
-        inputs: Sequence[NDBlock],
-        fn: Callable,
-        out_dtype: np.dtype,
-        use_input_index_as_arrloc: int = 0
+            inputs: Sequence[NDBlock],
+            fn: Callable,
+            out_dtype: np.dtype,
+            use_input_index_as_arrloc: int = 0,
+            new_slices: list = None,
+            fn_args: dict = None
     ) -> NDBlock:
         """Similar to da.map_blocks, but works with NDBlock.
 
@@ -549,10 +564,15 @@ class NDBlock(Generic[ElementType], abc.ABC):
             out_dtype: Output block type (provide a Numpy dtype to this)
             use_input_index_as_arrloc: output slices_list will be the same as this input (ignore this for variable
                 sized blocks)
+            new_slices: will be used to replace the slices attribute if specified
+            fn_args: extra arguments to be passed to the mapping function
 
         Returns:
             Result mapped, of format ReprFormat.DICT_BLOCK_INDEX_SLICES
         """
+        if fn_args is None:
+            fn_args = dict()
+
         inputs = list(inputs)
         assert len(inputs) > 0, 'Must have at least one input!'
 
@@ -560,8 +580,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
         for i in range(1, len(inputs)):
             assert is_numpy == (inputs[i].get_repr_format() == ReprFormat.NUMPY_ARRAY), \
                 ('All inputs must either be all dask or all Numpy, expected '
-                  f'is_numpy={is_numpy} but found wrong typed input at '
-                  f'location {i}')
+                 f'is_numpy={is_numpy} but found wrong typed input at '
+                 f'location {i}')
 
         if is_numpy:
             block_info = []
@@ -572,7 +592,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                     'chunk-location': (0,) * arr.ndim,
                     'array-location': list((0, s) for s in arr.shape)
                 })
-            return NDBlock(fn(*inputs, block_info))
+            return NDBlock(fn(*inputs, block_info, **fn_args))
 
         # we can assume the inputs are all dask, now turn them all into block iterator
         block_iterators = []
@@ -583,9 +603,11 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 new_block.to_dict_block_index_slices()
             block_iterators.append(new_block)
 
+        # write in this form mostly for debugging convenience, equivalently:
+        # delayed_fn = dask.delayed(fn)
         @dask.delayed
-        def delayed_fn(*blocks, block_info):
-            return fn(*blocks, block_info)
+        def delayed_fn(*blocks, block_info, **kwargs):
+            return fn(*blocks, block_info, **kwargs)
 
         result = {}
         for block_index in block_iterators[use_input_index_as_arrloc].arr.keys():
@@ -598,19 +620,23 @@ class NDBlock(Generic[ElementType], abc.ABC):
                     'chunk-location': block_index,
                     'array-location': slices,
                 })
-            result[block_index] = (delayed_fn(*blocks, block_info=block_info),
+            result[block_index] = (delayed_fn(*blocks, block_info=block_info, **fn_args),
                                    block_info[use_input_index_as_arrloc]['array-location'])
 
         ndim = block_iterators[0].get_ndim()
         numblocks = block_iterators[0].get_numblocks()
         result_ndblock = NDBlock(None)
         result_ndblock.arr = result
+        if new_slices is None:
+            slices_list = block_iterators[use_input_index_as_arrloc].properties['slices_list']
+        else:
+            slices_list = new_slices
         result_ndblock.properties = dict(
             repr_format=ReprFormat.DICT_BLOCK_INDEX_SLICES,
             ndim=ndim,
             numblocks=numblocks,
             block_indices=[k for k in block_iterators[use_input_index_as_arrloc].arr.keys()],
-            slices_list=block_iterators[use_input_index_as_arrloc].properties['slices_list'],
+            slices_list=slices_list,
             is_numpy=False,
             dtype=out_dtype
         )
@@ -629,3 +655,9 @@ class NDBlock(Generic[ElementType], abc.ABC):
         else:
             ndblock.arr = ndblock.arr[:, cols]
         return ndblock
+
+    def run_delayed_discard_results(self):
+        assert (self.properties['repr_format'] == ReprFormat.DICT_BLOCK_INDEX_SLICES and
+                not self.properties['is_numpy'])
+        for value in self.arr.values():
+            value[0]()

@@ -1,4 +1,6 @@
 """
+*DEPRECATED*
+
 fs.py
 This is a file that provides methods to interface with image files.
 

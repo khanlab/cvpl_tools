@@ -1,4 +1,6 @@
 """
+*DEPRECATED*
+
 This file handles file persistence of common objects used in pipeline. For example, dataset references
 that specifies the files in a dataset can be stored as a file and read using the interfaces in this
 file. Note that many file format is a directory containing a single file, which may seem that the directory
@@ -8,7 +10,7 @@ about the object class' instance.
 import copy
 import shutil
 import json
-from cvpl_tools.fs import ensure_dir_exists
+from cvpl_tools.im.fs import ensure_dir_exists
 from cvpl_tools.strenc import get_encoder, get_decoder_hook
 from cvpl_tools.dataset_reference import DatasetReference
 

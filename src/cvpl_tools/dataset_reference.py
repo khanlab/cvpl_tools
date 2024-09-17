@@ -1,4 +1,5 @@
 """
+*DEPRECATED*
 This file defines DatapointReference and DatasetReference
 
 A dataset reference consists of many data point references. Its job is to make

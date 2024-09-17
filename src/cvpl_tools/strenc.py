@@ -1,4 +1,6 @@
 """
+*DEPRECATED*
+
 This file provides a JSON encoder and its corresponding decoder ('s hook).
 To encode an object supported by this encoder:
 json_string = json.dumps(object, cls=strenc.get_encoder())

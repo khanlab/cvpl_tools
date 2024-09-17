@@ -11,14 +11,21 @@ from partd.buffer import Buffer
 import sqlite3
 from partd.core import Interface
 import locket
+from dask.distributed import print as dprint
 
 
 class SQLiteKVStore:
     def __init__(self, db_path: str):
+        dprint(f'OPENING A CONNECTION AT PATH {db_path}')
         self.is_exists = os.path.exists(db_path)  # may not be accurate
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
+        assert self.cursor is not None
+        self.write_row_stmt = None
+        self.read_row_stmt = None
+        self.init_db()
 
+    def init_db(self):
         if not self.is_exists:
             self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS kv_store (
@@ -26,32 +33,42 @@ class SQLiteKVStore:
                 value TEXT
             )
             ''')
+        self.write_row_stmt = """
+        INSERT INTO kv_store (id, value) VALUES (?, ?)
+        ON CONFLICT(id) DO UPDATE SET value=excluded.value;
+        """
+        self.read_row_stmt = """
+        SELECT value FROM kv_store WHERE id = ?
+        """
 
     def write_rows(self, tups):
-        self.cursor.executemany('''
-        INSERT INTO kv_store (id, value) VALUES (?, ?)
-        ON CONFLICT(id) DO UPDATE SET value=excluded.value;
-        ''', tups)
+        dprint(f'WRITING TUPLES AT {tuple(tup[0] for tup in tups)}')
+        self.cursor.executemany(self.write_row_stmt, tups)
 
     def write_row(self, tup):
-        self.cursor.execute('''
-        INSERT INTO kv_store (id, value) VALUES (?, ?)
-        ON CONFLICT(id) DO UPDATE SET value=excluded.value;
-        ''', tup)
+        dprint(f'WRITING TUPLE AT {tup[0]}')
+        self.cursor.execute(self.write_row_stmt, tup)
 
     def read_rows(self, ids):
+        dprint(f'READING ROWS AT {ids}')
         return [self.read_row(id) for id in ids]
 
     def read_row(self, id):
-        self.cursor.execute('''
-        SELECT value FROM kv_store WHERE id = ?
-        ''', (id,))
-        return self.cursor.fetchone()[0]
+        dprint(f'READING ROW AT {id}')
+        self.cursor.execute(self.read_row_stmt, (id,))
+        result = self.cursor.fetchone()
+
+        if result is None:
+            dprint('READING ROW FAILED AT', id, self.read_row_stmt)
+        result = result[0]
+        return result
 
     def commit(self):
+        dprint('COMMITING')
         self.conn.commit()
 
     def close(self):
+        dprint('CLOSING')
         self.conn.close()
 
 
@@ -92,10 +109,15 @@ reference: https://github.com/dask/partd/blob/main/partd/file.py commit hash: ef
 
 
 class SQLitePartd(Interface):
-    def __init__(self, path: str):
+    def __init__(self, path: str, create_kv_store=None):
+        """path is an directory under which the lock file will be placed"""
         self.path = path
         os.makedirs(path, exist_ok=True)
-        self.kv_store = SQLiteKVStore(f'{path}/sqlite.db')
+        if create_kv_store is None:
+            def create_kv_store():
+                return SQLiteKVStore(f'{path}/sqlite.db')
+        self.kv_store = create_kv_store()
+        self.create_kv_store = create_kv_store
         self.lock = locket.lock_file(f'{path}/.lock')
         Interface.__init__(self)
 
@@ -156,7 +178,7 @@ class SQLitePartd(Interface):
             shutil.rmtree(self.path)
         self._iset_seen.clear()
         os.mkdir(self.path)
-        self.kv_store = SQLiteKVStore(f'{self.path}/sqlite.db')
+        self.kv_store = self.create_kv_store()
 
     def close(self):
         self.kv_store.close()
@@ -185,16 +207,20 @@ def logerrors():
         raise
 
 
-class Server:
+class SqliteServer:
     """
-    Server class is modified from the Server/Client class file below:
+    SqliteServer class is modified from the Server/Client class file below:
     https://github.com/dask/partd/blob/main/partd/zmq.py
     """
-    def __init__(self, path, bind=None, available_memory=None):
+    def __init__(self, path, bind=None, available_memory=None, get_sqlite_partd=None):
         self.context = zmq.Context()
 
         self.path = path
         self.available_memory = available_memory
+        if get_sqlite_partd is None:
+            def get_sqlite_partd():
+                return SQLitePartd(path)
+        self._get_sqlite_partd = get_sqlite_partd
 
         self.socket = self.context.socket(zmq.ROUTER)
 
@@ -216,7 +242,7 @@ class Server:
         self.start()
 
     def get_partd(self):
-        partd = SQLitePartd(self.path)
+        partd = self._get_sqlite_partd()
         if self.available_memory is not None:
             buffer_partd = Buffer(Dict(), partd, available_memory=self.available_memory)
         else:
