@@ -16,7 +16,6 @@ from dask.distributed import print as dprint
 
 class SQLiteKVStore:
     def __init__(self, db_path: str):
-        dprint(f'OPENING A CONNECTION AT PATH {db_path}')
         self.is_exists = os.path.exists(db_path)  # may not be accurate
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
@@ -42,33 +41,25 @@ class SQLiteKVStore:
         """
 
     def write_rows(self, tups):
-        dprint(f'WRITING TUPLES AT {tuple(tup[0] for tup in tups)}')
         self.cursor.executemany(self.write_row_stmt, tups)
 
     def write_row(self, tup):
-        dprint(f'WRITING TUPLE AT {tup[0]}')
         self.cursor.execute(self.write_row_stmt, tup)
 
     def read_rows(self, ids):
-        dprint(f'READING ROWS AT {ids}')
         return [self.read_row(id) for id in ids]
 
     def read_row(self, id):
-        dprint(f'READING ROW AT {id}')
         self.cursor.execute(self.read_row_stmt, (id,))
         result = self.cursor.fetchone()
 
-        if result is None:
-            dprint('READING ROW FAILED AT', id, self.read_row_stmt)
         result = result[0]
         return result
 
     def commit(self):
-        dprint('COMMITING')
         self.conn.commit()
 
     def close(self):
-        dprint('CLOSING')
         self.conn.close()
 
 

@@ -15,6 +15,7 @@ import numpy as np
 import numpy.typing as npt
 from ome_zarr.io import parse_url
 import urllib.parse
+import numcodecs
 
 
 # ----------------------------------Part 1: utilities---------------------------------------
@@ -100,7 +101,9 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
                                 da_arr: da.Array | None = None,
                                 lbl_arr: da.Array | None = None,
                                 lbl_name: str | None = None,
-                                MAX_LAYER: int = 3):
+                                MAX_LAYER: int = 3,
+                                storage_options: dict = None,
+                                lbl_storage_options: dict = None):
     """Direct write of dask array to target ome zarr group (can not be a zip)
 
     Args:
@@ -109,7 +112,15 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
         lbl_arr: If provided, this is the array to write at zarr_group['labels'][lbl_name]
         lbl_name: name of the label array subgroup
         MAX_LAYER: The maximum layer of down sampling; starting at layer=0
+        storage_options: options for storing the image
+        lbl_storage_options: options for storing the labels
     """
+    if storage_options is None:
+        compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
+        storage_options = dict(
+            dimension_separator='/',
+            compressor=compressor
+        )
     if da_arr is not None:
         # assert the group is empty, since we are writing a new group
         for mem in zarr_group:
@@ -122,7 +133,7 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
                            group=zarr_group,
                            scaler=scaler,
                            coordinate_transformations=_get_coord_transform_yx_for_write(da_arr.ndim, MAX_LAYER),
-                           storage_options={'dimension_separator': '/'},
+                           storage_options=storage_options,
                            axes=_get_axes_for_write(da_arr.ndim))
 
     if lbl_arr is not None:
@@ -133,14 +144,15 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
         # type axes. So we need to fall back to manual definition, avoid 'c' which defaults to a channel type
         lbl_axes = [{'name': ch, 'type': 'space'} for ch in _get_axes_for_write(lbl_arr.ndim)]
 
-        import numcodecs
-        compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
+        if lbl_storage_options is None:
+            compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
+            lbl_storage_options = dict(compressor=compressor)
         writer.write_labels(labels=lbl_arr,
                             group=zarr_group,
                             scaler=scaler,
                             name=lbl_name,
                             coordinate_transformations=_get_coord_transform_yx_for_write(lbl_arr.ndim, MAX_LAYER),
-                            storage_options=dict(compressor=compressor),
+                            storage_options=lbl_storage_options,
                             axes=lbl_axes)
         # ome_zarr.writer.write_label_metadata(group=g,
         #                      name=f'/labels/{lbl_name}',
@@ -154,7 +166,9 @@ def write_ome_zarr_image(ome_zarr_path: str,
                          lbl_name: str | None = None,
                          make_zip: bool | None = None,
                          MAX_LAYER: int = 0,
-                         logging=False):
+                         logging=False,
+                         storage_options: dict = None,
+                         lbl_storage_options: dict = None):
     """Write dask array as an ome zarr
 
     For writing to zip file: due to dask does not directly support write to zip file, we instead create a temp ome zarr
@@ -169,6 +183,8 @@ def write_ome_zarr_image(ome_zarr_path: str,
         make_zip: bool, if True the output is a zip; if False a folder; if None, then determine based on file suffix
         MAX_LAYER: The maximum layer of down sampling; starting at layer=0
         logging: If true, print message when job starts and ends
+        storage_options: options for storing the image
+        lbl_storage_options: options for storing the labels
     """
     if tmp_path is not None:
         os.makedirs(tmp_path, exist_ok=True)
@@ -187,7 +203,9 @@ def write_ome_zarr_image(ome_zarr_path: str,
 
     store = ome_zarr.io.parse_url(folder_ome_zarr_path, mode='w').store
     g = zarr.group(store)
-    write_ome_zarr_image_direct(g, da_arr, lbl_arr, lbl_name, MAX_LAYER=MAX_LAYER)
+    write_ome_zarr_image_direct(g, da_arr, lbl_arr, lbl_name, MAX_LAYER=MAX_LAYER,
+                                storage_options=storage_options,
+                                lbl_storage_options=lbl_storage_options)
     if logging:
         print('Folder is written.')
     store.close()

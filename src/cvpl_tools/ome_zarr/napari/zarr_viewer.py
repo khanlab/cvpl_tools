@@ -8,6 +8,8 @@ import napari
 import zarr
 import dask.array as da
 from cvpl_tools.ome_zarr.io import load_zarr_group_from_path
+import numpy as np
+import numpy.dtypes as np_dtypes
 
 
 # -------------Part 1: convenience functions, for adding ome zarr images using paths--------------
@@ -82,6 +84,13 @@ def _add_ch(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group,
         i_str = str(i)
         if i_str in zarr_group:  # by ome zarr standard, image pyramid starts from 0 to NLEVEL - 1
             multiscale.append(arr_from_group(zarr_group[i_str]))
+            ty = np.dtype(multiscale[-1].dtype)
+            if isinstance(ty, np_dtypes.VoidDType):
+                if list(ty.fields.items())[0][1][0] == np.int32:
+                    new_ty = np.int32
+                else:
+                    print(f'got {ty} of type {type(ty)}')
+                multiscale[-1] = multiscale[-1].astype(np.int32)
         else:
             break
     if is_label:

@@ -214,15 +214,12 @@ class NDBlock(Generic[ElementType], abc.ABC):
             @dask.delayed
             def save_block(block_index, block):
                 block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
-                dprint(f'saving_____{block_id}')
                 store = partd.Client(server_address)
                 store.append({
                     block_id: pickle.dumps(block)
                 })
                 store.close()
 
-            for block_index, (block, _) in ndblock.arr.items():
-                print('TO BE SAVED', block_index)
             tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
             dask.compute(*tasks)
             import time
