@@ -110,6 +110,7 @@ class UpsamplingByIntFactor(BlockToBlockProcess):
         return block_to_block_forward(
             tmpdir=self.tmpdir,
             np_forward=self.np_forward,
+            cid=cid,
             im=im,
             viewer_args=viewer_args,
             out_dtype=None,
