@@ -184,19 +184,19 @@ and two optional parameters: cid and viewer_args.</p>
 <ul>
 <li><p>cid specifies the subdirectory under the cache directory (set by the <code class="code docutils literal notranslate"><span class="pre">set_tmpdir</span></code> method of the base
 class) to save intermediate files. If not provided (<code class="code docutils literal notranslate"><span class="pre">cid=None</span></code>),
-then the cache will be saved in a temporary directory that will be removed when the CacheDirectory is
+then the cache will be saved in a temporary directory that will be removed when the CacheRootDirectory is
 closed. If provided, this cache file will persist. Within the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> method, you should use
 <code class="code docutils literal notranslate"><span class="pre">self.tmpdir.cache()</span></code> and <code class="code docutils literal notranslate"><span class="pre">self.tmpdir.cache_im()</span></code> to create cache files:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ExampleSegProcess</span><span class="p">(</span><span class="n">SegProcess</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-        <span class="n">cache_exists</span><span class="p">,</span> <span class="n">cache_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">is_dir</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cptr</span><span class="p">:</span> <span class="n">CachePointer</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">cache_path</span> <span class="o">=</span> <span class="n">cptr</span><span class="o">.</span><span class="n">subpath</span><span class="p">()</span>
 
-        <span class="c1"># in the case cache does not exists, cache_path.path is an empty path we can create a folder in:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_exists</span><span class="p">:</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="c1"># in the case cache does not exists, cache_path.abs_path is an empty path we can create a folder in:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">abs_path</span><span class="p">)</span>
             <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
-            <span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">abs_path</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">abs_path</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
 </pre></div>
 </div>
@@ -206,11 +206,11 @@ closed. If provided, this cache file will persist. Within the <code class="code 
 should use <code class="code docutils literal notranslate"><span class="pre">viewer.add_labels()</span></code>, <code class="code docutils literal notranslate"><span class="pre">lc_interpretable_napari()</span></code> or <code class="code docutils literal notranslate"><span class="pre">temp_directory.cache_im()</span></code>
 while passing in <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> argument to display your results:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ExampleSegProcess</span><span class="p">(</span><span class="n">SegProcess</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">viewer_args</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cptr</span><span class="p">:</span> <span class="n">CachePointer</span><span class="p">,</span> <span class="n">viewer_args</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">viewer_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">viewer_args</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">cache_im</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">cptr</span><span class="o">.</span><span class="n">im</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>  <span class="c1"># caching result at location pointed by cptr</span>
         <span class="k">return</span> <span class="n">result</span>
 <span class="c1"># ...</span>
 <span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">(</span><span class="n">ndisplay</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
@@ -221,7 +221,7 @@ while passing in <code class="code docutils literal notranslate"><span class="pr
     <span class="n">multiscale</span><span class="o">=</span><span class="mi">4</span> <span class="k">if</span> <span class="n">viewer</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># maximum downsampling level of OME ZARR files, necessary for very large images</span>
 <span class="p">)</span>
 <span class="n">process</span> <span class="o">=</span> <span class="n">ExampleSegProcess</span><span class="p">()</span>
-<span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>
+<span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cptr</span> <span class="o">=</span> <span class="n">root_dir</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;compute&#39;</span><span class="p">),</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> is a parameter that allows us to visualize the saved results as part of the caching
@@ -244,7 +244,7 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
     <span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
     <span class="kn">import</span> <span class="nn">napari</span>
     <span class="k">with</span> <span class="p">(</span><span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}),</span>
-          <span class="n">imfs</span><span class="o">.</span><span class="n">CacheDirectory</span><span class="p">(</span>
+          <span class="n">imfs</span><span class="o">.</span><span class="n">CacheRootDirectory</span><span class="p">(</span>
               <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">TMP_PATH</span><span class="si">}</span><span class="s1">/CacheDirectory&#39;</span><span class="p">,</span>
               <span class="n">remove_when_done</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
               <span class="n">read_if_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_directory</span><span class="p">):</span>
