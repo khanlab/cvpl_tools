@@ -66,7 +66,6 @@ from typing import Callable, Any, Sequence
 
 import cvpl_tools.im.fs as imfs
 import cvpl_tools.im.algorithms as algorithms
-import cvpl_tools.im.ndblock as ndblock
 from cvpl_tools.im.ndblock import NDBlock
 import dask.array as da
 from dask.distributed import print as dprint
@@ -149,22 +148,7 @@ logger = logging.getLogger('SEG_PROCESSES')
 
 class SegProcess(abc.ABC):
     def __init__(self):
-        self.tmpdir: imfs.CacheDirectory | None = None
-        self.cid_prefix: str | None = None
-
-    def set_tmpdir(self, tmpdir: imfs.CacheDirectory):
-        """Use this to cache output results
-
-        For output images that involves interpretation with napari, this is necessary for a smooth display of the
-        results.
-
-        Args:
-            tmpdir: Any cvpl_tools.im.fs.CacheDirectory object that allows many temporary objects to be written
-                as cache in the directory
-        """
-        assert isinstance(tmpdir, imfs.CacheDirectory), \
-            f'Expected type cvpl_tools.im.fs.CacheDirectory, got {type(tmpdir)}'
-        self.tmpdir = tmpdir
+        pass
 
     @abc.abstractmethod
     def forward(self, *args, **kwargs) -> Any:  # removed viewer explicitly since that seems to cause issue in IDE docs
@@ -183,11 +167,13 @@ class SegProcess(abc.ABC):
         raise NotImplementedError("SegProcess base class does not implement forward()!")
 
 
-def block_to_block_forward(tmpdir: imfs.CacheDirectory,
-                           np_forward: Callable, im: npt.NDArray | da.Array | NDBlock,
-                           cid: str | None = None, viewer_args=None,
-                           out_dtype: np.dtype = None, is_label: bool = False,
-                           compute_chunk_sizes: bool = False):
+def block_to_block_forward(
+        np_forward: Callable,
+        im: npt.NDArray | da.Array | NDBlock,
+        cptr: imfs.CachePointer,
+        viewer_args=None,
+        out_dtype: np.dtype = None, is_label: bool = False,
+        compute_chunk_sizes: bool = False):
     if viewer_args is None:
         viewer_args = {}
 
@@ -225,10 +211,9 @@ def block_to_block_forward(tmpdir: imfs.CacheDirectory,
     patched = viewer_args
     if is_label is not None:
         patched |= dict(is_label=is_label)
-    result = tmpdir.cache_im(compute,
-                             cid=cid,
-                             cache_level=1,
-                             viewer_args=patched)
+    result = cptr.im(fn=compute,
+                     cache_level=1,
+                     viewer_args=patched)
     return result
 
 
@@ -245,16 +230,17 @@ class BlockToBlockProcess(SegProcess):
     def set_is_label(self, is_label: bool | None):
         self.is_label = is_label
 
-    def forward(self, im: npt.NDArray | da.Array | NDBlock, cid: str | None = None, viewer_args=None) \
+    def forward(self, im: npt.NDArray | da.Array | NDBlock, cptr: imfs.CachePointer, viewer_args=None) \
             -> npt.NDArray | da.Array | NDBlock:
-        return block_to_block_forward(tmpdir=self.tmpdir,
-                                      np_forward=self.np_forward,
-                                      im=im,
-                                      cid=cid,
-                                      viewer_args=viewer_args,
-                                      out_dtype=self.out_dtype,
-                                      is_label=self.is_label,
-                                      compute_chunk_sizes=self.compute_chunk_sizes)
+        return block_to_block_forward(
+            np_forward=self.np_forward,
+            im=im,
+            cptr=cptr,
+            viewer_args=viewer_args,
+            out_dtype=self.out_dtype,
+            is_label=self.is_label,
+            compute_chunk_sizes=self.compute_chunk_sizes
+        )
 
     @abc.abstractmethod
     def np_forward(self, im: npt.NDArray, block_info=None) -> npt.NDArray:
@@ -323,13 +309,13 @@ class BlobDog(SegProcess):
 
     def forward(self,
                 im: npt.NDArray[np.float32] | da.Array,
-                cid: str = None,
+                cptr: imfs.CachePointer,
                 viewer_args: dict = None
                 ) -> NDBlock:
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
-        ndblock = self.tmpdir.cache_im(lambda: self.feature_forward(im), cid=cid, cache_level=1)
+        ndblock = cptr.im(lambda: self.feature_forward(im), cache_level=1)
 
         if viewer and viewer_args.get('display_points', True):
             blobdog = ndblock.reduce(force_numpy=True)
@@ -404,25 +390,25 @@ class SumScaledIntensity(SegProcess):
 
         return NDBlock.map_ndblocks([NDBlock(im)], map_fn, out_dtype=np.float64)
 
-    def forward(self, im: npt.NDArray | da.Array, cid: str = None, viewer_args: dict = None) \
+    def forward(self, im: npt.NDArray | da.Array, cptr: imfs.CachePointer, viewer_args: dict = None) \
             -> NDBlock | npt.NDArray:
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
-        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
 
-        forwarded = cache_dir.cache_im(
+        cdir = cptr.subdir()
+        forwarded = cdir.cache_im(
             fn=lambda: self.feature_forward(im),
             cid='forwarded',
             cache_level=2
         )
 
         if viewer:
-            mask = cache_dir.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
-                                      cache_level=2,
-                                      viewer_args=viewer_args | dict(is_label=True))
+            mask = cdir.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
+                                 cache_level=2,
+                                 viewer_args=viewer_args | dict(is_label=True))
             if self.spatial_box_width is not None and viewer_args.get('display_points', True):
-                ssi = cache_dir.cache_im(
+                ssi = cdir.cache_im(
                     fn=lambda: self.feature_forward(im, spatial_block_width=self.spatial_box_width).reduce(
                         force_numpy=True),
                     cid='ssi',
@@ -430,13 +416,13 @@ class SumScaledIntensity(SegProcess):
                 )
                 lc_interpretable_napari('ssi_block', ssi, viewer, im.ndim, ['ncells'])
 
-            aggregate_ndblock: NDBlock[np.float64] = cache_dir.cache_im(
+            aggregate_ndblock: NDBlock[np.float64] = cdir.cache_im(
                 fn=lambda: map_ncell_vector_to_total(forwarded), cid='aggregate_ndblock',
                 cache_level=2
             )
-            heatmap_cache_exists, heatmap_cache_dir = cache_dir.cache(is_dir=True, cid='cell_density_map')
+            heatmap_cptr = cdir.cache(cid='cell_density_map')
             chunk_size = NDBlock(im).get_chunksize()
-            heatmap_logging(aggregate_ndblock, heatmap_cache_exists, heatmap_cache_dir, viewer_args, chunk_size)
+            heatmap_logging(aggregate_ndblock, heatmap_cptr, viewer_args, chunk_size)
 
         def fn():
             ndblock = forwarded.select_columns([-1])
@@ -444,7 +430,7 @@ class SumScaledIntensity(SegProcess):
                 ndblock = ndblock.reduce(force_numpy=False)
             return ndblock
 
-        ssi_result = cache_dir.cache_im(fn=fn, cid='ssi_result', cache_level=1)
+        ssi_result = cdir.cache_im(fn=fn, cid='ssi_result', cache_level=1)
 
         return ssi_result
 
@@ -557,13 +543,13 @@ class BinaryAndCentroidListToInstance(SegProcess):
     def forward(self,
                 bs: npt.NDArray[np.uint8] | da.Array,
                 lc: NDBlock[np.float64],
-                cid: str | None = None,
+                cptr: imfs.CachePointer,
                 viewer_args: dict = None
                 ) -> npt.NDArray[np.int32] | da.Array:
+        cdir = cptr.subdir()
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
-        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
 
         if viewer:
             def compute_lbl():
@@ -575,9 +561,9 @@ class BinaryAndCentroidListToInstance(SegProcess):
                     )
                 return lbl_im
 
-            lbl_im = cache_dir.cache_im(fn=compute_lbl, cid='before_split',
-                                        cache_level=2,
-                                        viewer_args=viewer_args | dict(is_label=True))
+            lbl_im = cdir.cache_im(fn=compute_lbl, cid='before_split',
+                                   cache_level=2,
+                                   viewer_args=viewer_args | dict(is_label=True))
 
         def compute_result():
             nonlocal bs, lc
@@ -595,13 +581,14 @@ class BinaryAndCentroidListToInstance(SegProcess):
             if is_numpy:
                 result = ndblock.as_numpy()
             else:
-                tmp_path = self.tmpdir.cache(is_dir=False, cid='blocks')[1].path
+                tmp_path = cdir.cache_subpath(cid='blocks')[1].abs_path
                 result = ndblock.as_dask_array(tmp_path)
             return result
 
-        result = cache_dir.cache_im(fn=compute_result, cid='result',
-                                    cache_level=1,
-                                    viewer_args=viewer_args | dict(is_label=True))
+        result = cdir.cache_im(fn=compute_result,
+                               cid='result',
+                               cache_level=1,
+                               viewer_args=viewer_args | dict(is_label=True))
         return result
 
 
@@ -628,12 +615,12 @@ def map_ncell_vector_to_total(ndblock: NDBlock[np.float64]) -> NDBlock[np.float6
 
 
 def heatmap_logging(aggregate_ndblock: NDBlock[np.float64],
-                    cache_exists: bool,
-                    cache_dir: imfs.CacheDirectory,
+                    cptr: imfs.CachePointer,
                     viewer_args: dict,
                     chunk_size: tuple):
-    np_arr_path = f'{cache_dir.path}/density_map.npy'
-    if not cache_exists:
+    cdir = cptr.subdir()
+    np_arr_path = f'{cdir.abs_path}/density_map.npy'
+    if not cdir.exists:
         block = aggregate_ndblock.select_columns([-1])
         ndim = block.get_ndim()
 

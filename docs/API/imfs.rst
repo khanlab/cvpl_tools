@@ -14,3 +14,5 @@ View source at `fs.py <https://github.com/khanlab/cvpl_tools/blob/main/src/cvpl_
     :members:
 .. autoclass:: cvpl_tools.im.fs.CacheDirectory
     :members:
+.. autoclass:: cvpl_tools.im.fs.CacheRootDirectory
+    :members:

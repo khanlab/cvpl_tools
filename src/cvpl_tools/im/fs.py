@@ -1,4 +1,5 @@
-"""This file provides code for image I/O operations, including multithreaded settings
+"""
+This file provides code for image I/O operations, including multithreaded settings
 """
 from __future__ import annotations
 
@@ -168,6 +169,56 @@ def display(file: str, viewer_args: dict):
                                      kwargs=layer_args | dict(is_label=is_label))
 
 
+# -------------------------------------File Caching---------------------------------------------
+
+
+def cache_im(fn,
+             cpath: CachePath,
+             save_fn=save,
+             load_fn=load,
+             cache_level: int | float = 0,
+             viewer_args: dict = None):
+    """Caches an image object
+
+    Args:
+        fn: Computes the image if it's not already cached
+        cpath: The cache ID within this directory
+        save_fn: fn(file: str, im) Used to save the image to file
+        load_fn: fn(file: str) Used to load the image from file
+        cache_level: cache level of this operation; note even if the caching is skipped, if there is
+            a cache file already available on disk then the file will still be read
+        viewer_args: contains viewer and arguments passed to the viewer's add image functions
+
+    Returns:
+        The cached image loaded
+    """
+    if viewer_args is None:
+        viewer_args = {}
+    else:
+        viewer_args = copy.copy(viewer_args)  # since we will pop off some attributes
+
+    preferred_chunksize = viewer_args.pop('preferred_chunksize', None)
+    multiscale = viewer_args.pop('multiscale', 0)
+
+    raw_path = cpath.abs_path
+    skip_cache = viewer_args.get('skip_cache', False) or cache_level > cache_level
+    if not cpath.exists:
+        im = fn()
+        if skip_cache:
+            return im
+        save_fn(raw_path, im, preferred_chunksize=preferred_chunksize, multiscale=multiscale)
+
+    assert os.path.exists(raw_path), f'Directory should be created at path {raw_path}, but it is not found'
+    if not skip_cache and viewer_args.get('viewer', None) is not None:
+        viewer_args['layer_args'] = copy.copy(viewer_args.get('layer_args', {}))
+        viewer_args['layer_args'].setdefault('name', cpath.cid)
+        display(raw_path, viewer_args)
+
+    loaded = load_fn(raw_path)
+
+    return loaded
+
+
 class CachePath:
     """A CachePath class is a pointer to a cached location within a hierarchical directory structure.
 
@@ -175,34 +226,73 @@ class CachePath:
     where CacheDirectory is a subclass of CachePath and contains zero or more CachePath as its children.
     To create a CachePath object, use the CacheDirectory's cache() function to allocate a new or find
     an existing cache location.
+
+    CachePath as its name suggests is not a file but only a pointer. Creating a CachePath object will not
+    create the associated file automatically.
     """
 
-    def __init__(self, path: str, meta: dict = None):
+    def __init__(self, root: CacheRootDirectory, path_segs: tuple[str, ...], meta: dict = None,
+                 parent: CacheDirectory | None = None, exists: bool = False):
         """Create a CachePath object that manages meta info about the cache file or directory
 
         Args:
-            path: The path associated with this CachePath object
+            root: The CacheDirectory that is the root of the directory tree where this file locates under
+            path_segs: The path segments associated with this CachePath object, relative to the root
             meta: The meta information associated with this object; will be automatically inferred
                 from the path (only able to do so in some situations) if None is provided
+            parent: parent of the CachePath object in the cache directory tree; None if this is root
+            exists: True if this object references a existing cached object, False if the referenced
+                object is newly created
         """
-        self._path = path
+        assert isinstance(path_segs, tuple), f'Expected tuple for path_segs, got {type(path_segs)}'
+        self._root = root
+        self._path_segs = path_segs
 
         if meta is None:
-            meta = CachePath.meta_from_filename(os.path.split(path)[1])
+            filename = path_segs[-1]
+            meta = CachePath.meta_from_filename(filename)
 
         self._meta = meta
+        self._parent = parent
+        self._exists = exists
         for key in ('is_dir', 'is_tmp', 'cid'):
             assert key in meta, f'Missing key {key}'
 
     @property
-    def path(self):
+    def root(self) -> CacheRootDirectory:
+        return self._root
+
+    @property
+    def parent(self) -> CacheDirectory | None:
+        return self._parent
+
+    @property
+    def exists(self) -> bool:
+        return self._exists
+
+    @property
+    def filename(self) -> str:
+        """Returns the filename, the last segment of the path
+
+        This is typically cid prepended with is_dir and is_tmp information; do not call this
+        on root directory.
+        """
+        return self._path_segs[-1]
+
+    @property
+    def rel_path(self) -> str:
+        """Obtain the relative os path to the root"""
+        return '/'.join(self._path_segs)
+
+    @property
+    def abs_path(self):
         """Obtain the os path under which you can create a directory
 
-        The first time a CachePath object is created for this path, cache_path.path will point to an empty location;
-        second time onwards if the directory is not removed, then the returned cache_path.path will point to the
+        The first time a CachePath object is created for this path, cache_path.abs_path will point to an empty location;
+        second time onwards if the directory is not removed, then the returned cache_path.abs_path will point to the
         previously existing directory
         """
-        return self._path
+        return '/'.join((self._root.abs_path,) + self._path_segs)
 
     @property
     def is_dir(self):
@@ -286,38 +376,88 @@ class CacheDirectory(CachePath):
     CachePath and CacheDirectory are two classes that implements the file-directory programming pattern.
     """
 
-    def __init__(self, path: str, remove_when_done: bool = True, read_if_exists: bool = True,
-                 cache_level: int | float = np.inf):
+    def __init__(self,
+                 cid: str,
+                 root: CacheRootDirectory,
+                 path_segs: tuple[str, ...],
+                 remove_when_done: bool = True,
+                 read_if_exists: bool = True,
+                 parent: CacheDirectory | None = None,
+                 exists: bool = False):
         """Creates a CacheDirectory instance
+        
+        Unlike CachePath, calling the __init__ of CacheDirectory will create a physical directory 
+        on the disk if one does not already exist.
 
         Args:
-            path: The os path to which the directory is to be created; must be empty if read_if_exists=True
+            cid: cid of the directory
+            root: The root directory containing this tree of cache directories
+            path_segs: The os path to which the directory is to be created; must be empty if read_if_exists=True
             remove_when_done: If True, the entire directory will be removed when it is closed by __exit__; if
                 False, then only the temporary folders within the directory will be removed. (The entire subtree
-                will be traversed to find any file or directory whose is_tmp is True and they will be removed)
+                will be traversed to find any file or directory whose is_tmp is True, and they will be removed)
             read_if_exists: If True, will read from the existing directory at the given path
             cache_level: specifies how much caching to be done; caching operations with level > this will be ignored;
                 default to inf (cache all)
+            parent: parent of the directory in the directory structure; None if is root
+            exists: True if the directory is read from an already existing cache; False if it is created anew
         """
-
-        super().__init__(path, dict(
-            is_dir=True,
-            is_tmp=remove_when_done,
-            cid='_RootDirectory'
-        ))
+        super().__init__(
+            root=root,
+            path_segs=path_segs,
+            meta=dict(
+                is_dir=True,
+                is_tmp=remove_when_done,
+                cid=cid
+            ),
+            parent=parent,
+            exists=exists
+        )
         self.cur_idx = 0
         self.read_if_exists = read_if_exists
-        self.cache_level = cache_level
         self.children: dict[str, CachePath] = {}
 
-        ensure_dir_exists(path, remove_if_already_exists=False)
-        path = self.path
+        abs_path = self.abs_path
         if self.read_if_exists:
-            self.children = CacheDirectory.children_from_path(path, self.cache_level)
+            ensure_dir_exists(abs_path, remove_if_already_exists=False)
+            self.children = self.children_from_path(
+                prefix_path_segs=self._path_segs)
         else:
-            for _ in os.listdir(path):
-                raise FileExistsError('when read_if_exists=False, directory must not contain existing files, '
-                                      f'please check if any file exists under {path}.')
+            assert not exists, 'when read_if_exists=False, directory must be created so must not already exists, ' \
+                               f'please check if any file exists under {abs_path}.'
+
+    def children_from_path(self, prefix_path_segs: tuple[str, ...] = None) -> dict[str, CachePath]:
+        """Examine an existing directory path, return recursively all files and directories as dict.
+
+        Args:
+            prefix_path_segs: segments prefixing the filenames found under this directory
+
+        Returns:
+            Returned json dictionary contains a hierarchical str -> CachePath map; use CachePath.is_dir to
+            determine if they contain more children
+        """
+        children = {}
+        abs_path = self.abs_path
+        filenames = list(os.listdir(abs_path))
+        for filename in filenames:
+            subpath_segs = prefix_path_segs + (filename,)
+            meta = CachePath.meta_from_filename(filename, return_none_if_malform=True)
+            if meta is not None:
+                if meta['is_dir']:
+                    child = CacheDirectory(
+                        cid=meta['cid'],
+                        root=self.root,
+                        path_segs=subpath_segs,
+                        remove_when_done=meta['is_tmp'],
+                        read_if_exists=True,
+                        parent=self,
+                        exists=True
+                    )
+                    child.children = child.children_from_path(prefix_path_segs=subpath_segs)
+                else:
+                    child = CachePath(root=self.root, path_segs=subpath_segs, meta=meta, parent=self, exists=True)
+                children[meta['cid']] = child
+        return children
 
     def get_children_json(self) -> dict:
         children_json = {}
@@ -335,34 +475,6 @@ class CacheDirectory(CachePath):
     def get_children_str(self):
         return json.dumps(self.get_children_json(), indent=2)
 
-    @staticmethod
-    def children_from_path(path: str, cache_level: int | float = np.inf) -> dict[str, CachePath]:
-        """Examine an existing directory path, return recursively all files and directories as json.
-
-        Args:
-            path: The path to be examined
-            cache_level: Level of caching to assign to all descendants
-
-        Returns:
-            Returned json dictionary contains a hierarchical str -> CachePath map; use CachePath.is_dir to
-            determine if they contain more children
-        """
-        children = {}
-        for filename in os.listdir(path):
-            subpath = f'{path}/{filename}'
-            meta = CachePath.meta_from_filename(filename, return_none_if_malform=True)
-            if meta is not None:
-                if meta['is_dir']:
-                    child = CacheDirectory(subpath,
-                                           remove_when_done=meta['is_tmp'],
-                                           read_if_exists=True,
-                                           cache_level=cache_level)
-                    child.children = CacheDirectory.children_from_path(subpath, cache_level)
-                else:
-                    child = CachePath(subpath, meta)
-                children[meta['cid']] = child
-        return children
-
     def __getitem__(self, cid: str) -> CachePath | CacheDirectory:
         """Get a CachePath object by its cid"""
         return self.children[cid]
@@ -371,10 +483,10 @@ class CacheDirectory(CachePath):
         """Checks if an object is cached"""
         return item in self.children
 
-    def cache(self,
-              is_dir=False,
-              cid: str = None
-              ) -> tuple[bool, CachePath | CacheDirectory]:
+    def _create_cache(self,
+                      is_dir=False,
+                      cid: str = None
+                      ) -> CachePath | CacheDirectory:
         """Return a directory that is guaranteed to be empty within the temporary directory
 
         This is the interface to create new CachePath or CacheDirectory within this directory.
@@ -399,22 +511,69 @@ class CacheDirectory(CachePath):
         else:
             if cid in self.children:
                 file = self.children[cid]
-                assert file.is_dir == is_dir, f'Unexpected file/directory at {file.path}'
-                return True, self.children[cid]
+                assert file.is_dir == is_dir, f'Unexpected file/directory at {file.abs_path}'
+                return self.children[cid]
 
+        # create a new cached object, exists=False
         meta = dict(
             is_dir=is_dir,
             is_tmp=is_tmp,
             cid=cid
         )
         filename = CachePath.filename_form_meta(meta)
-        tmppath = f'{self.path}/{filename}'
+        subpath_segs = self._path_segs + (filename,)
         if is_dir:
-            cache_path = CacheDirectory(tmppath, is_tmp, self.read_if_exists)
+            cache_path = CacheDirectory(
+                cid=cid,
+                root=self.root,
+                path_segs=subpath_segs,
+                remove_when_done=is_tmp,
+                read_if_exists=self.read_if_exists,
+                parent=self,
+                exists=False
+            )
         else:
-            cache_path = CachePath(tmppath, meta)
+            cache_path = CachePath(
+                self.root,
+                subpath_segs,
+                meta=meta,
+                parent=self,
+                exists=False
+            )
         self.children[cid] = cache_path
-        return False, cache_path
+        return cache_path
+    
+    def cache(self, cid: str = None):
+        """Similar to _create_cache(), but use an intermediate object to offset the decision of is_dir
+        
+        Often we pass an empty CacheDirectory object to a function, which saves the intermediate results
+        in the empty directory. When the function saves a single file, it will prefer to save to a
+        CachePath instead of a CacheDirectory. This makes creating CacheDirectory before function call
+        inappropriate. To avoid this, we pass in a struct that contains the parent directory and the
+        desired path to create either a CachePath or a CacheDirectory, and offset the decision to
+        the function itself.
+
+        Args:
+            cid: The cid of either the CachePath or the CacheDirectory
+
+        Returns:
+            A CachePointer object of the cache to be created
+        """
+        return CachePointer(self, cid)
+
+    def cache_subpath(self, cid: str = None) -> CachePath:
+        """Wrapper, calls cache(is_dir=False)
+
+        See the docs for CacheDirectory.cache() for more information.
+        """
+        return self._create_cache(is_dir=False, cid=cid)
+
+    def cache_subdir(self, cid: str = None) -> CacheDirectory:
+        """Wrapper, calls cache(is_dir=True)
+
+        See the docs for CacheDirectory.cache() for more information.
+        """
+        return self._create_cache(is_dir=True, cid=cid)
 
     def cache_im(self,
                  fn,
@@ -437,49 +596,58 @@ class CacheDirectory(CachePath):
         Returns:
             The cached image loaded
         """
-        if viewer_args is None:
-            viewer_args = {}
-        else:
-            viewer_args = copy.copy(viewer_args)  # since we will pop off some attributes
-
-        preferred_chunksize = viewer_args.pop('preferred_chunksize', None)
-        multiscale = viewer_args.pop('multiscale', 0)
-
-        is_cached, cache_path = self.cache(is_dir=False, cid=cid)
-        raw_path = cache_path.path
-        skip_cache = viewer_args.get('skip_cache', False) or cache_level > self.cache_level
-        if not is_cached:
-            im = fn()
-            if skip_cache:
-                return im
-            save_fn(raw_path, im, preferred_chunksize=preferred_chunksize, multiscale=multiscale)
-
-        assert os.path.exists(raw_path), f'Directory should be created at path {raw_path}, but it is not found'
-        if not skip_cache and viewer_args.get('viewer', None) is not None:
-            viewer_args['layer_args'] = copy.copy(viewer_args.get('layer_args', {}))
-            viewer_args['layer_args'].setdefault('name', cid)
-            display(raw_path, viewer_args)
-
-        loaded = load_fn(raw_path)
-
-        return loaded
+        cpath = self.cache_subpath(cid=cid)
+        return cache_im(fn, cpath, save_fn, load_fn, cache_level, viewer_args)
 
     def remove_tmp(self):
         """traverse all subnodes and self, removing those with is_tmp=True"""
         if self.is_tmp:
-            shutil.rmtree(self.path)
+            shutil.rmtree(self.abs_path)
         else:
             for ch in self.children.values():
                 if ch.is_tmp:
-                    shutil.rmtree(ch.path)
+                    shutil.rmtree(ch.abs_path)
                 elif ch.is_dir:
                     assert isinstance(ch, CacheDirectory)
                     ch.remove_tmp()
 
+
+class CacheRootDirectory(CacheDirectory):
+    def __init__(self,
+                 path: str,
+                 remove_when_done: bool = True,
+                 read_if_exists: bool = True):
+        """Creates a CacheDirectory instance
+
+        For users of this class, use this interface to create CacheDirectory
+
+        Args:
+            path: The os path to which the directory is to be created; must be empty if read_if_exists=True
+            remove_when_done: If True, the entire directory will be removed when it is closed by __exit__; if
+                False, then only the temporary folders within the directory will be removed. (The entire subtree
+                will be traversed to find any file or directory whose is_tmp is True and remote them)
+            read_if_exists: If True, will read from the existing directory at the given path
+        """
+        self._root_path = path
+        super().__init__(
+            cid='_RootDirectory',  # not used anywhere else, put a non-empty cid for debugging
+            root=self,
+            path_segs=tuple(),
+            remove_when_done=remove_when_done,
+            read_if_exists=read_if_exists,
+            parent=None,
+            exists=os.path.exists(path)
+        )
+
+    @property
+    def abs_path(self):
+        """Obtain the root directory path itself in the operating system"""
+        return self._root_path
+
     def __enter__(self):
         """Called using the syntax:
 
-        with CacheDirectory(...) as cache_dir:
+        with CacheRootDirectory(...) as cache_dir:
             ...
         """
         return self
@@ -499,3 +667,35 @@ class MultiOutputStream:
     def flush(self):
         for file in self.files:
             file.flush()
+
+
+class CachePointer(CachePath):
+    def __init__(self, cdir: CacheDirectory, cid: str | None):
+        super().__init__(
+            root=cdir.root,
+            path_segs=cdir._path_segs + (cid,),
+            meta=dict(
+                is_tmp=cid is None,
+                is_dir=False,
+                cid=cid
+            ),
+            parent=cdir,
+            exists=cid is not None and cid in cdir.children
+        )
+
+    def subpath(self):
+        """Create a CachePath under the parent of this pointer, at the location pointed by this pointer"""
+        return self.parent.cache_subpath(cid=self.cid)
+
+    def subdir(self):
+        """Create a CacheDirectory under the parent of this pointer, at the location pointed by this pointer"""
+        return self.parent.cache_subdir(cid=self.cid)
+
+    def im(self, *args, **kwargs):
+        return self.parent.cache_im(cid=self.cid, *args, **kwargs)
+
+    @property
+    def is_dir(self):
+        return NotImplementedError("A pointer offsets decision of is_dir, don't call is_dir on CachePointer")
+
+

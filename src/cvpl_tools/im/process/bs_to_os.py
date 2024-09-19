@@ -1,3 +1,4 @@
+from cvpl_tools.im.fs import CachePointer
 from cvpl_tools.im.seg_process import SegProcess, BlockToBlockProcess
 import numpy as np
 import numpy.typing as npt
@@ -31,25 +32,21 @@ class DirectBSToOS(BlockToBlockProcess):
 
     def forward(self,
                 im: npt.NDArray | da.Array | NDBlock,
-                cid: str | None = None,
+                cptr: CachePointer,
                 viewer_args=None
                 ) -> npt.NDArray | da.Array | NDBlock:
         if not self.is_global or isinstance(im, np.ndarray):
-            return super().forward(im, cid, viewer_args)
-
-        _, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
+            return super().forward(im, cptr, viewer_args)
 
         if viewer_args is None:
             viewer_args = {}
 
-        im = cache_dir.cache_im(lambda: dask_label.label(im,
-                                                         cache_dir=cache_dir,
-                                                         output_dtype=np.int32,
-                                                         viewer_args=dict(logging=True,
-                                                                          client=viewer_args['client']))[0],
-                                cid='global_os',
-                                cache_level=1,
-                                viewer_args=viewer_args | dict(is_label=self.is_label))
+        im = dask_label.label(
+            im,
+            cptr=cptr,
+            output_dtype=np.int32,
+            viewer_args=viewer_args | dict(logging=True, client=viewer_args['client'])
+        )[0]
         return im
 
     def np_forward(self, bs: npt.NDArray[np.uint8], block_info=None) -> npt.NDArray[np.int32]:

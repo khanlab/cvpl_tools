@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 from cvpl_tools.im.ndblock import NDBlock
 from cvpl_tools.im.partd_server import SQLiteKVStore, SQLitePartd, SqliteServer
-from cvpl_tools.im.fs import CacheDirectory
+from cvpl_tools.im.fs import CacheDirectory, CachePointer
 import os
 from scipy.ndimage import label as scipy_label
 import partd
@@ -71,10 +71,14 @@ def find_connected_components(edges: set[tuple[int, int]]) -> list[set[int, ...]
     return components
 
 
-def label(im: npt.NDArray | da.Array | NDBlock, cache_dir: CacheDirectory, output_dtype: np.dtype = None,
+def label(im: npt.NDArray | da.Array | NDBlock,
+          cptr: CachePointer,
+          output_dtype: np.dtype = None,
           viewer_args: dict = None
           ) -> npt.NDArray | da.Array | NDBlock:
     """Return (lbl_im, nlbl) where lbl_im is a globally labeled image of the same type/chunk size as the input"""
+
+    cdir = cptr.subdir()
 
     ndim = im.ndim
     if viewer_args is None:
@@ -86,7 +90,7 @@ def label(im: npt.NDArray | da.Array | NDBlock, cache_dir: CacheDirectory, outpu
     is_dask = isinstance(im, da.Array)
     if not is_dask:
         assert isinstance(im, NDBlock)
-        im = im.as_dask_array(tmp_dirpath=cache_dir.path)
+        im = im.as_dask_array(tmp_dirpath=cdir.abs_path)
 
     def map_block(block: npt.NDArray, block_info: dict):
         lbl_im = scipy_label(block, output=output_dtype)[0]
@@ -98,7 +102,7 @@ def label(im: npt.NDArray | da.Array | NDBlock, cache_dir: CacheDirectory, outpu
     # compute locally labelled chunks and save their bordering slices
     if is_logging:
         print('Locally label the image')
-    locally_labeled = cache_dir.cache_im(
+    locally_labeled = cdir.cache_im(
         lambda: im.map_blocks(map_block, meta=np.zeros(tuple(), dtype=output_dtype)),
         cid='locally_labeled_without_cumsum'
     )
@@ -116,7 +120,7 @@ def label(im: npt.NDArray | da.Array | NDBlock, cache_dir: CacheDirectory, outpu
         nlbl_np_arr = nlbl_ndblock_arr.as_numpy()
         return nlbl_np_arr
 
-    nlbl_np_arr = cache_dir.cache_im(fn=compute_nlbl_np_arr, cid='nlbl_np_arr')
+    nlbl_np_arr = cdir.cache_im(fn=compute_nlbl_np_arr, cid='nlbl_np_arr')
 
     def compute_cumsum_np_arr():
         if is_logging:
@@ -124,7 +128,7 @@ def label(im: npt.NDArray | da.Array | NDBlock, cache_dir: CacheDirectory, outpu
         cumsum_np_arr = np.cumsum(nlbl_np_arr)
         return cumsum_np_arr
 
-    cumsum_np_arr = cache_dir.cache_im(fn=compute_cumsum_np_arr, cid='cumsum_np_arr')
+    cumsum_np_arr = cdir.cache_im(fn=compute_cumsum_np_arr, cid='cumsum_np_arr')
     assert cumsum_np_arr.ndim == 1
     total_nlbl = cumsum_np_arr[-1].item()
     cumsum_np_arr[1:] = cumsum_np_arr[:-1]
@@ -137,21 +141,22 @@ def label(im: npt.NDArray | da.Array | NDBlock, cache_dir: CacheDirectory, outpu
     # Prepare cache file to be used
     if is_logging:
         print('Setting up cache sqlite database')
-    _, cache_file = cache_dir.cache(cid='border_slices')
-    os.makedirs(cache_file.path, exist_ok=True)
-    db_path = f'{cache_file.path}/border_slices.db'
+    cache_file = cdir.cache_subpath(cid='border_slices')
+    slices_abs_path = cache_file.abs_path
+    os.makedirs(slices_abs_path, exist_ok=True)
+    db_path = f'{slices_abs_path}/border_slices.db'
 
     def create_kv_store():
         kv_store = PairKVStore(db_path)
         return kv_store
 
     def get_sqlite_partd():
-        partd = SQLitePartd(cache_file.path, create_kv_store=create_kv_store)
+        partd = SQLitePartd(slices_abs_path, create_kv_store=create_kv_store)
         return partd
 
     if is_logging:
         print('Setting up partd server')
-    server = SqliteServer(cache_file.path, get_sqlite_partd=get_sqlite_partd)
+    server = SqliteServer(slices_abs_path, get_sqlite_partd=get_sqlite_partd)
     server_address = server.address
 
     # compute edge slices
@@ -177,7 +182,7 @@ def label(im: npt.NDArray | da.Array | NDBlock, cache_dir: CacheDirectory, outpu
         client.close()
         return block
 
-    locally_labeled = cache_dir.cache_im(
+    locally_labeled = cdir.cache_im(
         lambda: da.map_blocks(compute_slices, locally_labeled, cumsum_da_arr,
                               meta=np.zeros(tuple(), dtype=output_dtype)),
         cid='locally_labeled_with_cumsum'
@@ -233,7 +238,7 @@ def label(im: npt.NDArray | da.Array | NDBlock, cache_dir: CacheDirectory, outpu
     def local_to_global(block, block_info, ind_map_scatter):
         return ind_map_scatter[block]
 
-    globally_labeled = cache_dir.cache_im(
+    globally_labeled = cdir.cache_im(
         lambda: locally_labeled.map_blocks(func=local_to_global, meta=np.zeros(tuple(), dtype=output_dtype),
                                            ind_map_scatter=ind_map_scatter),
         cid='globally_labeled'
@@ -245,6 +250,11 @@ def label(im: npt.NDArray | da.Array | NDBlock, cache_dir: CacheDirectory, outpu
         result_arr = NDBlock(result_arr)
     if is_logging:
         print('Function ends')
+
+    im = cdir.cache_im(lambda: result_arr,
+                       cid='global_os',
+                       cache_level=1,
+                       viewer_args=viewer_args | dict(is_label=True))
 
     server.close()  # TODO: find way to move this to where it should be
 

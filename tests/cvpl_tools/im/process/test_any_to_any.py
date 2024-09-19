@@ -11,7 +11,7 @@ if __name__ == '__main__':  # Only for main thread, worker threads will not run 
     import tifffile
 
     with (dask.config.set({'temporary_directory': TMP_PATH}),
-          imfs.CacheDirectory(
+          imfs.CacheRootDirectory(
               f'{TMP_PATH}/CacheDirectoryBlockwise',
               remove_when_done=False,
               read_if_exists=True) as temp_directory):

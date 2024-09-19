@@ -5,12 +5,11 @@ terms of the classification of different data types defined in the top of seg_pr
 from cvpl_tools.im.seg_process import (
     SegProcess,
     BlockToBlockProcess,
-    block_to_block_forward,
-    lc_interpretable_napari
+    block_to_block_forward
 )
+from cvpl_tools.im.fs import CachePointer, cache_im
 import numpy.typing as npt
 import dask.array as da
-import numpy as np
 from skimage.transform import resize
 from dask.distributed import print as dprint
 
@@ -27,7 +26,7 @@ class DownsamplingByIntFactor(SegProcess):
 
     def forward(self,
                 im: npt.NDArray | da.Array,
-                cid: str = None,
+                cptr: CachePointer,
                 viewer_args: dict = None
                 ) -> npt.NDArray | da.Array:
         """Downsample the image and
@@ -53,10 +52,9 @@ class DownsamplingByIntFactor(SegProcess):
         else:
             factor = self._factor
         slices = tuple(slice(None, None, factor[i]) for i in range(im.ndim))
-        im = self.tmpdir.cache_im(fn=lambda: im[slices],
-                                  cache_level=1,
-                                  cid=cid,
-                                  viewer_args=viewer_args)
+        im = cptr.im(fn=lambda: im[slices],
+                     cache_level=1,
+                     viewer_args=viewer_args)
         im.compute_chunk_sizes()
         return im
 
@@ -88,7 +86,7 @@ class UpsamplingByIntFactor(BlockToBlockProcess):
 
     def forward(self,
                 im: npt.NDArray | da.Array,
-                cid: str = None,
+                cptr: CachePointer,
                 viewer_args: dict = None
                 ) -> npt.NDArray | da.Array:
         """Upsample the image
@@ -108,9 +106,8 @@ class UpsamplingByIntFactor(BlockToBlockProcess):
             The up-sampled image
         """
         return block_to_block_forward(
-            tmpdir=self.tmpdir,
             np_forward=self.np_forward,
-            cid=cid,
+            cptr=cptr,
             im=im,
             viewer_args=viewer_args,
             out_dtype=None,

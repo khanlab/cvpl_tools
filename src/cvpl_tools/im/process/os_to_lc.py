@@ -1,5 +1,6 @@
 from typing import Sequence
 
+from cvpl_tools.im.fs import CachePointer
 from cvpl_tools.im.seg_process import SegProcess, lc_interpretable_napari
 import numpy as np
 import numpy.typing as npt
@@ -131,7 +132,7 @@ class DirectOSToLC(SegProcess):
         for i, rg in enumerate(cnt_ranges):
             if rg is None:
                 continue
-            lbl = i + 1
+            # lbl = i + 1
             subrf = rf[rg]
             nvoxel = subrf[:, ndim + nvoxel_ind]
             nvoxel_tot = nvoxel.sum()
@@ -157,18 +158,18 @@ class DirectOSToLC(SegProcess):
 
     def forward(self,
                 im: npt.NDArray[np.int32] | da.Array,
-                cid: str = None,
+                cptr: CachePointer,
                 viewer_args: dict = None) -> NDBlock[np.float64] | npt.NDArray[np.float64]:
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
 
-        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
+        cdir = cptr.subdir()
 
         def compute():
-            self._ndblock = cache_dir.cache_im(fn=lambda: self.feature_forward(im),
-                                               cache_level=1,
-                                               cid='block_level_lc_ndblock')
+            self._ndblock = cdir.cache_im(fn=lambda: self.feature_forward(im),
+                                          cache_level=1,
+                                          cid='block_level_lc_ndblock')
             if self.is_global:
                 # update and aggregate the rows in ndblock that correspond to the same contour
                 self.aggregate_by_id()
@@ -176,9 +177,9 @@ class DirectOSToLC(SegProcess):
                 self._reduced_np_features = None
             return self._ndblock
 
-        self._ndblock = cache_dir.cache_im(fn=compute,
-                                           cache_level=1,
-                                           cid='lc_ndblock')
+        self._ndblock = cdir.cache_im(fn=compute,
+                                      cache_level=1,
+                                      cid='lc_ndblock')
 
         if viewer and viewer_args.get('display_points', True):
             if self.is_global:

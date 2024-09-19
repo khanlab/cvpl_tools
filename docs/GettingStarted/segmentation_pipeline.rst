@@ -113,22 +113,22 @@ and two optional parameters: cid and viewer_args.
 
 - cid specifies the subdirectory under the cache directory (set by the :code:`set_tmpdir` method of the base
   class) to save intermediate files. If not provided (:code:`cid=None`),
-  then the cache will be saved in a temporary directory that will be removed when the CacheDirectory is
+  then the cache will be saved in a temporary directory that will be removed when the CacheRootDirectory is
   closed. If provided, this cache file will persist. Within the :code:`forward()` method, you should use
   :code:`self.tmpdir.cache()` and :code:`self.tmpdir.cache_im()` to create cache files:
 
   .. code-block:: Python
 
       class ExampleSegProcess(SegProcess):
-          def forward(self, im, cid: str = None, viewer: napari.Viewer = None):
-              cache_exists, cache_path = self.tmpdir.cache(is_dir=True, cid=cid)
+          def forward(self, im, cptr: CachePointer, viewer: napari.Viewer = None):
+              cache_path = cptr.subpath()
 
-              # in the case cache does not exists, cache_path.path is an empty path we can create a folder in:
-              if not cache_exists:
-                  os.makedirs(cache_path.path)
+              # in the case cache does not exists, cache_path.abs_path is an empty path we can create a folder in:
+              if not cache_path.exists:
+                  os.makedirs(cache_path.abs_path)
                   result = compute_result(im)
-                  save(cache_path.path, result)
-              result = load(cache_path.path)
+                  save(cache_path.abs_path, result)
+              result = load(cache_path.abs_path)
               return result
 
 - The :code:`viewer_args` parameter specifies the napari viewer to display the intermediate results. If not provided
@@ -139,11 +139,11 @@ and two optional parameters: cid and viewer_args.
   .. code-block:: Python
 
       class ExampleSegProcess(SegProcess):
-          def forward(self, im, cid: str = None, viewer_args: dict = None):
+          def forward(self, im, cptr: CachePointer, viewer_args: dict = None):
               if viewer_args is None:
                   viewer_args = {}
               result = compute_result(im)
-              result = self.tmpdir.cache_im(lambda: result, cid=cid, viewer_args=viewer_args)
+              result = cptr.im(lambda: result, viewer_args=viewer_args)  # caching result at location pointed by cptr
               return result
       # ...
       viewer = napari.Viewer(ndisplay=2)
@@ -154,7 +154,7 @@ and two optional parameters: cid and viewer_args.
           multiscale=4 if viewer else 0,  # maximum downsampling level of OME ZARR files, necessary for very large images
       )
       process = ExampleSegProcess()
-      process.forward(im, cid=cid, viewer_args=viewer_args)
+      process.forward(im, cptr = root_dir.cache(cid='compute'), viewer_args=viewer_args)
 
   :code:`viewer_args` is a parameter that allows us to visualize the saved results as part of the caching
   function. The reason we need this is that displaying the saved result often requires a different (flatter)
@@ -179,7 +179,7 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
         from dask.distributed import Client
         import napari
         with (dask.config.set({'temporary_directory': TMP_PATH}),
-              imfs.CacheDirectory(
+              imfs.CacheRootDirectory(
                   f'{TMP_PATH}/CacheDirectory',
                   remove_when_done=False,
                   read_if_exists=True) as temp_directory):

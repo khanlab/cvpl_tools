@@ -97,8 +97,8 @@ accidentally close the command window. Below is an example:
 
         logfile_stdout = open('log_stdout.txt', mode='w')
         logfile_stderr = open('log_stderr.txt', mode='w')
-        sys.stdout = fs.MultiOutputStream(sys.stdout, logfile_stdout)
-        sys.stderr = fs.MultiOutputStream(sys.stderr, logfile_stderr)
+        sys.stdout = imfs.MultiOutputStream(sys.stdout, logfile_stdout)
+        sys.stderr = imfs.MultiOutputStream(sys.stderr, logfile_stderr)
 
         import dask
         import dask.config
@@ -130,7 +130,8 @@ may discard once computed, and for the others (like the final output) we may wan
 for access later without having to redo the computation. In order to cache the result, we need a fixed path
 that do not change across program executions. The :code:`CacheDirectory` class is one that manages and
 assigns paths for these intermediate results, based on their cache ID (cid) and the parent CacheDirectory
-they belongs to.
+they belongs to. :code:`CacheRootDirectory` is a subclass of :code:`CacheDirectory` that acts as the root
+of the cache directory structure.
 
 In cvpl_tool's model of caching, there is a root cache directory that is created or loaded when the program
 starts to run, and every cache directory may contain many sub-cache-directory or data directories in
@@ -140,33 +141,33 @@ which there are intermediate files. To create a cache directory, we write
 
     if __name__ == '__main__':
         import cvpl_tools.im.fs as imfs
-        with imfs.CacheDirectory(
+        with imfs.CacheRootDirectory(
               f'{TMP_PATH}/CacheDirectory',
               remove_when_done=False,
               read_if_exists=True) as temp_directory):
 
             # Use case #1. Create a data directory for caching computation results
-            cache_exists, cache_path = temp_directory.cache(is_dir=False, cid='some_cache_path')
-            if not cache_exists:
-                os.makedirs(cache_path.path, exists_ok=True)
-                # PUT CODE HERE: Now write your data into cache_path.path and load it back later
+            cache_path = temp_directory.cache_subpath(cid='some_cache_path')
+            if not cache_path.exists():
+                os.makedirs(cache_path.abs_path, exists_ok=True)
+                # PUT CODE HERE: Now write your data into cache_path.abs_path and load it back later
 
             # Use case #2. Create a sub-directory and pass it to other processes for caching
             def multi_step_computation(cache_at: imfs.CacheDirectory):
-                cache_exists, cache_path = cache_at.cache(is_dir=False, cid='A')
-                if not cache_exists:
+                cache_path = cache_at.cache_subpath(cid='A')
+                if not cache_path.exists:
                     A = computeA()
-                    save(cache_path.path, A)
-                A = load(cache_path.path)
+                    save(cache_path.abs_path, A)
+                A = load(cache_path.abs_path)
 
-                cache_exists_B, cache_path_B = cache_at.cache(is_dir=False, cid='B')
-                if not cache_exists_B:
+                cache_path_B = cache_at.cache_subpath(cid='B')
+                if not cache_path_B.exists:
                     B = computeBFromA()
-                    save(cache_path_B.path, B)
-                B = load(cache_path_B.path)
+                    save(cache_path_B.abs_path, B)
+                B = load(cache_path_B.abs_path)
                 return B
 
-            sub_temp_directory = temp_directory.cache(is_dir=True, cid='mult_step_cache')
+            sub_temp_directory = temp_directory.cache_subdir(cid='mult_step_cache')
             result = multi_step_computation(cache_at=sub_temp_directory)
 
 After running the above code once, caching files will be created. The second time the code is run, the computation

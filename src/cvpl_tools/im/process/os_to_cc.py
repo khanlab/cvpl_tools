@@ -5,6 +5,7 @@ from cvpl_tools.im.ndblock import NDBlock
 import cvpl_tools.im.process.os_to_lc as os_to_lc
 import cvpl_tools.im.process.lc_to_cc as lc_to_cc
 import dask.array as da
+from cvpl_tools.im.fs import CachePointer
 
 
 class CountOSBySize(SegProcess):
@@ -45,14 +46,11 @@ class CountOSBySize(SegProcess):
 
     def forward(self,
                 im: npt.NDArray[np.int32] | da.Array,
-                cid: str = None,
+                cptr: CachePointer,
                 viewer_args: dict = None
                 ) -> npt.NDArray[np.float64]:
-        cache_exists, cache_dir = self.tmpdir.cache(is_dir=True, cid=cid)
-
-        self.os_to_lc.set_tmpdir(cache_dir)
-        self.lc_to_cc.set_tmpdir(cache_dir)
-        lc = self.os_to_lc.forward(im, 'os_to_lc', viewer_args)
-        cc = self.lc_to_cc.forward(lc,  im.ndim, 'lc_to_cc', viewer_args)
+        cdir = cptr.subdir()
+        lc = self.os_to_lc.forward(im, cdir.cache(cid='os_to_lc'), viewer_args)
+        cc = self.lc_to_cc.forward(lc,  im.ndim, cdir.cache(cid='lc_to_cc'), viewer_args)
 
         return cc
