@@ -18,11 +18,7 @@ class DirectBSToOS(BlockToBlockProcess):
     def __init__(self, is_global: bool = False):
         """Converts a n-dimensional binary mask to an int32 ordinal mask based on connected components.
 
-        If is_global is True, return a global instance mask instead of chunk level instance mask, and
-        in the forward() method, a second value indicating indices adjacency will be returned of type
-        scipy.sparse.csr_array and each chunk will be separately segmented with globally unique
-        indices. See https://github.com/dask/dask-image/blob/main/dask_image/ndmeasure/_utils/_label.py
-        for more information.
+        If is_global is True, return a global instance mask instead of chunk level instance mask
 
         Args:
             is_global: If True, label globally instead of at chunk level

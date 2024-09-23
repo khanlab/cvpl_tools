@@ -581,7 +581,7 @@ class BinaryAndCentroidListToInstance(SegProcess):
             if is_numpy:
                 result = ndblock.as_numpy()
             else:
-                tmp_path = cdir.cache_subpath(cid='blocks')[1].abs_path
+                tmp_path = cdir.cache_subpath(cid='blocks').abs_path
                 result = ndblock.as_dask_array(tmp_path)
             return result
 
