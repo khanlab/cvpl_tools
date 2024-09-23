@@ -60,17 +60,25 @@
 <li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.display"><code class="docutils literal notranslate"><span class="pre">display()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath"><code class="docutils literal notranslate"><span class="pre">CachePath</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath.abs_path"><code class="docutils literal notranslate"><span class="pre">CachePath.abs_path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath.filename"><code class="docutils literal notranslate"><span class="pre">CachePath.filename</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath.filename_form_meta"><code class="docutils literal notranslate"><span class="pre">CachePath.filename_form_meta()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath.is_dir"><code class="docutils literal notranslate"><span class="pre">CachePath.is_dir</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath.meta_from_filename"><code class="docutils literal notranslate"><span class="pre">CachePath.meta_from_filename()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath.path"><code class="docutils literal notranslate"><span class="pre">CachePath.path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath.rel_path"><code class="docutils literal notranslate"><span class="pre">CachePath.rel_path</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory"><code class="docutils literal notranslate"><span class="pre">CacheDirectory</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.cache"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.cache()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.cache_im"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.cache_im()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.cache_subdir"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.cache_subdir()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.cache_subpath"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.cache_subpath()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.children_from_path"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.children_from_path()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory.remove_tmp"><code class="docutils literal notranslate"><span class="pre">CacheDirectory.remove_tmp()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.fs.CacheRootDirectory"><code class="docutils literal notranslate"><span class="pre">CacheRootDirectory</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.fs.CacheRootDirectory.abs_path"><code class="docutils literal notranslate"><span class="pre">CacheRootDirectory.abs_path</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -161,12 +169,31 @@ the same as when they are saved</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="cvpl_tools.im.fs.CachePath">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">CachePath</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CachePath" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">CachePath</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#cvpl_tools.im.fs.CacheRootDirectory" title="cvpl_tools.im.fs.CacheRootDirectory"><span class="pre">CacheRootDirectory</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_segs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory" title="cvpl_tools.im.fs.CacheDirectory"><span class="pre">CacheDirectory</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exists</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CachePath" title="Permalink to this definition"></a></dt>
 <dd><p>A CachePath class is a pointer to a cached location within a hierarchical directory structure.</p>
 <p>CachePath and CacheDirectory are two classes that implements the file-directory programming pattern,
 where CacheDirectory is a subclass of CachePath and contains zero or more CachePath as its children.
 To create a CachePath object, use the CacheDirectory’s cache() function to allocate a new or find
 an existing cache location.</p>
+<p>CachePath as its name suggests is not a file but only a pointer. Creating a CachePath object will not
+create the associated file automatically.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CachePath.abs_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">abs_path</span></span><a class="headerlink" href="#cvpl_tools.im.fs.CachePath.abs_path" title="Permalink to this definition"></a></dt>
+<dd><p>Obtain the os path under which you can create a directory</p>
+<p>The first time a CachePath object is created for this path, cache_path.abs_path will point to an empty location;
+second time onwards if the directory is not removed, then the returned cache_path.abs_path will point to the
+previously existing directory</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CachePath.filename">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filename</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#cvpl_tools.im.fs.CachePath.filename" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the filename, the last segment of the path</p>
+<p>This is typically cid prepended with is_dir and is_tmp information; do not call this
+on root directory.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.fs.CachePath.filename_form_meta">
 <em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filename_form_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CachePath.filename_form_meta" title="Permalink to this definition"></a></dt>
@@ -207,41 +234,34 @@ filename is given</p></li>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="cvpl_tools.im.fs.CachePath.path">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">path</span></span><a class="headerlink" href="#cvpl_tools.im.fs.CachePath.path" title="Permalink to this definition"></a></dt>
-<dd><p>Obtain the os path under which you can create a directory</p>
-<p>The first time a CachePath object is created for this path, cache_path.path will point to an empty location;
-second time onwards if the directory is not removed, then the returned cache_path.path will point to the
-previously existing directory</p>
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CachePath.rel_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rel_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#cvpl_tools.im.fs.CachePath.rel_path" title="Permalink to this definition"></a></dt>
+<dd><p>Obtain the relative os path to the root</p>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">CacheDirectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_when_done</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_if_exists</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">inf</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">CacheDirectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#cvpl_tools.im.fs.CacheRootDirectory" title="cvpl_tools.im.fs.CacheRootDirectory"><span class="pre">CacheRootDirectory</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_segs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_when_done</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_if_exists</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory" title="cvpl_tools.im.fs.CacheDirectory"><span class="pre">CacheDirectory</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exists</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory" title="Permalink to this definition"></a></dt>
 <dd><p>A CacheDirectory is a hierarchical directory structure, corresponding to a directory in the os</p>
 <p>CachePath and CacheDirectory are two classes that implements the file-directory programming pattern.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.cache">
-<span class="sig-name descname"><span class="pre">cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">is_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">bool</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#cvpl_tools.im.fs.CachePath" title="cvpl_tools.im.fs.CachePath"><span class="pre">cvpl_tools.im.fs.CachePath</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory" title="cvpl_tools.im.fs.CacheDirectory"><span class="pre">cvpl_tools.im.fs.CacheDirectory</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.cache" title="Permalink to this definition"></a></dt>
-<dd><p>Return a directory that is guaranteed to be empty within the temporary directory</p>
-<p>This is the interface to create new CachePath or CacheDirectory within this directory.
-The directory will not be immediately created but need to be done manually if is_dir=False.
-When cid=None, the first returned variable (is_cached) will always be False</p>
+<span class="sig-name descname"><span class="pre">cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.cache" title="Permalink to this definition"></a></dt>
+<dd><p>Similar to _create_cache(), but use an intermediate object to offset the decision of is_dir</p>
+<p>Often we pass an empty CacheDirectory object to a function, which saves the intermediate results
+in the empty directory. When the function saves a single file, it will prefer to save to a
+CachePath instead of a CacheDirectory. This makes creating CacheDirectory before function call
+inappropriate. To avoid this, we pass in a struct that contains the parent directory and the
+desired path to create either a CachePath or a CacheDirectory, and offset the decision to
+the function itself.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>is_dir</strong> – If False, this creates a subfolder that have no children; if True, this creates
-a CacheDirectory recursively</p></li>
-<li><p><strong>cid</strong> – If specified, will attempt to find cache if already exists; otherwise a temporary
-cache will be returned</p></li>
-</ul>
+<dd class="field-odd"><p><strong>cid</strong> – The cid of either the CachePath or the CacheDirectory</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A tuple (is_cached, CachePath), is_cached giving whether the file is cached or is newly
-created. If is_cached is True, then the user should directly read from the cached file
-instead</p>
+<dd class="field-even"><p>A CachePointer object of the cache to be created</p>
 </dd>
 </dl>
 </dd></dl>
@@ -269,15 +289,26 @@ a cache file already available on disk then the file will still be read</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.cache_subdir">
+<span class="sig-name descname"><span class="pre">cache_subdir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#cvpl_tools.im.fs.CacheDirectory" title="cvpl_tools.im.fs.CacheDirectory"><span class="pre">CacheDirectory</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.cache_subdir" title="Permalink to this definition"></a></dt>
+<dd><p>Wrapper, calls cache(is_dir=True)</p>
+<p>See the docs for CacheDirectory.cache() for more information.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.cache_subpath">
+<span class="sig-name descname"><span class="pre">cache_subpath</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#cvpl_tools.im.fs.CachePath" title="cvpl_tools.im.fs.CachePath"><span class="pre">CachePath</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.cache_subpath" title="Permalink to this definition"></a></dt>
+<dd><p>Wrapper, calls cache(is_dir=False)</p>
+<p>See the docs for CacheDirectory.cache() for more information.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.children_from_path">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">children_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">inf</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#cvpl_tools.im.fs.CachePath" title="cvpl_tools.im.fs.CachePath"><span class="pre">cvpl_tools.im.fs.CachePath</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.children_from_path" title="Permalink to this definition"></a></dt>
-<dd><p>Examine an existing directory path, return recursively all files and directories as json.</p>
+<span class="sig-name descname"><span class="pre">children_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix_path_segs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#cvpl_tools.im.fs.CachePath" title="cvpl_tools.im.fs.CachePath"><span class="pre">cvpl_tools.im.fs.CachePath</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.children_from_path" title="Permalink to this definition"></a></dt>
+<dd><p>Examine an existing directory path, return recursively all files and directories as dict.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>path</strong> – The path to be examined</p></li>
-<li><p><strong>cache_level</strong> – Level of caching to assign to all descendants</p></li>
-</ul>
+<dd class="field-odd"><p><strong>prefix_path_segs</strong> – segments prefixing the filenames found under this directory</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Returned json dictionary contains a hierarchical str -&gt; CachePath map; use CachePath.is_dir to
@@ -290,6 +321,17 @@ determine if they contain more children</p>
 <dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.remove_tmp">
 <span class="sig-name descname"><span class="pre">remove_tmp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.remove_tmp" title="Permalink to this definition"></a></dt>
 <dd><p>traverse all subnodes and self, removing those with is_tmp=True</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheRootDirectory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">CacheRootDirectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_when_done</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_if_exists</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheRootDirectory" title="Permalink to this definition"></a></dt>
+<dd><dl class="py property">
+<dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheRootDirectory.abs_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">abs_path</span></span><a class="headerlink" href="#cvpl_tools.im.fs.CacheRootDirectory.abs_path" title="Permalink to this definition"></a></dt>
+<dd><p>Obtain the root directory path itself in the operating system</p>
 </dd></dl>
 
 </dd></dl>

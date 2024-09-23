@@ -94,7 +94,6 @@
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
- | <a href="#P"><strong>P</strong></a>
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
@@ -104,12 +103,18 @@
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_array">add_ome_zarr_array() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
+      <li><a href="API/imfs.html#cvpl_tools.im.fs.CachePath.abs_path">abs_path (cvpl_tools.im.fs.CachePath property)</a>
+
+      <ul>
+        <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheRootDirectory.abs_path">(cvpl_tools.im.fs.CacheRootDirectory property)</a>
 </li>
-      <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_array_from_path">add_ome_zarr_array_from_path() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
+      </ul></li>
+      <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_array">add_ome_zarr_array() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_array_from_path">add_ome_zarr_array_from_path() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
+</li>
       <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_group">add_ome_zarr_group() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
 </li>
       <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_group_from_path">add_ome_zarr_group_from_path() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
@@ -144,13 +149,19 @@
 </li>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory.cache_im">cache_im() (cvpl_tools.im.fs.CacheDirectory method)</a>
 </li>
+      <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory.cache_subdir">cache_subdir() (cvpl_tools.im.fs.CacheDirectory method)</a>
+</li>
+      <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory.cache_subpath">cache_subpath() (cvpl_tools.im.fs.CacheDirectory method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory">CacheDirectory (class in cvpl_tools.im.fs)</a>
 </li>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CachePath">CachePath (class in cvpl_tools.im.fs)</a>
 </li>
-      <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory.children_from_path">children_from_path() (cvpl_tools.im.fs.CacheDirectory static method)</a>
+      <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheRootDirectory">CacheRootDirectory (class in cvpl_tools.im.fs)</a>
+</li>
+      <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory.children_from_path">children_from_path() (cvpl_tools.im.fs.CacheDirectory method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -166,6 +177,8 @@
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/imfs.html#cvpl_tools.im.fs.CachePath.filename">filename (cvpl_tools.im.fs.CachePath property)</a>
+</li>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CachePath.filename_form_meta">filename_form_meta() (cvpl_tools.im.fs.CachePath static method)</a>
 </li>
       <li><a href="API/seg_process.html#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance.forward">forward() (cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance method)</a>
@@ -245,18 +258,12 @@
   </ul></td>
 </tr></table>
 
-<h2 id="P">P</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/imfs.html#cvpl_tools.im.fs.CachePath.path">path (cvpl_tools.im.fs.CachePath property)</a>
-</li>
-  </ul></td>
-</tr></table>
-
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/ndblock.html#cvpl_tools.im.ndblock.NDBlock.reduce">reduce() (cvpl_tools.im.ndblock.NDBlock method)</a>
+</li>
+      <li><a href="API/imfs.html#cvpl_tools.im.fs.CachePath.rel_path">rel_path (cvpl_tools.im.fs.CachePath property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -278,11 +285,9 @@
       </ul></li>
       <li><a href="API/seg_process.html#cvpl_tools.im.seg_process.SegProcess">SegProcess (class in cvpl_tools.im.seg_process)</a>
 </li>
-      <li><a href="API/ndblock.html#cvpl_tools.im.ndblock.NDBlock.select_columns">select_columns() (cvpl_tools.im.ndblock.NDBlock method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/seg_process.html#cvpl_tools.im.seg_process.SegProcess.set_tmpdir">set_tmpdir() (cvpl_tools.im.seg_process.SegProcess method)</a>
+      <li><a href="API/ndblock.html#cvpl_tools.im.ndblock.NDBlock.select_columns">select_columns() (cvpl_tools.im.ndblock.NDBlock method)</a>
 </li>
       <li><a href="API/seg_process.html#cvpl_tools.im.seg_process.SimpleThreshold">SimpleThreshold (class in cvpl_tools.im.seg_process)</a>
 </li>
