@@ -201,12 +201,11 @@ At this point you may have a better understanding of how these pipeline steps wo
 it.
 
 - For parameters that changes how the images are processed, cvpl_tools' preference is to pass them
-through the :code:`__init__` method of the :code:`SegProcess` subclass.
-
+  through the :code:`__init__` method of the :code:`SegProcess` subclass.
 - For parameters that changes how the viewer displays the image, or how the image is cached (caching is
-often related to display e.g. storing chunks as flat images will allow faster cross section display in
-Napari), these parameters are provided through the :code:`viewer_args` argument of the :code:`forward()`
-function.
+  often related to display e.g. storing chunks as flat images will allow faster cross section display in
+  Napari), these parameters are provided through the :code:`viewer_args` argument of the :code:`forward()`
+  function.
 
 To learn more, see the API pages for :code:`cvpl_tools.im.seg_process`, :code:`cvpl_tools.im.fs` and
 :code:`cvpl_tools.im.ndblock` modules.
