@@ -178,8 +178,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             # reference: https://stackoverflow.com/questions/47641404/serializing-numpy-dtype-objects-human-readable
             properties = copy.copy(properties)
             properties['repr_format'] = properties['repr_format'].value
-            dt = np.dtype(properties['dtype'])
-            properties['dtype'] = dt.descr
+            properties['dtype'] = np.dtype(properties['dtype']).str
             properties['slices_list'] = [tuple((s.start, s.stop) for s in si) for si in properties['slices_list']]
 
             block_indices = properties['block_indices']
@@ -234,8 +233,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             properties = json.load(fp=infile)
 
             properties['repr_format'] = ReprFormat(properties['repr_format'])
-            dt = properties['dtype']
-            properties['dtype'] = np.dtype([tuple(i) for i in dt])
+            properties['dtype'] = np.dtype(properties['dtype'])
             properties['block_indices'] = [tuple(idx) for idx in properties['block_indices']]
             properties['slices_list'] = [tuple(slice(s[0], s[1]) for s in si) for si in properties['slices_list']]
             properties['numblocks'] = tuple(properties['numblocks'])
