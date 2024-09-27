@@ -116,6 +116,17 @@ function where the caller does not need to care whether you want a leaf node or 
 
     # DISPLAY RESULT...
 
+Finding Cached Files
+********************
+The second time the program is run, it looks into the directory specified by the
+CacheRootDirecotry instance and recursively takes every folder of the format "{is_dir}_{is_tmp}_{cid}" as
+its children. There is nothing fancy about what's happening in a cache directory tree, as the mechanism
+is quite simple: Each function looks in the same place as the last time they were run, and if a file
+exists, it is read; otherwise a new file is created.
+
+This makes it simple to manually remove files from the directory when re-computation is needed: Only the
+results that come after the changed parts need to be removed and then running the program again will
+recompute them automatically.
 
 Tips
 ****

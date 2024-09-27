@@ -55,6 +55,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#cacherootdirectory">CacheRootDirectory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cachedirectory">CacheDirectory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cachepointer">CachePointer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#finding-cached-files">Finding Cached Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#tips">Tips</a></li>
 </ul>
 </li>
@@ -191,6 +192,17 @@ function where the caller does not need to care whether you want a leaf node or 
 <span class="c1"># DISPLAY RESULT...</span>
 </pre></div>
 </div>
+</section>
+<section id="finding-cached-files">
+<h2>Finding Cached Files<a class="headerlink" href="#finding-cached-files" title="Permalink to this heading"></a></h2>
+<p>The second time the program is run, it looks into the directory specified by the
+CacheRootDirecotry instance and recursively takes every folder of the format “{is_dir}_{is_tmp}_{cid}” as
+its children. There is nothing fancy about what’s happening in a cache directory tree, as the mechanism
+is quite simple: Each function looks in the same place as the last time they were run, and if a file
+exists, it is read; otherwise a new file is created.</p>
+<p>This makes it simple to manually remove files from the directory when re-computation is needed: Only the
+results that come after the changed parts need to be removed and then running the program again will
+recompute them automatically.</p>
 </section>
 <section id="tips">
 <h2>Tips<a class="headerlink" href="#tips" title="Permalink to this heading"></a></h2>
