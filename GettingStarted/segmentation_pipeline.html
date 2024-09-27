@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Segmentation Pipeline &mdash; cvpl_tools 0.4.0 documentation</title>
+  <title>Segmentation Pipeline &mdash; cvpl_tools 0.6.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,13 +15,13 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=4e78f113"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=09aae1b8"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="cvpl_tools/napari/zarr.py" href="../API/napari_zarr.html" />
+    <link rel="next" title="Result Caching" href="result_caching.html" />
     <link rel="prev" title="Setting Up the Script" href="setting_up_the_script.html" /> 
 </head>
 
@@ -56,6 +56,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#running-the-pipeline">Running the Pipeline</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="result_caching.html">Result Caching</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -266,15 +267,13 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
 <code class="code docutils literal notranslate"><span class="pre">viewer_args=None</span></code> the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> function does nothing but processes the image and cache
 it.</p>
 <ul class="simple">
-<li><p>For parameters that changes how the images are processed, cvpl_tools’ preference is to pass them</p></li>
-</ul>
-<p>through the <code class="code docutils literal notranslate"><span class="pre">__init__</span></code> method of the <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> subclass.</p>
-<ul class="simple">
-<li><p>For parameters that changes how the viewer displays the image, or how the image is cached (caching is</p></li>
-</ul>
-<p>often related to display e.g. storing chunks as flat images will allow faster cross section display in
+<li><p>For parameters that changes how the images are processed, cvpl_tools’ preference is to pass them
+through the <code class="code docutils literal notranslate"><span class="pre">__init__</span></code> method of the <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> subclass.</p></li>
+<li><p>For parameters that changes how the viewer displays the image, or how the image is cached (caching is
+often related to display e.g. storing chunks as flat images will allow faster cross section display in
 Napari), these parameters are provided through the <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> argument of the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code>
-function.</p>
+function.</p></li>
+</ul>
 <p>To learn more, see the API pages for <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.seg_process</span></code>, <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.fs</span></code> and
 <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.ndblock</span></code> modules.</p>
 </section>
@@ -285,7 +284,7 @@ function.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="setting_up_the_script.html" class="btn btn-neutral float-left" title="Setting Up the Script" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../API/napari_zarr.html" class="btn btn-neutral float-right" title="cvpl_tools/napari/zarr.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="result_caching.html" class="btn btn-neutral float-right" title="Result Caching" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

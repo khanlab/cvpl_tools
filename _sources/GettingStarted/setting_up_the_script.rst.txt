@@ -148,7 +148,7 @@ which there are intermediate files. To create a cache directory, we write
 
             # Use case #1. Create a data directory for caching computation results
             cache_path = temp_directory.cache_subpath(cid='some_cache_path')
-            if not cache_path.exists():
+            if not cache_path.exists:
                 os.makedirs(cache_path.abs_path, exists_ok=True)
                 # PUT CODE HERE: Now write your data into cache_path.abs_path and load it back later
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Index &mdash; cvpl_tools 0.4.0 documentation</title>
+  <title>Index &mdash; cvpl_tools 0.6.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
 
@@ -14,7 +14,7 @@
   
         <script src="_static/jquery.js?v=5d32c60e"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=4e78f113"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=09aae1b8"></script>
         <script src="_static/doctools.js?v=888ff710"></script>
         <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/js/theme.js"></script>
@@ -47,6 +47,7 @@
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/ome_zarr.html">Viewing and IO of OME Zarr</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/setting_up_the_script.html">Setting Up the Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted/result_caching.html">Result Caching</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -97,6 +98,7 @@
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
+ | <a href="#U"><strong>U</strong></a>
  | <a href="#W"><strong>W</strong></a>
  
 </div>
@@ -111,13 +113,15 @@
       </ul></li>
       <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_array">add_ome_zarr_array() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_array_from_path">add_ome_zarr_array_from_path() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_group">add_ome_zarr_group() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
 </li>
       <li><a href="API/napari_zarr.html#cvpl_tools.ome_zarr.napari.zarr_viewer.add_ome_zarr_group_from_path">add_ome_zarr_group_from_path() (in module cvpl_tools.ome_zarr.napari.zarr_viewer)</a>
+</li>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.os_to_lc.DirectOSToLC.aggregate_by_id">aggregate_by_id() (cvpl_tools.im.process.os_to_lc.DirectOSToLC method)</a>
 </li>
       <li><a href="API/ndblock.html#cvpl_tools.im.ndblock.NDBlock.as_dask_array">as_dask_array() (cvpl_tools.im.ndblock.NDBlock method)</a>
 </li>
@@ -153,15 +157,27 @@
 </li>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory.cache_subpath">cache_subpath() (cvpl_tools.im.fs.CacheDirectory method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory">CacheDirectory (class in cvpl_tools.im.fs)</a>
 </li>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CachePath">CachePath (class in cvpl_tools.im.fs)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheRootDirectory">CacheRootDirectory (class in cvpl_tools.im.fs)</a>
 </li>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.lc_to_cc.CountLCBySize.cc_list">cc_list() (cvpl_tools.im.process.lc_to_cc.CountLCBySize method)</a>
+
+      <ul>
+        <li><a href="API/seg_process.html#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.cc_list">(cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized method)</a>
+</li>
+      </ul></li>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CacheDirectory.children_from_path">children_from_path() (cvpl_tools.im.fs.CacheDirectory method)</a>
+</li>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.lc_to_cc.CountLCBySize">CountLCBySize (class in cvpl_tools.im.process.lc_to_cc)</a>
+</li>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized">CountLCEdgePenalized (class in cvpl_tools.im.process.lc_to_cc)</a>
+</li>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.os_to_cc.CountOSBySize">CountOSBySize (class in cvpl_tools.im.process.os_to_cc)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -169,7 +185,15 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.bs_to_os.DirectBSToOS">DirectBSToOS (class in cvpl_tools.im.process.bs_to_os)</a>
+</li>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.os_to_lc.DirectOSToLC">DirectOSToLC (class in cvpl_tools.im.process.os_to_lc)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.display">display() (in module cvpl_tools.im.fs)</a>
+</li>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor">DownsamplingByIntFactor (class in cvpl_tools.im.process.any_to_any)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -181,9 +205,23 @@
 </li>
       <li><a href="API/imfs.html#cvpl_tools.im.fs.CachePath.filename_form_meta">filename_form_meta() (cvpl_tools.im.fs.CachePath static method)</a>
 </li>
-      <li><a href="API/seg_process.html#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance.forward">forward() (cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance method)</a>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor.forward">forward() (cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor method)</a>
 
       <ul>
+        <li><a href="API/seg_process.html#cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor.forward">(cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor method)</a>
+</li>
+        <li><a href="API/seg_process.html#cvpl_tools.im.process.bs_to_os.DirectBSToOS.forward">(cvpl_tools.im.process.bs_to_os.DirectBSToOS method)</a>
+</li>
+        <li><a href="API/seg_process.html#cvpl_tools.im.process.lc_to_cc.CountLCBySize.forward">(cvpl_tools.im.process.lc_to_cc.CountLCBySize method)</a>
+</li>
+        <li><a href="API/seg_process.html#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.forward">(cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized method)</a>
+</li>
+        <li><a href="API/seg_process.html#cvpl_tools.im.process.os_to_cc.CountOSBySize.forward">(cvpl_tools.im.process.os_to_cc.CountOSBySize method)</a>
+</li>
+        <li><a href="API/seg_process.html#cvpl_tools.im.process.os_to_lc.DirectOSToLC.forward">(cvpl_tools.im.process.os_to_lc.DirectOSToLC method)</a>
+</li>
+        <li><a href="API/seg_process.html#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance.forward">(cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance method)</a>
+</li>
         <li><a href="API/seg_process.html#cvpl_tools.im.seg_process.BlobDog.forward">(cvpl_tools.im.seg_process.BlobDog method)</a>
 </li>
         <li><a href="API/seg_process.html#cvpl_tools.im.seg_process.BlockToBlockProcess.forward">(cvpl_tools.im.seg_process.BlockToBlockProcess method)</a>
@@ -256,6 +294,12 @@
       <li><a href="API/ndblock.html#cvpl_tools.im.ndblock.NDBlock">NDBlock (class in cvpl_tools.im.ndblock)</a>
 </li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.np_features">np_features() (cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized method)</a>
+</li>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor.np_forward">np_forward() (cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor method)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="R">R</h2>
@@ -312,8 +356,20 @@
   </ul></td>
 </tr></table>
 
+<h2 id="U">U</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor">UpsamplingByIntFactor (class in cvpl_tools.im.process.any_to_any)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="W">W</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/seg_process.html#cvpl_tools.im.process.bs_to_os.Watershed3SizesBSToOS">Watershed3SizesBSToOS (class in cvpl_tools.im.process.bs_to_os)</a>
+</li>
+  </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/ome_zarr_io.html#cvpl_tools.ome_zarr.io.write_ome_zarr_image">write_ome_zarr_image() (in module cvpl_tools.ome_zarr.io)</a>
 </li>

@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Setting Up the Script &mdash; cvpl_tools 0.4.0 documentation</title>
+  <title>Setting Up the Script &mdash; cvpl_tools 0.6.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=4e78f113"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=09aae1b8"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
@@ -55,6 +55,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="result_caching.html">Result Caching</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -217,7 +218,7 @@ which there are intermediate files. To create a cache directory, we write</p>
 
         <span class="c1"># Use case #1. Create a data directory for caching computation results</span>
         <span class="n">cache_path</span> <span class="o">=</span> <span class="n">temp_directory</span><span class="o">.</span><span class="n">cache_subpath</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;some_cache_path&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
             <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">abs_path</span><span class="p">,</span> <span class="n">exists_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="c1"># PUT CODE HERE: Now write your data into cache_path.abs_path and load it back later</span>
 

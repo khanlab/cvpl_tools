@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Result Caching &mdash; cvpl_tools 0.6.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=09aae1b8"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cvpl_tools/napari/zarr.py" href="../API/napari_zarr.html" />
+    <link rel="prev" title="Segmentation Pipeline" href="segmentation_pipeline.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cvpl_tools
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Result Caching</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cacherootdirectory">CacheRootDirectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cachedirectory">CacheDirectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cachepointer">CachePointer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tips">Tips</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.ome_zarr.napari.zarr_viewer.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process.py</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cvpl_tools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Result Caching</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/GettingStarted/result_caching.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="result-caching">
+<span id="id1"></span><h1>Result Caching<a class="headerlink" href="#result-caching" title="Permalink to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
+<p>In many cases it’s useful to cache some of the intermediate results instead of discarding all the computation results
+all at once. Think of the following cases where you may have encountered when writing a long-running image processing
+workflow:</p>
+<p>1. The cell density for each region in the scan is computed but the number does not match up with what’s expected,
+so you want to display a heatmap in a graphical viewer showing cell density. The final results you got is text
+output in the console, requiring redo the computation to display.</p>
+<p>2. Some error occurs and you need to find out why a step in the computation causes the issue, but it’s rather
+difficult to understand what went wrong without displaying some intermediate results to aid debugging.</p>
+<p>3. Graphically showing the the algorithm works step-by-step will be very help in identifying causes of
+issues, but requires saving all the results onto disk and chunked in a viewer-friendly format.</p>
+<p>In all cases above, caching all the intermediate results help reduce headaches and risks of unknown errors coming
+from the difficulty of debugging in an image processing and distributed computing environment. The basic strategy
+we use to overcome these is to cache all the results inside a directory tree. Each step saves all its
+intermediate and final results onto a node in the tree. The node’s children are directories saved by its
+sub-steps.</p>
+<p>Here, the outputs of a processing step (function) may contain intermediate images (such as .ome.zarr), log files
+(.txt) and graphs generated by plotting libraries.</p>
+<p>We describe the CacheDirectory interface in details below.</p>
+</section>
+<section id="cacherootdirectory">
+<h2>CacheRootDirectory<a class="headerlink" href="#cacherootdirectory" title="Permalink to this heading"></a></h2>
+<p>Every cache directory tree starts with a CacheRootDirectory node at its root, which is the only node of that class in
+the tree. In order to create a cache directory tree you need to create a CacheRootDirectory node, as follows:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">imfs</span><span class="o">.</span><span class="n">CacheRootDirectory</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">&#39;path/to/root&#39;</span><span class="p">,</span>
+        <span class="n">remove_when_done</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">read_if_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_directory</span><span class="p">:</span>
+    <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">temp_directory</span><span class="o">.</span><span class="n">cache_subdir</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This creates two directories ‘path/to/root’ and ‘path/to/root/dir_cache_test’ on the first run,
+the naming of the subfolder indicates that it is <code class="code docutils literal notranslate"><span class="pre">dir</span></code> a directory and <code class="code docutils literal notranslate"><span class="pre">cache</span></code> a
+persistent cache instead of a temporary folder in that location.
+The next time the program is run, it will not create new folders but directly read from existing ones.</p>
+<p>When <code class="code docutils literal notranslate"><span class="pre">remove_when_done=True</span></code> and <code class="code docutils literal notranslate"><span class="pre">read_if_exists=False</span></code>, we get a pure temporary cache directory that
+will be deleted when the program finishes. The next time the program is run we always create a new one.</p>
+</section>
+<section id="cachedirectory">
+<h2>CacheDirectory<a class="headerlink" href="#cachedirectory" title="Permalink to this heading"></a></h2>
+<p>A CacheDirectory makes up a node in the cache directory tree that can contain zero or
+more CacheDirectory and CachePath instances as its children. CacheRootDirectory is a
+subclass of CacheDirectory.</p>
+<p>When we create a CacheDirectory object, the directory is created if not exists, otherwise the
+cache is read from file on disk. To know whether the directory is created anew,
+use the attribute <code class="code docutils literal notranslate"><span class="pre">cache_dir.exists</span></code>. To create sub-directory,
+use the following format:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">sub_cache_path</span> <span class="o">=</span> <span class="n">cache_dir</span><span class="o">.</span><span class="n">cache_subpath</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;subpath1&#39;</span><span class="p">)</span>  <span class="c1"># leaf node</span>
+<span class="n">sub_cache_dir</span> <span class="o">=</span> <span class="n">cache_dir</span><span class="o">.</span><span class="n">cache_subdir</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;subdir1&#39;</span><span class="p">)</span>  <span class="c1"># non-leaf node</span>
+</pre></div>
+</div>
+<p>Similarly, use <code class="code docutils literal notranslate"><span class="pre">sub_cache_path.exists</span></code> to determine if the path exists or not. Note even
+though CachePath class is named path instead of directory, it is a location representing a leaf node,
+that most often points to a directory instead of a file in the file system.</p>
+</section>
+<section id="cachepointer">
+<h2>CachePointer<a class="headerlink" href="#cachepointer" title="Permalink to this heading"></a></h2>
+<p>CachePointer is a struct containing two attributes: A parent directory and a cid indicating where
+under this directory the pointer points to. Both CachePath and CachePointer references a location
+where file or directory may or may not exist, but CachePointer is designed to be flexible that
+you can decide whether to create a CacheDirectory node or a non-CacheDirectory (leaf) node. Below
+shows equivalent ways to create cache files and folders:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">sub_cache_path</span> <span class="o">=</span> <span class="n">cache_dir</span><span class="o">.</span><span class="n">cache_subpath</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;subpath2&#39;</span><span class="p">)</span>
+<span class="c1"># Equivalently</span>
+<span class="n">cptr</span> <span class="o">=</span> <span class="n">cache_dir</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;subpath2&#39;</span><span class="p">)</span>
+<span class="n">sub_cache_path</span> <span class="o">=</span> <span class="n">cptr</span><span class="o">.</span><span class="n">subpath</span><span class="p">()</span>
+
+<span class="n">sub_cache_dir</span> <span class="o">=</span> <span class="n">cache_dir</span><span class="o">.</span><span class="n">cache_subdir</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;subdir2&#39;</span><span class="p">)</span>
+<span class="c1"># Equivalently</span>
+<span class="n">cptr</span> <span class="o">=</span> <span class="n">cache_dir</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;subdir2&#39;</span><span class="p">)</span>
+<span class="n">sub_cache_path</span> <span class="o">=</span> <span class="n">cptr</span><span class="o">.</span><span class="n">subdir</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>It may seem unnecessary to create a CachePointer instance just to defer the decision of whether to create
+a CachePath or a CacheDirectory child, but it comes in handy when you want to design the interface for a
+function where the caller does not need to care whether you want a leaf node or a non-leaf node.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># implementation 1</span>
+<span class="k">def</span> <span class="nf">compute</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cptr</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="n">im</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3</span>
+    <span class="n">cache_path</span> <span class="o">=</span> <span class="n">cptr</span><span class="o">.</span><span class="n">subpath</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">abs_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">abs_path</span><span class="p">)</span>
+
+<span class="c1"># implementation 2 (functionally equivalent but creates two sub-directories)</span>
+<span class="k">def</span> <span class="nf">compute</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cptr</span><span class="p">):</span>
+    <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">cptr</span><span class="o">.</span><span class="n">subdir</span><span class="p">()</span>
+    <span class="n">im2</span> <span class="o">=</span> <span class="n">plus_one</span><span class="p">(</span><span class="n">im</span><span class="o">=</span><span class="n">im</span><span class="p">,</span> <span class="n">cptr</span><span class="o">=</span><span class="n">cache_dir</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="s1">&#39;plus_one&#39;</span><span class="p">))</span>
+    <span class="n">im3</span> <span class="o">=</span> <span class="n">times_three</span><span class="p">(</span><span class="n">im</span><span class="o">=</span><span class="n">im2</span><span class="p">,</span> <span class="n">cptr</span><span class="o">=</span><span class="n">cache_dir</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="s1">&#39;times_three&#39;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">im3</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">im</span><span class="o">=</span><span class="n">input_im</span><span class="p">,</span> <span class="n">temp_directory</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;compute&#39;</span><span class="p">))</span>
+
+<span class="c1"># DISPLAY RESULT...</span>
+</pre></div>
+</div>
+</section>
+<section id="tips">
+<h2>Tips<a class="headerlink" href="#tips" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>when writing a compute function that cache to a single location, receive a CachePointer object instead of
+a CachePath or CacheDirectory object. This brings flexibility as it’s up to the callee to decide whether
+a sub-path or a sub-directory is needed and you may even decide
+to not create the directory at all if no cache is needed, separating the function’s implementation
+from its interface.</p></li>
+<li><p>Dask duplicates some computation twice because it does not support on-disk caching directly, using cache
+files in each step can avoid this issue and help speedup computation.</p></li>
+<li><p>cache the images in a viewer-readable format. For OME-ZARR a flat image chunking scheme is
+suitable for 2D viewers like Napari. Rechunking when loading back to memory may be slower but is usually
+not a big issue.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="segmentation_pipeline.html" class="btn btn-neutral float-left" title="Segmentation Pipeline" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../API/napari_zarr.html" class="btn btn-neutral float-right" title="cvpl_tools/napari/zarr.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, KarlHanUW.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
