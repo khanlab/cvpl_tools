@@ -86,10 +86,15 @@ def _add_ch(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group,
             multiscale.append(arr_from_group(zarr_group[i_str]))
         else:
             break
+
+    multiscale_flag = len(multiscale) > 1
+    if not multiscale_flag:
+        # newer version of napari seem to treat this as a single image with a width 1 axis in front, so unpack it
+        multiscale = multiscale[0]
     if is_label:
-        viewer.add_labels(multiscale, multiscale=True, **kwargs)
+        viewer.add_labels(multiscale, multiscale=multiscale_flag, **kwargs)
     else:
-        viewer.add_image(multiscale, multiscale=True, **kwargs)
+        viewer.add_image(multiscale, multiscale=multiscale_flag, **kwargs)
 
 
 def add_ome_zarr_array(viewer: napari.Viewer, zarr_group: zarr.hierarchy.Group,

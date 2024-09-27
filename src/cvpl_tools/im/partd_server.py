@@ -5,6 +5,7 @@ from contextlib import contextmanager, suppress
 import os
 from threading import Thread, Lock
 import shutil
+import pickle
 
 from partd.dict import Dict
 from partd.buffer import Buffer

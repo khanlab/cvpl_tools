@@ -4,9 +4,11 @@ version of the label() function of scipy.ndimage
 """
 
 import dask.array as da
+import numcodecs
 import numpy as np
 import numpy.typing as npt
-from cvpl_tools.im.ndblock import NDBlock
+
+from cvpl_tools.im.ndblock import NDBlock, dumps_numpy, loads_numpy
 from cvpl_tools.im.partd_server import SQLiteKVStore, SQLitePartd, SqliteServer
 from cvpl_tools.im.fs import CacheDirectory, CachePointer
 import os
@@ -84,6 +86,8 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     if viewer_args is None:
         viewer_args = {}
     is_logging = viewer_args.get('logging', False)
+    compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
+    vargs = dict(compressor=compressor)  # this is for compressing labels of uint8 or int32 types
 
     if isinstance(im, np.ndarray):
         return scipy_label(im, output=output_dtype)
@@ -104,7 +108,8 @@ def label(im: npt.NDArray | da.Array | NDBlock,
         print('Locally label the image')
     locally_labeled = cdir.cache_im(
         lambda: im.map_blocks(map_block, meta=np.zeros(tuple(), dtype=output_dtype)),
-        cid='locally_labeled_without_cumsum'
+        cid='locally_labeled_without_cumsum',
+        viewer_args=vargs
     )
 
     def compute_nlbl_np_arr():
@@ -176,7 +181,7 @@ def label(im: npt.NDArray | da.Array | NDBlock,
                 sli_idx = face * (block.shape[ax] - 1)
                 sli = np.take(block, indices=sli_idx, axis=ax)
                 client.append({
-                    indstr: pickle.dumps(sli)
+                    indstr: dumps_numpy(sli, compressor)
                 })
                 block_index[ax] -= face
         client.close()
@@ -185,7 +190,8 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     locally_labeled = cdir.cache_im(
         lambda: da.map_blocks(compute_slices, locally_labeled, cumsum_da_arr,
                               meta=np.zeros(tuple(), dtype=output_dtype)),
-        cid='locally_labeled_with_cumsum'
+        cid='locally_labeled_with_cumsum',
+        viewer_args=vargs
     )
 
     if is_logging:
@@ -195,7 +201,7 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     for value1, value2 in read_kv_store.read_all():
         if value1 is None or value2 is None:
             continue
-        sli1, sli2 = pickle.loads(value1).flatten(), pickle.loads(value2).flatten()
+        sli1, sli2 = loads_numpy(value1, compressor).flatten(), loads_numpy(value2, compressor).flatten()
         sli = np.stack((sli1, sli2), axis=1)
         tups = cvpl_algorithms.np_unique(sli, axis=0)
         for row in tups.tolist():
@@ -241,7 +247,8 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     globally_labeled = cdir.cache_im(
         lambda: locally_labeled.map_blocks(func=local_to_global, meta=np.zeros(tuple(), dtype=output_dtype),
                                            ind_map_scatter=ind_map_scatter),
-        cid='globally_labeled'
+        cid='globally_labeled',
+        viewer_args=vargs
     )
     result_arr = globally_labeled
     if not is_dask:

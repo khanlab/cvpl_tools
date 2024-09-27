@@ -55,30 +55,6 @@ def load_zarr_group_from_path(path: str,
     return zarr_group
 
 
-def cache_image(arr: da.Array, location: str, use_exists_if_found: bool = False) -> da.Array:
-    """cache a dask image on disk, and return a new 'r' mode opened dask array of it
-
-    Args:
-        arr: the dask array to save
-        location: the location to save the dask array (new folder to be created)
-        use_exists_if_found: if the image is found at the location, then instead of raising an error,
-            directly read from the existing image
-    Returns:
-        A dask.Array object read from the saved location; array with the same content as the input
-    """
-    file_exists = os.path.exists(location)
-    if file_exists and not use_exists_if_found:
-        raise FileExistsError(f'File already exists at {location}')
-    if not file_exists:
-        store = parse_url(location, mode='w').store
-        g = zarr.group(store)
-        write_ome_zarr_image_direct(g, arr, MAX_LAYER=0)
-    zarr_group = zarr.open(location, mode='r')
-    zarr_subgroup = zarr_group['0']
-    arr_read = da.from_zarr(zarr_subgroup)
-    return arr_read
-
-
 # --------------------------------Part 2: write image-------------------------------------
 
 

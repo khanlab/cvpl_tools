@@ -114,6 +114,7 @@ class DirectOSToLC(SegProcess):
 
     def aggregate_by_id(self):
         """Aggregate self._ndblock by id"""
+
         ref_ndblock: NDBlock = self._ndblock
         ndim = ref_ndblock.get_ndim()
         block_indices = ref_ndblock.get_block_indices()
@@ -122,11 +123,11 @@ class DirectOSToLC(SegProcess):
         recons = {ind: [] for ind in block_indices}
 
         rf = self.reduced_np_features
-        if len(rf) == 0:
-            # no need to do anything because ref_ndblock is empty
-            return
         ordered = rf[np.argsort(rf[:, -1])]
-        cnt_ranges = list(find_objects(ordered[:, -1].astype(np.int32)))
+        if rf.shape[0] == 0:
+            cnt_ranges = []
+        else:
+            cnt_ranges = list(find_objects(ordered[:, -1].astype(np.int32)))
 
         nvoxel_ind = self.full_statistics_map['nvoxel']
         for i, rg in enumerate(cnt_ranges):

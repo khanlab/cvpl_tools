@@ -404,9 +404,11 @@ class SumScaledIntensity(SegProcess):
         )
 
         if viewer:
-            mask = cdir.cache_im(fn=lambda: im > self.min_thres, cid='ssi_mask',
-                                 cache_level=2,
-                                 viewer_args=viewer_args | dict(is_label=True))
+            mask = cdir.cache_im(
+                fn=lambda: im > self.min_thres,
+                cid='ssi_mask',
+                cache_level=2,
+                viewer_args=viewer_args | dict(is_label=True))
             if self.spatial_box_width is not None and viewer_args.get('display_points', True):
                 ssi = cdir.cache_im(
                     fn=lambda: self.feature_forward(im, spatial_block_width=self.spatial_box_width).reduce(
@@ -417,7 +419,8 @@ class SumScaledIntensity(SegProcess):
                 lc_interpretable_napari('ssi_block', ssi, viewer, im.ndim, ['ncells'])
 
             aggregate_ndblock: NDBlock[np.float64] = cdir.cache_im(
-                fn=lambda: map_ncell_vector_to_total(forwarded), cid='aggregate_ndblock',
+                fn=lambda: map_ncell_vector_to_total(forwarded),
+                cid='aggregate_ndblock',
                 cache_level=2
             )
             heatmap_cptr = cdir.cache(cid='cell_density_map')
@@ -561,7 +564,8 @@ class BinaryAndCentroidListToInstance(SegProcess):
                     )
                 return lbl_im
 
-            lbl_im = cdir.cache_im(fn=compute_lbl, cid='before_split',
+            lbl_im = cdir.cache_im(fn=compute_lbl,
+                                   cid='before_split',
                                    cache_level=2,
                                    viewer_args=viewer_args | dict(is_label=True))
 

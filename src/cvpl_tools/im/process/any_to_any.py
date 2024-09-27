@@ -2,16 +2,16 @@
 This file defines SegProcess subclasses which converts any image to any other image of the same type (same type in
 terms of the classification of different data types defined in the top of seg_process.py)
 """
+import dask.array as da
+import numpy.typing as npt
+from skimage.transform import resize
+
+from cvpl_tools.im.fs import CachePointer
 from cvpl_tools.im.seg_process import (
     SegProcess,
     BlockToBlockProcess,
     block_to_block_forward
 )
-from cvpl_tools.im.fs import CachePointer, cache_im
-import numpy.typing as npt
-import dask.array as da
-from skimage.transform import resize
-from dask.distributed import print as dprint
 
 
 class DownsamplingByIntFactor(SegProcess):

@@ -8,6 +8,7 @@ import abc
 import enum
 import json
 import pickle
+import numcodecs
 import threading
 from typing import Callable, Sequence, Any, Generic, TypeVar
 import copy
@@ -40,8 +41,21 @@ class ReprFormat(enum.Enum):
 ElementType = TypeVar('ElementType')
 
 
+def dumps_numpy(arr: npt.NDArray, compressor) -> bytes:
+    buf = pickle.dumps(arr)
+    if compressor is not None:
+        buf = compressor.encode(buf)
+    return buf
+
+
+def loads_numpy(buf: bytes, compressor) -> npt.NDArray:
+    if compressor is not None:
+        buf = compressor.decode(buf)
+    return pickle.loads(buf)
+
+
 class NDBlockLazyLoadDictBlockInfo:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, compressor=None):
         """Initialize an info object containing information about how to load the NDBlock
 
         This class is for optimization purpose (lazy loading) where in some cases the computation is not
@@ -49,8 +63,10 @@ class NDBlockLazyLoadDictBlockInfo:
 
         Args:
             db_path: path to the database object where NDBlock.save saves a DICT_BLOCK_INDEX_SLICES object
+            compressor: A compressor that supports encode and decode interfaces on bytes to bytes compression
         """
         self.db_path = db_path
+        self.compressor = compressor
 
     def get_db_path(self):
         return self.db_path
@@ -68,6 +84,10 @@ class NDBlockLazyLoadDictBlockInfo:
         block_indices = ndblock.properties['block_indices']
         slices_list = ndblock.properties['slices_list']
         ndblock.arr = {}
+
+        def load_block_with_compression(sqlite_file, block_id):
+            return loads_numpy(sqlite_file.get(block_id, lock=False), self.compressor)
+
         if force_numpy or ndblock.properties['is_numpy']:
             sqlite_file = SQLitePartd(self.db_path)
 
@@ -75,7 +95,7 @@ class NDBlockLazyLoadDictBlockInfo:
                 block_index, slices = block_indices[i], slices_list[i]
 
                 block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
-                block = pickle.loads(sqlite_file.get(block_id, lock=False))
+                block = load_block_with_compression(sqlite_file, block_id)
 
                 ndblock.arr[block_index] = (block, slices)
             sqlite_file.close()
@@ -85,7 +105,7 @@ class NDBlockLazyLoadDictBlockInfo:
             def load_block(block_index):
                 block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
                 sqlite_file = SQLitePartd(self.db_path)
-                block = pickle.loads(sqlite_file.get(block_id, lock=False))
+                block = load_block_with_compression(sqlite_file, block_id)
                 assert isinstance(block, np.ndarray)
                 sqlite_file.close()
                 return block
@@ -187,25 +207,41 @@ class NDBlock(Generic[ElementType], abc.ABC):
             json.dump(properties, fp=outfile, indent=2)
 
     @staticmethod
-    def save(file: str, ndblock: NDBlock, downsample_level: int = 0):
+    def save(file: str, ndblock: NDBlock, storage_options: dict | None = None):
         """Save the NDBlock to the given path
 
         Will compute immediately if the ndblock is delayed dask computations
 
+        Storage Opitons
+            multiscale (int) = 0
+                This only applies if ndblock is dask, will write multilevel if non-zero
+            compressor = None
+                The compressor to use to compress array or chunks
+
         Args:
             file: The file to save to
             ndblock: The block which will be saved
-            downsample_level: This only applies if ndblock is dask, will write multilevel if non-zero
+            storage_options: Specifies options in saving method and saved file format
         """
+        if storage_options is None:
+            storage_options = {}
+        compressor = storage_options.get('compressor', None)
+
         ndblock.ensure_materialized()
 
         fmt = ndblock.get_repr_format()
         os.makedirs(file, exist_ok=False)
         if fmt == ReprFormat.NUMPY_ARRAY:
-            np.save(f'{file}/im.npy', ndblock.arr)
+            if compressor is None:
+                np.save(f'{file}/im.npy', ndblock.arr)
+            else:
+                with open(f'{file}/im_compressed.bin', 'wb') as binfile:
+                    binfile.write(dumps_numpy(ndblock.arr, compressor=compressor))
         elif fmt == ReprFormat.DASK_ARRAY:
+            MAX_LAYER = storage_options.get('multiscale') or 0
             cvpl_ome_zarr_io.write_ome_zarr_image(f'{file}/dask_im', da_arr=ndblock.arr,
-                                                  make_zip=False, MAX_LAYER=downsample_level)
+                                                  make_zip=False, MAX_LAYER=MAX_LAYER,
+                                                  storage_options=storage_options)
         else:
             server = SqliteServer(f'{file}/blocks_kvstore', available_memory=1e6)
             server_address = server.address
@@ -214,8 +250,9 @@ class NDBlock(Generic[ElementType], abc.ABC):
             def save_block(block_index, block):
                 block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
                 store = partd.Client(server_address)
+                assert isinstance(block, np.ndarray), type(block)
                 store.append({
-                    block_id: pickle.dumps(block)
+                    block_id: dumps_numpy(block, compressor=compressor)
                 })
                 store.close()
 
@@ -241,23 +278,36 @@ class NDBlock(Generic[ElementType], abc.ABC):
         return properties
 
     @staticmethod
-    def load(file: str) -> NDBlock:
+    def load(file: str, storage_options: dict | None = None) -> NDBlock:
         """Load the NDBlock from the given path.
+
+        Storage Opitons
+            compressor = None
+                The compressor to use to compress array or chunks
 
         Args:
             file: The path to load from, same as used in the save() function
+            storage_options: Specifies options in saving method and saved file format
 
         Returns:
             The loaded NDBlock. Guaranteed to have the same properties as the saved one, and the content of each
             block will be the same as when they are saved.
         """
+        if storage_options is None:
+            storage_options = {}
+        compressor = storage_options.get('compressor', None)
+
         properties = NDBlock.load_properties(f'{file}/properties.json')
 
         fmt = properties['repr_format']
         ndblock = NDBlock(None)
         ndblock.properties = properties
         if fmt == ReprFormat.NUMPY_ARRAY:
-            ndblock.arr = np.load(f'{file}/im.npy')
+            if compressor is None:
+                ndblock.arr = np.load(f'{file}/im.npy')
+            else:
+                with open(f'{file}/im_compressed.bin', 'rb') as binfile:
+                    ndblock.arr = loads_numpy(binfile.read(), compressor)
         elif fmt == ReprFormat.DASK_ARRAY:
             ndblock.arr = da.from_zarr(cvpl_ome_zarr_io.load_zarr_group_from_path(
                 f'{file}/dask_im',
@@ -265,7 +315,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 level=0
             ))
         else:
-            ndblock.arr = NDBlockLazyLoadDictBlockInfo(db_path=f'{file}/blocks_kvstore')
+            ndblock.arr = NDBlockLazyLoadDictBlockInfo(db_path=f'{file}/blocks_kvstore', compressor=compressor)
         return ndblock
 
     def is_numpy(self) -> bool:
@@ -388,7 +438,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
         if rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             # TODO: optimize this
-            print('BRANCH DICT TAKEN')
             self.to_dask_array()
             rformat = self.get_repr_format()
 
@@ -437,12 +486,10 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 - Tests if the array if just loaded from disk; if it is, then no double computation possible since 
                     there are no intermediate steps in the first place
                 """
-                print('BRANCH A')
                 if not os.path.exists(tmp_dirpath):
                     NDBlock.save(tmp_dirpath, self)
                 ndblock_to_be_combined = NDBlock.load(tmp_dirpath)
             else:
-                print('BRANCH B')
                 ndblock_to_be_combined = self
             ndblock_to_be_combined.ensure_materialized()
 
