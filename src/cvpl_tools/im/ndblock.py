@@ -243,7 +243,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                                                   make_zip=False, MAX_LAYER=MAX_LAYER,
                                                   storage_options=storage_options)
         else:
-            server = SqliteServer(f'{file}/blocks_kvstore', available_memory=1e6)
+            server = SqliteServer(f'{file}/blocks_kvstore', nappend=len(ndblock.arr), available_memory=1e6)
             server_address = server.address
 
             @dask.delayed
@@ -258,10 +258,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
             tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
             dask.compute(*tasks)
-            import time
-            time.sleep(1)  # TODO: find out why this is needed? Fix this
-            server.close()
-
         NDBlock.save_properties(f'{file}/properties.json', ndblock.properties)
 
     @staticmethod

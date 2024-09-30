@@ -2,6 +2,7 @@
 dask-image's label function encounters memory error when in large dataset. This file defines a distributed, on-disk
 version of the label() function of scipy.ndimage
 """
+from math import prod
 
 import dask.array as da
 import numcodecs
@@ -161,7 +162,8 @@ def label(im: npt.NDArray | da.Array | NDBlock,
 
     if is_logging:
         print('Setting up partd server')
-    server = SqliteServer(slices_abs_path, get_sqlite_partd=get_sqlite_partd)
+    nappend = im.ndim * 2 * prod(locally_labeled.numblocks)
+    server = SqliteServer(slices_abs_path, nappend=nappend, get_sqlite_partd=get_sqlite_partd)
     server_address = server.address
 
     # compute edge slices
@@ -262,7 +264,5 @@ def label(im: npt.NDArray | da.Array | NDBlock,
                        cid='global_os',
                        cache_level=1,
                        viewer_args=viewer_args | dict(is_label=True))
-
-    server.close()  # TODO: find way to move this to where it should be
 
     return result_arr, comp_i

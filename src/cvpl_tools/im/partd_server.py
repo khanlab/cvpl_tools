@@ -5,7 +5,6 @@ from contextlib import contextmanager, suppress
 import os
 from threading import Thread, Lock
 import shutil
-import pickle
 
 from partd.dict import Dict
 from partd.buffer import Buffer
@@ -204,8 +203,14 @@ class SqliteServer:
     SqliteServer class is modified from the Server/Client class file below:
     https://github.com/dask/partd/blob/main/partd/zmq.py
     """
-    def __init__(self, path, bind=None, available_memory=None, get_sqlite_partd=None):
-        self.context = zmq.Context()
+    def __init__(self, path, nappend, available_memory=None, get_sqlite_partd=None):
+        """
+        Args:
+            path:
+            available_memory:
+            get_sqlite_partd:
+            nappend: Number of messages to append, after which point the server closes
+        """
 
         self.path = path
         self.available_memory = available_memory
@@ -214,24 +219,20 @@ class SqliteServer:
                 return SQLitePartd(path)
         self._get_sqlite_partd = get_sqlite_partd
 
+        self.context = zmq.Context()
         self.socket = self.context.socket(zmq.ROUTER)
-
         hostname = socket.gethostname()
-        if isinstance(bind, str):
-            bind = bind.encode()
-        if bind is None:
-            port = self.socket.bind_to_random_port('tcp://*')
-        else:
-            self.socket.bind(bind)
-            port = int(bind.split(':')[-1].rstrip('/'))
+        port = self.socket.bind_to_random_port('tcp://*')
         self.address = ('tcp://%s:%d' % (hostname, port)).encode()
 
-        self.status = 'created'
-
-        self._lock = Lock()
+        self.status = 'run'
+        assert isinstance(nappend, int), f'Expected int, got type(nappend)={type(nappend)}'
+        self.nappend = nappend
+        self.nappended = 0
         self._socket_lock = Lock()
-
-        self.start()
+        self._listen_thread = Thread(target=self.listen)
+        self._listen_thread.start()
+        logger.debug('Start server at %s', self.address)
 
     def get_partd(self):
         partd = self._get_sqlite_partd()
@@ -240,13 +241,6 @@ class SqliteServer:
         else:
             buffer_partd = partd
         return partd, buffer_partd
-
-    def start(self):
-        if self.status != 'run':
-            self.status = 'run'
-            self._listen_thread = Thread(target=self.listen)
-            self._listen_thread.start()
-            logger.debug('Start server at %s', self.address)
 
     def block(self):
         """ Block until all threads close """
@@ -262,18 +256,16 @@ class SqliteServer:
             while self.status != 'closed':
                 if not self.socket.poll(100):
                     continue
-
                 with self._socket_lock:
                     payload = self.socket.recv_multipart()
 
                 address, command, payload = payload[0], payload[1], payload[2:]
                 logger.debug('Server receives %s %s', address, command)
+
                 if command == b'close':
-                    logger.debug('Server closes')
                     self.ack(address)
-                    self.status = 'closed'
+                    self.close()
                     break
-                    # self.close()
 
                 elif command == b'append':
                     keys, values = payload[::2], payload[1::2]
@@ -282,6 +274,10 @@ class SqliteServer:
                     buffer_partd.append(data, lock=False)
                     logger.debug('Server appends %d keys', len(data))
                     self.ack(address)
+                    self.nappended += 1
+                    if self.nappend == self.nappended:
+                        dprint(f'nappended reached nappend={self.nappend}')
+                        self.close()
 
                 elif command == b'iset':
                     key, value = payload
@@ -299,11 +295,9 @@ class SqliteServer:
                 elif command == b'syn':
                     self.ack(address)
 
-                # drop and delete commands are not used and not supported
-
                 else:
                     logger.debug("Unknown command: %s", command)
-                    raise ValueError("Unknown command: " + command)
+                    raise ValueError("Unknown command: " + str(command))
 
             if buffer_partd != partd:
                 buffer_partd.flush()
@@ -323,19 +317,12 @@ class SqliteServer:
 
     def close(self):
         logger.debug('Server closes')
+        print('server properly closed')
         self.status = 'closed'
-        self.block()
         with suppress(zmq.error.ZMQError):
             self.socket.close(1)
         with suppress(zmq.error.ZMQError):
             self.context.destroy(3)
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, *args):
-        self.close()
 
 
 def deserialize_key(text):
