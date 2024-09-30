@@ -159,11 +159,21 @@ and in the latter case is_numpy() will return False.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.load">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.load" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">storage_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.load" title="Permalink to this definition"></a></dt>
 <dd><p>Load the NDBlock from the given path.</p>
+<dl class="simple">
+<dt>Storage Opitons</dt><dd><dl class="simple">
+<dt>compressor = None</dt><dd><p>The compressor to use to compress array or chunks</p>
+</dd>
+</dl>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>file</strong> – The path to load from, same as used in the save() function</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file</strong> – The path to load from, same as used in the save() function</p></li>
+<li><p><strong>storage_options</strong> – Specifies options in saving method and saved file format</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The loaded NDBlock. Guaranteed to have the same properties as the saved one, and the content of each
@@ -214,15 +224,24 @@ outputting to analysis that requires numpy input</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.save">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndblock</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">downsample_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.save" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndblock</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">storage_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.save" title="Permalink to this definition"></a></dt>
 <dd><p>Save the NDBlock to the given path</p>
 <p>Will compute immediately if the ndblock is delayed dask computations</p>
+<dl class="simple">
+<dt>Storage Opitons</dt><dd><dl class="simple">
+<dt>multiscale (int) = 0</dt><dd><p>This only applies if ndblock is dask, will write multilevel if non-zero</p>
+</dd>
+<dt>compressor = None</dt><dd><p>The compressor to use to compress array or chunks</p>
+</dd>
+</dl>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>file</strong> – The file to save to</p></li>
 <li><p><strong>ndblock</strong> – The block which will be saved</p></li>
-<li><p><strong>downsample_level</strong> – This only applies if ndblock is dask, will write multilevel if non-zero</p></li>
+<li><p><strong>storage_options</strong> – Specifies options in saving method and saved file format</p></li>
 </ul>
 </dd>
 </dl>

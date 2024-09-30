@@ -118,20 +118,29 @@
 <p class="rubric">APIs</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="cvpl_tools.im.fs.save">
-<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">im</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preferred_chunksize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multiscale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.save" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">im</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">storage_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.save" title="Permalink to this definition"></a></dt>
 <dd><p>Save an image object into given path</p>
 <p>Supported im object types:
 - np.ndarray
 - dask.Array
 - cvpl_tools.im.ndblock.NDBlock</p>
+<dl class="simple">
+<dt>Storage options</dt><dd><dl class="simple">
+<dt>preferred_chunksize (tuple[int, …]) = None</dt><dd><p>chunk sizes to save as; will rechunk if different from current size; only applies to dask arrays.</p>
+</dd>
+<dt>multiscale (int) = 0</dt><dd><p>The number of downsample layers for save ome-zarr; only applies if the image is a dask image</p>
+</dd>
+<dt>compressor = None</dt><dd><p>The compressor to use to compress array or chunks</p>
+</dd>
+</dl>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>file</strong> – The full/relative path to the directory to be saved to</p></li>
 <li><p><strong>im</strong> – Object to be saved</p></li>
-<li><p><strong>preferred_chunksize</strong> – chunk sizes to save as; will rechunk if different from current size; only applies to
-dask arrays.</p></li>
-<li><p><strong>multiscale</strong> – The number of downsample layers for save ome-zarr; only applies if the image is a dask image</p></li>
+<li><p><strong>storage_options</strong> – Specifies options in saving method and saved file format</p></li>
 </ul>
 </dd>
 </dl>
@@ -139,12 +148,15 @@ dask arrays.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="cvpl_tools.im.fs.load">
-<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.load" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.fs.</span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">storage_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.load" title="Permalink to this definition"></a></dt>
 <dd><p>Load an image from the given directory.</p>
 <p>The image is one saved by cvpl_tools.im.fs.save()</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>file</strong> – Full path to the directory to be read from</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file</strong> – Full path to the directory to be read from</p></li>
+<li><p><strong>storage_options</strong> – Specifies options in saving method and saved file format</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Recreated image; this method attempts to keep meta and content of the loaded image stays
@@ -269,15 +281,13 @@ the function itself.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.fs.CacheDirectory.cache_im">
-<span class="sig-name descname"><span class="pre">cache_im</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cid:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_fn=&lt;function</span> <span class="pre">save&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_fn=&lt;function</span> <span class="pre">load&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_level:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args:</span> <span class="pre">dict</span> <span class="pre">=</span> <span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.cache_im" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">cache_im</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.fs.CacheDirectory.cache_im" title="Permalink to this definition"></a></dt>
 <dd><p>Caches an image object</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>fn</strong> – Computes the image if it’s not already cached</p></li>
 <li><p><strong>cid</strong> – The cache ID within this directory</p></li>
-<li><p><strong>save_fn</strong> – fn(file: str, im) Used to save the image to file</p></li>
-<li><p><strong>load_fn</strong> – fn(file: str) Used to load the image from file</p></li>
 <li><p><strong>cache_level</strong> – cache level of this operation; note even if the caching is skipped, if there is
 a cache file already available on disk then the file will still be read</p></li>
 <li><p><strong>viewer_args</strong> – contains viewer and arguments passed to the viewer’s add image functions</p></li>
