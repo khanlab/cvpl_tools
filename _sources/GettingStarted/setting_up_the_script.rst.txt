@@ -173,3 +173,27 @@ which there are intermediate files. To create a cache directory, we write
 After running the above code once, caching files will be created. The second time the code is run, the computation
 steps will be skipped. This sort of hierarchical caching is convenient for working with complex processes that
 can be hierarchically broken down to smaller and simpler compute steps.
+
+A Quicker Setup
+***************
+
+If the amount of code used to setup and tear down the dask client, napari viewer and cache directory is bothering you,
+you can use the following code to get a quick start locally. This is currently pretty bare-boned, but should allow you
+to run any dask-computation defined in the cvpl_tools library and your custom :code:`SegProcess` functions. The
+qsetup.py code automatically creates two log files in your current directory, containing the program's stdout and
+stderr, since those capture Dask's distributed print function's text output.
+
+.. code-block:: Python
+
+    if __name__ == '__main__':
+    import cvpl_tools.im.process.qsetup as qsetup
+    # IMPORT YOUR LIBRARIES HERE
+
+    TMP_PATH = "C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp"
+    with qsetup.PLComponents(TMP_PATH, 'CacheDirectoryThreading',
+                             client_args=dict(threads_per_worker=12, n_workers=1)) as plc:
+        # DO DASK COMPUTATION, AND SHOW RESULTS IN plc.viewer
+
+        plc.viewer.show(block=True)
+
+If anyone would like more features witht this setup, please let me know.
