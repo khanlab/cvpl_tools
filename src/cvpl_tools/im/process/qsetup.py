@@ -16,11 +16,24 @@ class PLComponents:
     dask_client: Client
     viewer: napari.Viewer
 
-    def __init__(self, tmp_path, cachedir_name: str, client_args: dict):
+    def __init__(self, tmp_path, cachedir_name: str, client_args: dict, viewer_args: dict):
+        """Create a PLComponents object
+
+        on __enter__, the instance will set up necessary components for running most SegProcess classes
+
+        Args:
+            tmp_path: temporary path where cache directory and dask temporary files will be written
+            cachedir_name: name of the cache directory to be created under tmp_path
+            client_args: arguments to create dask client
+            viewer_args: arguments to create napari viewer
+        """
+
         self._cachedir_name = cachedir_name
         self._dask_config = None
         assert isinstance(client_args, dict), f'Expected dictionary, got {type(client_args)}'
         self._client_args = client_args
+        assert isinstance(viewer_args, dict), f'Expected dictionary, got {type(viewer_args)}'
+        self._viewer_args = viewer_args
 
         self.tmp_path = tmp_path
         self.cache_root = None
@@ -59,7 +72,10 @@ class PLComponents:
         self.cache_root.__enter__()
 
         self.dask_client = Client()
-        self.viewer = napari.Viewer(ndisplay=2)
+
+        vargs = self._viewer_args
+        if vargs.get('use_viewer', True):
+            self.viewer = napari.Viewer(ndisplay=2)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
