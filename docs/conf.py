@@ -9,7 +9,7 @@
 project = 'cvpl_tools'
 copyright = '2024, KarlHanUW'
 author = 'KarlHanUW'
-release = '0.6.3'
+release = '0.6.4'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
