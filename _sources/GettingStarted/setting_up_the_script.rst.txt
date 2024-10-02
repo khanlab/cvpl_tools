@@ -186,14 +186,14 @@ stderr, since those capture Dask's distributed print function's text output.
 .. code-block:: Python
 
     if __name__ == '__main__':
-    import cvpl_tools.im.process.qsetup as qsetup
-    # IMPORT YOUR LIBRARIES HERE
+        import cvpl_tools.im.process.qsetup as qsetup
+        # IMPORT YOUR LIBRARIES HERE
 
-    TMP_PATH = "C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp"
-    with qsetup.PLComponents(TMP_PATH, 'CacheDirectoryThreading',
-                             client_args=dict(threads_per_worker=12, n_workers=1)) as plc:
-        # DO DASK COMPUTATION, AND SHOW RESULTS IN plc.viewer
+        TMP_PATH = "C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp"
+        with qsetup.PLComponents(TMP_PATH, 'CacheDirectoryThreading',
+                                 client_args=dict(threads_per_worker=12, n_workers=1)) as plc:
+            # DO DASK COMPUTATION, AND SHOW RESULTS IN plc.viewer
 
-        plc.viewer.show(block=True)
+            plc.viewer.show(block=True)
 
 If anyone would like more features witht this setup, please let me know.

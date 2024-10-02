@@ -254,15 +254,15 @@ to run any dask-computation defined in the cvpl_tools library and your custom <c
 qsetup.py code automatically creates two log files in your current directory, containing the program’s stdout and
 stderr, since those capture Dask’s distributed print function’s text output.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
-<span class="kn">import</span> <span class="nn">cvpl_tools.im.process.qsetup</span> <span class="k">as</span> <span class="nn">qsetup</span>
-<span class="c1"># IMPORT YOUR LIBRARIES HERE</span>
+    <span class="kn">import</span> <span class="nn">cvpl_tools.im.process.qsetup</span> <span class="k">as</span> <span class="nn">qsetup</span>
+    <span class="c1"># IMPORT YOUR LIBRARIES HERE</span>
 
-<span class="n">TMP_PATH</span> <span class="o">=</span> <span class="s2">&quot;C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp&quot;</span>
-<span class="k">with</span> <span class="n">qsetup</span><span class="o">.</span><span class="n">PLComponents</span><span class="p">(</span><span class="n">TMP_PATH</span><span class="p">,</span> <span class="s1">&#39;CacheDirectoryThreading&#39;</span><span class="p">,</span>
-                         <span class="n">client_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span> <span class="k">as</span> <span class="n">plc</span><span class="p">:</span>
-    <span class="c1"># DO DASK COMPUTATION, AND SHOW RESULTS IN plc.viewer</span>
+    <span class="n">TMP_PATH</span> <span class="o">=</span> <span class="s2">&quot;C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp&quot;</span>
+    <span class="k">with</span> <span class="n">qsetup</span><span class="o">.</span><span class="n">PLComponents</span><span class="p">(</span><span class="n">TMP_PATH</span><span class="p">,</span> <span class="s1">&#39;CacheDirectoryThreading&#39;</span><span class="p">,</span>
+                             <span class="n">client_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span> <span class="k">as</span> <span class="n">plc</span><span class="p">:</span>
+        <span class="c1"># DO DASK COMPUTATION, AND SHOW RESULTS IN plc.viewer</span>
 
-    <span class="n">plc</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">plc</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If anyone would like more features witht this setup, please let me know.</p>
