@@ -252,7 +252,7 @@ class SqliteServer:
             buffer_partd = partd
         return partd, buffer_partd
 
-    def block(self):
+    def wait_join(self):
         """ Block until all threads close """
         try:
             self._listen_thread.join()
@@ -328,6 +328,7 @@ class SqliteServer:
     def close(self):
         logger.debug('Server closes')
         print('server properly closed')
+        self.wait_join()
         self.status = 'closed'
         with suppress(zmq.error.ZMQError):
             self.socket.close(1)
