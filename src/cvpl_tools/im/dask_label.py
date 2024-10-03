@@ -164,40 +164,46 @@ def label(im: npt.NDArray | da.Array | NDBlock,
         print('Setting up partd server')
     nappend = im.ndim * 2 * prod(locally_labeled.numblocks)
     storage_options = viewer_args.get('storage_options', dict())
-    server = SqliteServer(slices_abs_path, nappend=nappend, get_sqlite_partd=get_sqlite_partd,
-                          port_protocol=storage_options.get('port_protocol', 'tcp'))
-    server_address = server.address
 
-    # compute edge slices
-    if is_logging:
-        print('Computing edge slices, writing to database')
+    def compute_edge_slices():
+        server = SqliteServer(slices_abs_path, nappend=nappend, get_sqlite_partd=get_sqlite_partd,
+                              port_protocol=storage_options.get('port_protocol', 'tcp'))
+        server_address = server.address
 
-    def compute_slices(block: npt.NDArray, block2: npt.NDArray, block_info: dict = None):
-        # block is the local label, block2 is the single element prefix summed number of labels
+        # compute edge slices
+        if is_logging:
+            print('Computing edge slices, writing to database')
 
-        client = partd.Client(server_address)
-        block_index = list(block_info[0]['chunk-location'])
-        block = block + (block != 0).astype(block.dtype) * block2
-        for ax in range(block.ndim):
-            for face in range(2):
-                block_index[ax] += face
-                indstr = '_'.join(str(index) for index in block_index) + f'_{ax}'
-                sli_idx = face * (block.shape[ax] - 1)
-                sli = np.take(block, indices=sli_idx, axis=ax)
-                client.append({
-                    indstr: dumps_numpy(sli, compressor)
-                })
-                block_index[ax] -= face
-        client.close()
-        return block
+        def compute_slices(block: npt.NDArray, block2: npt.NDArray, block_info: dict = None):
+            # block is the local label, block2 is the single element prefix summed number of labels
+
+            client = partd.Client(server_address)
+            block_index = list(block_info[0]['chunk-location'])
+            block = block + (block != 0).astype(block.dtype) * block2
+            for ax in range(block.ndim):
+                for face in range(2):
+                    block_index[ax] += face
+                    indstr = '_'.join(str(index) for index in block_index) + f'_{ax}'
+                    sli_idx = face * (block.shape[ax] - 1)
+                    sli = np.take(block, indices=sli_idx, axis=ax)
+                    client.append({
+                        indstr: dumps_numpy(sli, compressor)
+                    })
+                    block_index[ax] -= face
+            client.close()
+            return block
+
+        nonlocal locally_labeled
+        locally_labeled = da.map_blocks(compute_slices, locally_labeled, cumsum_da_arr,
+                                        meta=np.zeros(tuple(), dtype=output_dtype))
+        server.wait_join()
+        return locally_labeled
 
     locally_labeled = cdir.cache_im(
-        lambda: da.map_blocks(compute_slices, locally_labeled, cumsum_da_arr,
-                              meta=np.zeros(tuple(), dtype=output_dtype)),
+        compute_edge_slices,
         cid='locally_labeled_with_cumsum',
         viewer_args=vargs
     )
-    server.wait_join()
 
     if is_logging:
         print('Process locally to obtain a lower triangular adjacency matrix')
