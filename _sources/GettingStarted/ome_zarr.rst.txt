@@ -28,7 +28,7 @@ To view an ome-zarr file this way with :code:`cvpl_tools`, use the command
   as specified by the ome zarr standard, use cvpl_zarr.add_ome_zarr_group_from_path instead.
 - To specify additional arguments passed to Napari's add_image function, pass your arguments in
   the kwargs as a dictionary.
-- To open an OME ZARR image on Google cloud storage, use the following code instead
+- To open an ome zarr image on Google cloud storage, use the following code instead
 
 .. code-block:: Python
 
@@ -52,12 +52,12 @@ Reading and Writing ome zarr files
 **********************************
 
 Before talking about the read and write, we need to first understand the directory structure of an
-OME ZARR file. A basic OME ZARR file (which is what we work with) is a directory that looks like
+ome zarr file. A basic ome zarr file (which is what we work with) is a directory that looks like
 the following:
 
 .. code-block::
 
-    - image.OME.ZARR/  # The OME ZARR image, which is a directory in Windows/Linux
+    - image.OME.ZARR/  # The ome zarr image, which is a directory in Windows/Linux
         - 0/  # The original image, in ZARR format
             + 0/  # Slice of image at first axis X=0
             + 1/
@@ -67,7 +67,7 @@ the following:
         + 2/
         + 3/
         + 4/  # The smallest downsampled image at level 4, in ZARR format
-        .zattrs  # .zattrs and .zgroup are meta attributes for the OME ZARR image
+        .zattrs  # .zattrs and .zgroup are meta attributes for the ome zarr image
         .zgroup
 
 Above + denotes collapsed folder and - denotes expanded folder. A few things to note here:
@@ -75,11 +75,11 @@ Above + denotes collapsed folder and - denotes expanded folder. A few things to 
 - An image does not have to end with .OME.ZARR suffix
 - The image is multiscaled if the maximum downsample level is 0 instead of 4, in which case there
   will only be one 0/ folder
-- You may confuse an OME ZARR image with a single ZARR image. An OME ZARR image
-  is not a standard ZARR directory and contains no **.zarray** meta file. Loading an OME ZARR
+- You may confuse an ome zarr image with a single ZARR image. An ome zarr image
+  is not a standard ZARR directory and contains no **.zarray** meta file. Loading an ome zarr
   image as ZARR will crash, if you forget to specify **0/** subfolder as the path to load
 - When saved as a zip file instead of a directory, the directory structure is the same except that
-  the root is zipped. Loading a zipped OME ZARR, cvpl_tools uses :code:`ZipStore`'s features to
+  the root is zipped. Loading a zipped ome zarr, cvpl_tools uses :code:`ZipStore`'s features to
   directly reading individual chunks without having to unpack
   the entire zip file. However, writing to a :code:`ZipStore` is not supported, due to lack of
   support by either Python's :code:`zarr` or the :code:`ome-zarr` library.
@@ -90,7 +90,7 @@ Above + denotes collapsed folder and - denotes expanded folder. A few things to 
 - As of the time of writing (2024.8.14), ome-zarr library's :code:`Writer` class has a
   `double computation issue <https://github.com/ome/ome-zarr-py/issues/392>`_. To temporary patch
   this for our use case, I've added a :code:`write_ome_zarr_image`
-  function to write a dask array as an OME ZARR
+  function to write a dask array as an ome zarr
   file. This function also adds support for reading images stored as a **.zip** file.
 
 See the API page for cvpl_tools.ome_zarr.io.py for how to read and write OME
@@ -102,8 +102,8 @@ ZARR files, respectively.
 Specifying slices in path
 *************************
 
-:code:`cvpl_tools` allows specifying the channel, or x,y,z slices to use in the path string when
-reading or viewing an ome zarr file for convenience of the user.
+:code:`cvpl_tools` allows specifying the channel, or x/y/z slices to use in the path string when
+reading or viewing an ome zarr file for convenience.
 
 The functions :code:`load_dask_array_from_path` in :code:`cvpl_tools.ome_zarr.io`, and
 :code:`load_zarr_group_from_path` as well as :code:`load_ome_zarr_array_from_path` from
@@ -117,8 +117,8 @@ syntax, much similar to torch or numpy array slicing:
     arr2 = load_dask_array_from_path('file.ome.zarr?slices=[:, :100]', level=0)  # shape=(2, 100, 1000, 1000)
     arr3 = load_dask_array_from_path('file.ome.zarr?slices=[0:1, 0, -1:, ::2]', level=0)  # shape=(1, 1, 500)
 
-The idea of this syntax thanks to Davis Bennett in
-`this discussion <https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798>`_.
+The idea of this syntax attributes to Davis Bennett
+`(see this discussion) <https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798>`_.
 
 Why do we need to specify slices this way? Commonly, we pass in an ome
 zarr path to specify the input image of a script. If we want to run the script on the first channel

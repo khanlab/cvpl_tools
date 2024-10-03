@@ -112,7 +112,7 @@ open the file as zip regardless of its suffix)</p></li>
 as specified by the ome zarr standard, use cvpl_zarr.add_ome_zarr_group_from_path instead.</p></li>
 <li><p>To specify additional arguments passed to Napari’s add_image function, pass your arguments in
 the kwargs as a dictionary.</p></li>
-<li><p>To open an OME ZARR image on Google cloud storage, use the following code instead</p></li>
+<li><p>To open an ome zarr image on Google cloud storage, use the following code instead</p></li>
 </ul>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.ome_zarr.napari.zarr_viewer</span> <span class="k">as</span> <span class="nn">zarr_viewer</span>
 <span class="kn">import</span> <span class="nn">gcsfs</span>
@@ -134,9 +134,9 @@ displaying instance segmentaion masks, where each segmented object has a distinc
 <section id="reading-and-writing-ome-zarr-files">
 <h2>Reading and Writing ome zarr files<a class="headerlink" href="#reading-and-writing-ome-zarr-files" title="Permalink to this heading"></a></h2>
 <p>Before talking about the read and write, we need to first understand the directory structure of an
-OME ZARR file. A basic OME ZARR file (which is what we work with) is a directory that looks like
+ome zarr file. A basic ome zarr file (which is what we work with) is a directory that looks like
 the following:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">image</span><span class="o">.</span><span class="n">OME</span><span class="o">.</span><span class="n">ZARR</span><span class="o">/</span>  <span class="c1"># The OME ZARR image, which is a directory in Windows/Linux</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">image</span><span class="o">.</span><span class="n">OME</span><span class="o">.</span><span class="n">ZARR</span><span class="o">/</span>  <span class="c1"># The ome zarr image, which is a directory in Windows/Linux</span>
     <span class="o">-</span> <span class="mi">0</span><span class="o">/</span>  <span class="c1"># The original image, in ZARR format</span>
         <span class="o">+</span> <span class="mi">0</span><span class="o">/</span>  <span class="c1"># Slice of image at first axis X=0</span>
         <span class="o">+</span> <span class="mi">1</span><span class="o">/</span>
@@ -146,7 +146,7 @@ the following:</p>
     <span class="o">+</span> <span class="mi">2</span><span class="o">/</span>
     <span class="o">+</span> <span class="mi">3</span><span class="o">/</span>
     <span class="o">+</span> <span class="mi">4</span><span class="o">/</span>  <span class="c1"># The smallest downsampled image at level 4, in ZARR format</span>
-    <span class="o">.</span><span class="n">zattrs</span>  <span class="c1"># .zattrs and .zgroup are meta attributes for the OME ZARR image</span>
+    <span class="o">.</span><span class="n">zattrs</span>  <span class="c1"># .zattrs and .zgroup are meta attributes for the ome zarr image</span>
     <span class="o">.</span><span class="n">zgroup</span>
 </pre></div>
 </div>
@@ -155,11 +155,11 @@ the following:</p>
 <li><p>An image does not have to end with .OME.ZARR suffix</p></li>
 <li><p>The image is multiscaled if the maximum downsample level is 0 instead of 4, in which case there
 will only be one 0/ folder</p></li>
-<li><p>You may confuse an OME ZARR image with a single ZARR image. An OME ZARR image
-is not a standard ZARR directory and contains no <strong>.zarray</strong> meta file. Loading an OME ZARR
+<li><p>You may confuse an ome zarr image with a single ZARR image. An ome zarr image
+is not a standard ZARR directory and contains no <strong>.zarray</strong> meta file. Loading an ome zarr
 image as ZARR will crash, if you forget to specify <strong>0/</strong> subfolder as the path to load</p></li>
 <li><p>When saved as a zip file instead of a directory, the directory structure is the same except that
-the root is zipped. Loading a zipped OME ZARR, cvpl_tools uses <code class="code docutils literal notranslate"><span class="pre">ZipStore</span></code>’s features to
+the root is zipped. Loading a zipped ome zarr, cvpl_tools uses <code class="code docutils literal notranslate"><span class="pre">ZipStore</span></code>’s features to
 directly reading individual chunks without having to unpack
 the entire zip file. However, writing to a <code class="code docutils literal notranslate"><span class="pre">ZipStore</span></code> is not supported, due to lack of
 support by either Python’s <code class="code docutils literal notranslate"><span class="pre">zarr</span></code> or the <code class="code docutils literal notranslate"><span class="pre">ome-zarr</span></code> library.</p></li>
@@ -170,7 +170,7 @@ directory</p></li>
 <li><p>As of the time of writing (2024.8.14), ome-zarr library’s <code class="code docutils literal notranslate"><span class="pre">Writer</span></code> class has a
 <a class="reference external" href="https://github.com/ome/ome-zarr-py/issues/392">double computation issue</a>. To temporary patch
 this for our use case, I’ve added a <code class="code docutils literal notranslate"><span class="pre">write_ome_zarr_image</span></code>
-function to write a dask array as an OME ZARR
+function to write a dask array as an ome zarr
 file. This function also adds support for reading images stored as a <strong>.zip</strong> file.</p></li>
 </ul>
 <p>See the API page for cvpl_tools.ome_zarr.io.py for how to read and write OME
@@ -180,8 +180,8 @@ ZARR files, respectively.</p>
 </section>
 <section id="specifying-slices-in-path">
 <h2>Specifying slices in path<a class="headerlink" href="#specifying-slices-in-path" title="Permalink to this heading"></a></h2>
-<p><code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code> allows specifying the channel, or x,y,z slices to use in the path string when
-reading or viewing an ome zarr file for convenience of the user.</p>
+<p><code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code> allows specifying the channel, or x/y/z slices to use in the path string when
+reading or viewing an ome zarr file for convenience.</p>
 <p>The functions <code class="code docutils literal notranslate"><span class="pre">load_dask_array_from_path</span></code> in <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.ome_zarr.io</span></code>, and
 <code class="code docutils literal notranslate"><span class="pre">load_zarr_group_from_path</span></code> as well as <code class="code docutils literal notranslate"><span class="pre">load_ome_zarr_array_from_path</span></code> from
 <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.ome_zarr.napari.zarr_viewer</span></code> support specifying the slices in the following
@@ -192,8 +192,8 @@ syntax, much similar to torch or numpy array slicing:</p>
 <span class="n">arr3</span> <span class="o">=</span> <span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="s1">&#39;file.ome.zarr?slices=[0:1, 0, -1:, ::2]&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># shape=(1, 1, 500)</span>
 </pre></div>
 </div>
-<p>The idea of this syntax thanks to Davis Bennett in
-<a class="reference external" href="https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798">this discussion</a>.</p>
+<p>The idea of this syntax attributes to Davis Bennett
+<a class="reference external" href="https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798">(see this discussion)</a>.</p>
 <p>Why do we need to specify slices this way? Commonly, we pass in an ome
 zarr path to specify the input image of a script. If we want to run the script on the first channel
 of a multi-channel image, both a <code class="code docutils literal notranslate"><span class="pre">path</span></code> to ome zarr and an <code class="code docutils literal notranslate"><span class="pre">in_channel</span></code>

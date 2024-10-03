@@ -151,7 +151,7 @@ and two optional parameters: cid and viewer_args.
           viewer=viewer,  # The napari viewer, visualization will be skipped if viewer is None
           is_label=True,  # If True, viewer.add_labels() will be called; if False, viewer.add_image() will be called
           preferred_chunksize=(1, 4096, 4096),  # image will be converted to this chunksize when saved, and converted back when loaded
-          multiscale=4 if viewer else 0,  # maximum downsampling level of OME ZARR files, necessary for very large images
+          multiscale=4 if viewer else 0,  # maximum downsampling level of ome zarr files, necessary for very large images
       )
       process = ExampleSegProcess()
       process.forward(im, cptr = root_dir.cache(cid='compute'), viewer_args=viewer_args)

@@ -57,6 +57,7 @@
 <li class="toctree-l1"><a class="reference internal" href="napari_zarr.html">cvpl_tools.ome_zarr.napari.zarr_viewer.py</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.ome_zarr.io.py</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.ome_zarr.io.load_zarr_group_from_path"><code class="docutils literal notranslate"><span class="pre">load_zarr_group_from_path()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.ome_zarr.io.load_dask_array_from_path"><code class="docutils literal notranslate"><span class="pre">load_dask_array_from_path()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.ome_zarr.io.write_ome_zarr_image"><code class="docutils literal notranslate"><span class="pre">write_ome_zarr_image()</span></code></a></li>
 </ul>
 </li>
@@ -92,15 +93,43 @@
   <section id="cvpl-tools-ome-zarr-io-py">
 <span id="ome-zarr-io"></span><h1>cvpl_tools/ome_zarr/io.py<a class="headerlink" href="#cvpl-tools-ome-zarr-io-py" title="Permalink to this heading"></a></h1>
 <p>View source at <a class="reference external" href="https://github.com/khanlab/cvpl_tools/blob/main/src/cvpl_tools/ome_zarr/io.py">io.py</a>.</p>
-<p>Read and Write: For reading OME ZARR image, use <code class="code docutils literal notranslate"><span class="pre">load_zarr_group_from_path</span></code> to open a zarr group in
-read mode and then use <code class="code docutils literal notranslate"><span class="pre">dask.array.from_zarr</span></code> to create a dask array from the group. For writing OME
-ZARR image, we assume you have a dask array and would like to write it as a .zip or a directory. In
-such cases, <code class="code docutils literal notranslate"><span class="pre">write_ome_zarr_image</span></code> directly writes the dask array onto disk.</p>
+<p>Read and Write: For reading ome zarr image, use <code class="code docutils literal notranslate"><span class="pre">load_dask_array_from_path</span></code> to directly read the OME
+ZARR file as a dask array. Alternatively, use <code class="code docutils literal notranslate"><span class="pre">load_zarr_group_from_path</span></code> to open a zarr group in
+read mode and then use <code class="code docutils literal notranslate"><span class="pre">dask.array.from_zarr</span></code> to create a dask array from that group.</p>
+<p>For writing ome zarr image, we assume you have a dask array and would like to write it as a .zip or a
+directory. In such cases, <code class="code docutils literal notranslate"><span class="pre">write_ome_zarr_image</span></code> directly writes the dask array onto disk.</p>
 <p class="rubric">APIs</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="cvpl_tools.ome_zarr.io.load_zarr_group_from_path">
 <span class="sig-prename descclassname"><span class="pre">cvpl_tools.ome_zarr.io.</span></span><span class="sig-name descname"><span class="pre">load_zarr_group_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_zip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Group</span></span></span><a class="headerlink" href="#cvpl_tools.ome_zarr.io.load_zarr_group_from_path" title="Permalink to this definition"></a></dt>
 <dd><p>Loads either a zarr folder or zarr zip file into a zarr group.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – path to the zarr folder or zip to be opened</p></li>
+<li><p><strong>mode</strong> – file open mode e.g. ‘r’, only pass this if the file is a zip file</p></li>
+<li><p><strong>use_zip</strong> – if True, treat path as a zip; if False, treat path as a folder; if None, use path to determine
+file type</p></li>
+<li><p><strong>level</strong> – If None (default), load the entire ome zarr; if an int is provided, load the corresponding level
+in the ome zarr array</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the opened zarr group</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.ome_zarr.io.load_dask_array_from_path">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.ome_zarr.io.</span></span><span class="sig-name descname"><span class="pre">load_dask_array_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_zip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Array</span></span></span><a class="headerlink" href="#cvpl_tools.ome_zarr.io.load_dask_array_from_path" title="Permalink to this definition"></a></dt>
+<dd><p>Loads either a zarr folder or zarr zip file into a zarr group.</p>
+<p>Compared to load_zarr_group_from_path, this function allows specifying which slice and channel to read using
+a query string syntax (idea thanks to Davis Bennett in the thread
+<a class="reference external" href="https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798">https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798</a>)</p>
+<p class="rubric">Examples</p>
+<p>load_dask_array_from_path(‘C://path/to/image.ome.zarr?slices=[1]’)  # use channel 1
+load_dask_array_from_path(‘/path/to/image.ome.zarr?slices=[:, :100]’)  # all channels, 0-99 on the second axis</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
