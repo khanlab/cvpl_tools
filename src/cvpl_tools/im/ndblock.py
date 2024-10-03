@@ -243,7 +243,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
                                                   make_zip=False, MAX_LAYER=MAX_LAYER,
                                                   storage_options=storage_options)
         else:
-            server = SqliteServer(f'{file}/blocks_kvstore', nappend=len(ndblock.arr), available_memory=1e6)
+            server = SqliteServer(f'{file}/blocks_kvstore', nappend=len(ndblock.arr), available_memory=1e6,
+                                  port_protocol=storage_options.get('port_protocol', 'tcp'))
             server_address = server.address
 
             @dask.delayed

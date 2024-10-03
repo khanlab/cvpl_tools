@@ -203,13 +203,14 @@ class SqliteServer:
     SqliteServer class is modified from the Server/Client class file below:
     https://github.com/dask/partd/blob/main/partd/zmq.py
     """
-    def __init__(self, path, nappend, available_memory=None, get_sqlite_partd=None):
+    def __init__(self, path, nappend, available_memory=None, get_sqlite_partd=None, port_protocol='tcp'):
         """
         Args:
             path:
             available_memory:
             get_sqlite_partd:
             nappend: Number of messages to append, after which point the server closes
+            port_protocol: 'tcp' for network or 'ipc' for linux
         """
 
         self.path = path
@@ -222,8 +223,15 @@ class SqliteServer:
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.ROUTER)
         hostname = socket.gethostname()
-        port = self.socket.bind_to_random_port('tcp://*')
-        self.address = ('tcp://%s:%d' % (hostname, port)).encode()
+
+        if port_protocol == 'tcp':
+            port = self.socket.bind_to_random_port('tcp://*')
+            self.address = ('tcp://%s:%d' % (hostname, port)).encode()
+        elif port_protocol == 'ipc':
+            port = self.socket.bind_to_random_port('ipc:///tmp/*')
+            self.address = ('ipc:///%d' % (port,)).encode()
+        else:
+            raise ValueError(f'port_protocol must be either "tcp" or "ipc", but found {port_protocol}')
 
         self.status = 'run'
         assert isinstance(nappend, int), f'Expected int, got type(nappend)={type(nappend)}'

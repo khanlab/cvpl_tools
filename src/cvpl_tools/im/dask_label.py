@@ -163,7 +163,9 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     if is_logging:
         print('Setting up partd server')
     nappend = im.ndim * 2 * prod(locally_labeled.numblocks)
-    server = SqliteServer(slices_abs_path, nappend=nappend, get_sqlite_partd=get_sqlite_partd)
+    storage_options = viewer_args.get('storage_options', dict())
+    server = SqliteServer(slices_abs_path, nappend=nappend, get_sqlite_partd=get_sqlite_partd,
+                          port_protocol=storage_options.get('port_protocol', 'tcp'))
     server_address = server.address
 
     # compute edge slices
