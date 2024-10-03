@@ -259,7 +259,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
             tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
             dask.compute(*tasks)
-            server.close()
+            server.wait_join()
         NDBlock.save_properties(f'{file}/properties.json', ndblock.properties)
 
     @staticmethod
