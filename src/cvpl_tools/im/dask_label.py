@@ -197,6 +197,7 @@ def label(im: npt.NDArray | da.Array | NDBlock,
         cid='locally_labeled_with_cumsum',
         viewer_args=vargs
     )
+    server.close()
 
     if is_logging:
         print('Process locally to obtain a lower triangular adjacency matrix')

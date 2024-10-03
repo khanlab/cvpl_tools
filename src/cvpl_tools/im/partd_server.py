@@ -274,7 +274,6 @@ class SqliteServer:
 
                 if command == b'close':
                     self.ack(address)
-                    self.close()
                     break
 
                 elif command == b'append':
@@ -287,7 +286,7 @@ class SqliteServer:
                     self.nappended += 1
                     if self.nappend == self.nappended:
                         dprint(f'nappended reached nappend={self.nappend}')
-                        self.close()
+                        break
 
                 elif command == b'iset':
                     key, value = payload
