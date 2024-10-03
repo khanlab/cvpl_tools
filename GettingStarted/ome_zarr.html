@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OME_ZARR &mdash; cvpl_tools 0.6.4 documentation</title>
+  <title>OME_ZARR &mdash; cvpl_tools 0.6.11 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=51a37f06"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=1af55d1b"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
@@ -48,8 +48,9 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Viewing and IO of OME Zarr</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#viewing-of-ome-zarr-file">Viewing of ome_zarr file</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#reading-and-writing-ome-zarr-files">Reading and Writing ome_zarr files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#viewing-of-ome-zarr-file">Viewing of ome zarr file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reading-and-writing-ome-zarr-files">Reading and Writing ome zarr files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#specifying-slices-in-path">Specifying slices in path</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
@@ -92,7 +93,7 @@
   <section id="ome-zarr">
 <span id="id1"></span><h1>OME_ZARR<a class="headerlink" href="#ome-zarr" title="Permalink to this heading"></a></h1>
 <section id="viewing-of-ome-zarr-file">
-<h2>Viewing of ome_zarr file<a class="headerlink" href="#viewing-of-ome-zarr-file" title="Permalink to this heading"></a></h2>
+<h2>Viewing of ome zarr file<a class="headerlink" href="#viewing-of-ome-zarr-file" title="Permalink to this heading"></a></h2>
 <p>Viewing of ome_zarr in a directory or as a zip file.</p>
 <p>1.Open Napari with command <code class="code docutils literal notranslate"><span class="pre">napari</span></code></p>
 <p>2.Open the command widget with button at the bottom left corner of the window.</p>
@@ -131,7 +132,7 @@ displaying instance segmentaion masks, where each segmented object has a distinc
 <p>Similarly, you can open a zip, or an image with multiple labels this way.</p>
 </section>
 <section id="reading-and-writing-ome-zarr-files">
-<h2>Reading and Writing ome_zarr files<a class="headerlink" href="#reading-and-writing-ome-zarr-files" title="Permalink to this heading"></a></h2>
+<h2>Reading and Writing ome zarr files<a class="headerlink" href="#reading-and-writing-ome-zarr-files" title="Permalink to this heading"></a></h2>
 <p>Before talking about the read and write, we need to first understand the directory structure of an
 OME ZARR file. A basic OME ZARR file (which is what we work with) is a directory that looks like
 the following:</p>
@@ -176,6 +177,23 @@ file. This function also adds support for reading images stored as a <strong>.zi
 ZARR files if you want to use <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code> for such tasks. This file provides two functions
 <code class="code docutils literal notranslate"><span class="pre">load_zarr_group_from_path</span></code> and <code class="code docutils literal notranslate"><span class="pre">write_ome_zarr_image</span></code> which allows you to read and write OME
 ZARR files, respectively.</p>
+</section>
+<section id="specifying-slices-in-path">
+<h2>Specifying slices in path<a class="headerlink" href="#specifying-slices-in-path" title="Permalink to this heading"></a></h2>
+<p><code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code> allows specifying the channel, or x,y,z slices to use in the path string when
+reading or viewing an ome zarr file for convenience of the user.</p>
+<p>The functions <code class="code docutils literal notranslate"><span class="pre">load_dask_array_from_path</span></code> in <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.ome_zarr.io</span></code>, and
+<code class="code docutils literal notranslate"><span class="pre">load_zarr_group_from_path</span></code> as well as <code class="code docutils literal notranslate"><span class="pre">load_ome_zarr_array_from_path</span></code> from
+<code class="code docutils literal notranslate"><span class="pre">cvpl_tools.ome_zarr.napari.zarr_viewer</span></code> support specifying the slices in the following
+syntax, much similar to torch or numpy array slicing:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">arr_original</span> <span class="o">=</span> <span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="s1">&#39;file.ome.zarr&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># shape=(2, 200, 1000, 1000)</span>
+<span class="n">arr1</span> <span class="o">=</span> <span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="s1">&#39;file.ome.zarr?slices=[0]&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># shape=(200, 1000, 1000)</span>
+<span class="n">arr2</span> <span class="o">=</span> <span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="s1">&#39;file.ome.zarr?slices=[:, :100]&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># shape=(2, 100, 1000, 1000)</span>
+<span class="n">arr3</span> <span class="o">=</span> <span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="s1">&#39;file.ome.zarr?slices=[0:1, 0, -1:, ::2]&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># shape=(1, 1, 500)</span>
+</pre></div>
+</div>
+<p>The idea of this syntax thanks to Davis Bennett in
+<a class="reference external" href="https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798">this discussion</a>.</p>
 </section>
 </section>
 

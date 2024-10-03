@@ -3,7 +3,7 @@
 OME_ZARR
 ########
 
-Viewing of ome_zarr file
+Viewing of ome zarr file
 ************************
 
 Viewing of ome_zarr in a directory or as a zip file.
@@ -48,7 +48,7 @@ To view an ome-zarr file this way with :code:`cvpl_tools`, use the command
 Similarly, you can open a zip, or an image with multiple labels this way.
 
 
-Reading and Writing ome_zarr files
+Reading and Writing ome zarr files
 **********************************
 
 Before talking about the read and write, we need to first understand the directory structure of an
@@ -97,4 +97,26 @@ See the API page for cvpl_tools.ome_zarr.io.py for how to read and write OME
 ZARR files if you want to use :code:`cvpl_tools` for such tasks. This file provides two functions
 :code:`load_zarr_group_from_path` and :code:`write_ome_zarr_image` which allows you to read and write OME
 ZARR files, respectively.
+
+
+Specifying slices in path
+*************************
+
+:code:`cvpl_tools` allows specifying the channel, or x,y,z slices to use in the path string when
+reading or viewing an ome zarr file for convenience of the user.
+
+The functions :code:`load_dask_array_from_path` in :code:`cvpl_tools.ome_zarr.io`, and
+:code:`load_zarr_group_from_path` as well as :code:`load_ome_zarr_array_from_path` from
+:code:`cvpl_tools.ome_zarr.napari.zarr_viewer` support specifying the slices in the following
+syntax, much similar to torch or numpy array slicing:
+
+.. code-block:: Python
+
+    arr_original = load_dask_array_from_path('file.ome.zarr', level=0)  # shape=(2, 200, 1000, 1000)
+    arr1 = load_dask_array_from_path('file.ome.zarr?slices=[0]', level=0)  # shape=(200, 1000, 1000)
+    arr2 = load_dask_array_from_path('file.ome.zarr?slices=[:, :100]', level=0)  # shape=(2, 100, 1000, 1000)
+    arr3 = load_dask_array_from_path('file.ome.zarr?slices=[0:1, 0, -1:, ::2]', level=0)  # shape=(1, 1, 500)
+
+The idea of this syntax thanks to Davis Bennett in
+`this discussion <https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798>`_.
 
