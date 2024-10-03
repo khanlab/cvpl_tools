@@ -120,3 +120,10 @@ syntax, much similar to torch or numpy array slicing:
 The idea of this syntax thanks to Davis Bennett in
 `this discussion <https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798>`_.
 
+Why do we need to specify slices this way? Commonly, we pass in an ome
+zarr path to specify the input image of a script. If we want to run the script on the first channel
+of a multi-channel image, both a :code:`path` to ome zarr and an :code:`in_channel`
+integer specifying the channel to use are needed.
+With this syntax, we only need one input variable to specify
+the channel to use, as well as a sub-region of the image if we want to crop the input.
+
