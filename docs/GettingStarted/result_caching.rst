@@ -124,7 +124,7 @@ its children. There is nothing fancy about what's happening in a cache directory
 is quite simple: Each function looks in the same place as the last time they were run, and if a file
 exists, it is read; otherwise a new file is created.
 
-This makes it simple to manually remove files from the directory when re-computation is needed: Only the
+This makes it simple to manually remove files from the directory during re-computation: Only the
 results that come after the changed parts need to be removed and then running the program again will
 recompute them automatically.
 
@@ -132,7 +132,7 @@ Tips
 ****
 - when writing a compute function that cache to a single location, receive a CachePointer object instead of
   a CachePath or CacheDirectory object. This brings flexibility as it's up to the callee to decide whether
-  a sub-path or a sub-directory is needed and you may even decide
+  a sub-path or a sub-directory will be created and you may even decide
   to not create the directory at all if no cache is needed, separating the function's implementation
   from its interface.
 - Dask duplicates some computation twice because it does not support on-disk caching directly, using cache

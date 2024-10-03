@@ -55,7 +55,7 @@ following example: (I encountered this when displaying large multiscale images):
         with dask.config.set({'temporary_directory': TMP_PATH}):
             client = Client(threads_per_worker=6, n_workers=1)
             viewer = napari.Viewer(ndisplay=2)
-            viewer.add_ome_zarr_array_from_path(...)  # add a large OME ZARR image
+            viewer.add_ome_zarr_array_from_path(...)  # add a large ome zarr image
             viewer.show(block=True)  # here all threads available will be used to fetch data to show image
 
 Napari utilizes all threads on the current process to load chunks from the image when we drag mouse to navigation

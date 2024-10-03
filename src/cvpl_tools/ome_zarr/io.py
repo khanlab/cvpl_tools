@@ -91,15 +91,22 @@ def load_dask_array_from_path(path: str,
                               mode: str | None = None,
                               use_zip: bool | None = None,
                               level: int | None = None) -> da.Array:
-    """Loads either a zarr folder or zarr zip file into a zarr group.
+    """Loads either a zarr folder or zarr zip file into a dask array.
 
     Compared to load_zarr_group_from_path, this function allows specifying which slice and channel to read using
     a query string syntax (idea thanks to Davis Bennett in the thread
     https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798)
 
-    Examples:
-        load_dask_array_from_path('C://path/to/image.ome.zarr?slices=[1]')  # use channel 1
-        load_dask_array_from_path('/path/to/image.ome.zarr?slices=[:, :100]')  # all channels, 0-99 on the second axis
+    Example:
+        Loading an ome zarr array of shape (2, 200, 1000, 1000) using different slices::
+
+            arr_original = load_dask_array_from_path('file.ome.zarr', level=0)  # shape=(2, 200, 1000, 1000)
+            arr1 = load_dask_array_from_path('file.ome.zarr?slices=[0]', level=0)  # shape=(200, 1000, 1000)
+            arr2 = load_dask_array_from_path('file.ome.zarr?slices=[:, :100]', level=0)  # shape=(2, 100, 1000, 1000)
+            arr3 = load_dask_array_from_path('file.ome.zarr?slices=[0:1, 0, -1:, ::2]', level=0)  # shape=(1, 1, 500)
+
+        Essentially, Python multi-index slicing can be done and the effect is similar to torch or numpy indexing using
+        slices.
 
     Args:
         path: path to the zarr folder or zip to be opened
