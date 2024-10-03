@@ -228,8 +228,10 @@ class SqliteServer:
             port = self.socket.bind_to_random_port('tcp://*')
             self.address = ('tcp://%s:%d' % (hostname, port)).encode()
         elif port_protocol == 'ipc':
-            port = self.socket.bind_to_random_port('ipc:///tmp/*')
-            self.address = ('ipc:///%d' % (port,)).encode()
+            import tempfile
+            temp_dir = tempfile.gettempdir()
+            ipc_path = os.path.join(temp_dir, f"zmq_ipc_{os.getpid()}")
+            self.address = f"ipc://{ipc_path}"
         else:
             raise ValueError(f'port_protocol must be either "tcp" or "ipc", but found {port_protocol}')
 
