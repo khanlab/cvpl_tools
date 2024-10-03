@@ -12,8 +12,6 @@ import shutil
 import zarr
 import dask.array as da
 import numpy as np
-import numpy.typing as npt
-from ome_zarr.io import parse_url
 import urllib.parse
 import numcodecs
 
@@ -52,7 +50,76 @@ def load_zarr_group_from_path(path: str,
     if level is not None:
         assert isinstance(level, int)
         zarr_group = zarr_group[str(level)]
+
     return zarr_group
+
+
+def split_query_string(path: str) -> tuple[str, tuple[slice, ...] | None]:
+    """Split a url to path and an optional query dict
+
+    Examples:
+        split_query_string('path/to/file') -> ('path/to/file', None)
+        split_query_string('path/to/file?slices=[3, :2]') -> ('path/to/file', tuple(3, slice(None, 2)))
+
+    Args:
+        path: url to be splitted
+
+    Returns:
+        splitted path and query string; if path does not contain a query string, then the second returned arg is None.
+    """
+    if '?' in path:
+        # parse the query string at the end
+        path, query = path.split('?')
+        query = urllib.parse.parse_qs(query)
+
+        slices = query['slices'][0]
+        assert slices[0] == '[' and slices[-1] == ']', f'Slices must start with [ and end with ], got slices={slices}'
+        slices = slices[1:-1].split(',')
+        result = []
+        for comp in slices:
+            if ':' in comp:
+                result.append(slice(*[int(x) if x else None for x in comp.split(':')]))
+            else:
+                result.append(int(comp))
+        slices = tuple(result)
+    else:
+        slices = None
+    return path, slices
+
+
+def load_dask_array_from_path(path: str,
+                              mode: str | None = None,
+                              use_zip: bool | None = None,
+                              level: int | None = None) -> da.Array:
+    """Loads either a zarr folder or zarr zip file into a zarr group.
+
+    Compared to load_zarr_group_from_path, this function allows specifying which slice and channel to read using
+    a query string syntax (idea thanks to Davis Bennett in the thread
+    https://forum.image.sc/t/loading-only-one-channel-from-an-ome-zarr/97798)
+
+    Examples:
+        load_dask_array_from_path('C://path/to/image.ome.zarr?slices=[1]')  # use channel 1
+        load_dask_array_from_path('/path/to/image.ome.zarr?slices=[:, :100]')  # all channels, 0-99 on the second axis
+
+    Args:
+        path: path to the zarr folder or zip to be opened
+        mode: file open mode e.g. 'r', only pass this if the file is a zip file
+        use_zip: if True, treat path as a zip; if False, treat path as a folder; if None, use path to determine
+            file type
+        level: If None (default), load the entire ome zarr; if an int is provided, load the corresponding level
+            in the ome zarr array
+    Returns:
+        the opened zarr group
+    """
+    path, slices = split_query_string(path)
+
+    zarr_group = load_zarr_group_from_path(path, mode, use_zip, level)
+    arr = da.from_array(zarr_group)
+
+    if slices is not None:
+        arr = arr[slices]
+
+    return arr
 
 
 # --------------------------------Part 2: write image-------------------------------------
