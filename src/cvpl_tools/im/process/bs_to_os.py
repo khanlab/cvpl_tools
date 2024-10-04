@@ -5,7 +5,7 @@ import numpy.typing as npt
 import dask.array as da
 from cvpl_tools.im.ndblock import NDBlock
 import cvpl_tools.im.algorithms as algorithms
-import cvpl_tools.im.dask_label as dask_label
+import cvpl_tools.im.algs.dask_label as dask_label
 from scipy.ndimage import (
     label as instance_label
 )
