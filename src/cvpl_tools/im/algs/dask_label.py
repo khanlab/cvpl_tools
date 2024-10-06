@@ -165,7 +165,9 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     nappend = im.ndim * 2 * prod(locally_labeled.numblocks)
     storage_options = viewer_args.get('storage_options', dict())
 
+    server = None
     def compute_edge_slices():
+        nonlocal server
         server = SqliteServer(slices_abs_path, nappend=nappend, get_sqlite_partd=get_sqlite_partd,
                               port_protocol=storage_options.get('port_protocol', 'tcp'))
         server_address = server.address
@@ -196,7 +198,6 @@ def label(im: npt.NDArray | da.Array | NDBlock,
         nonlocal locally_labeled
         locally_labeled = da.map_blocks(compute_slices, locally_labeled, cumsum_da_arr,
                                         meta=np.zeros(tuple(), dtype=output_dtype))
-        server.wait_join()
         return locally_labeled
 
     locally_labeled = cdir.cache_im(
@@ -204,6 +205,8 @@ def label(im: npt.NDArray | da.Array | NDBlock,
         cid='locally_labeled_with_cumsum',
         viewer_args=vargs
     )
+    if server is not None:
+        server.wait_join()
 
     if is_logging:
         print('Process locally to obtain a lower triangular adjacency matrix')

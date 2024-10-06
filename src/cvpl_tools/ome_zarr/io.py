@@ -87,6 +87,18 @@ def split_query_string(path: str) -> tuple[str, tuple[slice, ...] | None]:
     return path, slices
 
 
+def filename_from(path: str) -> str:
+    """Strip off query in a url that may contain query e.g. 'path/to/file?slices=[1]'
+
+    Args:
+        path: url to be splitted
+
+    Returns:
+        path with trailing query stripped
+    """
+    return split_query_string(path)[0]
+
+
 def load_dask_array_from_path(path: str,
                               mode: str | None = None,
                               use_zip: bool | None = None,
