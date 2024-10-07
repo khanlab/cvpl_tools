@@ -48,12 +48,25 @@ from dask_image.dispatch._dispatch_ndinterp import (
 from dask_image.ndfilters._utils import _get_depth_boundary
 
 
+def scale_nearest(image: da.Array, scale: int | tuple[int, ...], output_shape: tuple[int, ...],
+                  output_chunks: tuple[int, ...] = None, **kwargs):
+    if isinstance(scale, int):
+        scale = (scale,) * image.ndim + (1,)
+    matrix = np.diag(scale)
+    return affine_transform_nearest(image,
+                                    matrix,
+                                    offset=0.,
+                                    output_shape=output_shape,
+                                    output_chunks=output_chunks,
+                                    **kwargs)
+
+
 def affine_transform_nearest(
-        image,
+        image: da.Array,
         matrix,
-        offset=0.0,
-        output_shape=None,
-        output_chunks=None,
+        offset=0.,
+        output_shape: tuple[int, ...] = None,
+        output_chunks: tuple[int, ...] = None,
         **kwargs
 ):
     """Apply an affine transform using Dask. For every
@@ -187,11 +200,17 @@ def affine_transform_nearest(
             rel_image_i[dim] = np.clip(rel_image_i[dim], 0, s)
             rel_image_f[dim] = np.clip(rel_image_f[dim], 0, s)
 
-        rel_image_slice = tuple([slice(int(rel_image_i[dim]),
-                                       int(rel_image_f[dim]))
-                                 for dim in range(n)])
+        rel_image_slice = []
+        for dim in range(n):
+            imin = int(rel_image_i[dim])
+            imax = max(imin + 1, int(rel_image_f[dim]))
+            rel_image_slice.append(slice(imin, imax))
+        rel_image_slice = tuple(rel_image_slice)
 
         rel_image = image[rel_image_slice]
+
+        print('-----', block_ind, '-----')
+        print(rel_image_slice)
 
         """Block comment for future developers explaining how `offset` is
         transformed into `offset_prime` for each output chunk.
