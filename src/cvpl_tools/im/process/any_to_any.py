@@ -15,6 +15,10 @@ from cvpl_tools.im.seg_process import (
 
 
 class DownsamplingByIntFactor(SegProcess):
+    """*DEPRECATED*
+
+    use cvpl_tools.im.algs.dask_ndinterp.scale_nearest instead
+    """
     def __init__(self, factor: int | tuple = 2):
         """Creates a DownsamplingByIntFactor object
 
@@ -60,6 +64,11 @@ class DownsamplingByIntFactor(SegProcess):
 
 
 class UpsamplingByIntFactor(BlockToBlockProcess):
+    """*DEPRECATED*
+
+    use cvpl_tools.im.algs.dask_ndinterp.scale_nearest instead
+    """
+
     def __init__(self, factor: int | tuple = 2, order: int = 0):
         """Creates a UpsamplingByIntFactor object
 

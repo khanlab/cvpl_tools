@@ -48,11 +48,23 @@ from dask_image.dispatch._dispatch_ndinterp import (
 from dask_image.ndfilters._utils import _get_depth_boundary
 
 
-def scale_nearest(image: da.Array, scale: int | tuple[int, ...], output_shape: tuple[int, ...],
-                  output_chunks: tuple[int, ...] = None, **kwargs):
+def scale_nearest(image: da.Array, scale: float | tuple[float, ...], output_shape: tuple[int, ...],
+                  output_chunks: tuple[int, ...] = None, **kwargs) -> da.Array:
+    """Scaling the image without interpolation (order=0)
+
+    Args:
+        image: The image to be scaled by the given factor
+        scale: The scale to be applied to each axis; if float
+        output_shape: Shape of the output array
+        output_chunks: Shape of the chunks of the output array
+        **kwargs: arguments to be passed to affine_transform_nearest
+
+    Returns:
+        Scaled dask array
+    """
     if isinstance(scale, int):
         scale = (scale,) * image.ndim + (1,)
-    matrix = np.diag(scale)
+    matrix = 1 / np.diag(scale)
     return affine_transform_nearest(image,
                                     matrix,
                                     offset=0.,
@@ -68,7 +80,7 @@ def affine_transform_nearest(
         output_shape: tuple[int, ...] = None,
         output_chunks: tuple[int, ...] = None,
         **kwargs
-):
+) -> da.Array:
     """Apply an affine transform using Dask. For every
     output chunk, only the slice containing the relevant part
     of the image is processed. Chunkwise processing is performed
