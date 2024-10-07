@@ -64,7 +64,7 @@ def scale_nearest(image: da.Array, scale: float | tuple[float, ...], output_shap
     """
     if isinstance(scale, int):
         scale = (scale,) * image.ndim + (1,)
-    matrix = 1 / np.diag(scale)
+    matrix = np.diag(1 / np.array(scale, dtype=np.float32))
     return affine_transform_nearest(image,
                                     matrix,
                                     offset=0.,
@@ -116,6 +116,7 @@ def affine_transform_nearest(
         A dask array representing the transformed output
 
     """
+    assert not np.isnan(matrix).any(), f'affine matrix is not supposed to contain nan, however, found matrix={matrix}'
     assert kwargs.get('order', 0) == 0, f'Affine_transform_nearest does not take order parameter!'
 
     if not isinstance(image, da.core.Array):
