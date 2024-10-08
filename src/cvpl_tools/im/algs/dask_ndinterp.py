@@ -150,7 +150,7 @@ def affine_transform_nearest(
         matrix = matrix[:image.ndim, :image.ndim]
 
     cval = kwargs.pop('cval', 0)
-    mode = kwargs.pop('mode', 'constant')
+    mode = kwargs.pop('mode', 'nearest')
     prefilter = kwargs.pop('prefilter', False)
 
     supported_modes = ['constant', 'nearest']
@@ -188,7 +188,7 @@ def affine_transform_nearest(
         out_chunk_offset = [block_offsets[dim][block_ind[dim]]
                             for dim in range(n)]
 
-        out_chunk_edges = np.array([i for i in np.ndindex(tuple([2] * n))]) \
+        out_chunk_edges = np.array([i for i in np.ndindex((2,) * n)]) \
                           * np.array(out_chunk_shape) + np.array(out_chunk_offset)
 
         # map output chunk edges onto input image coordinates
@@ -210,8 +210,8 @@ def affine_transform_nearest(
             rel_image_i[dim] = np.floor(rel_image_i[dim] + .5)
             rel_image_f[dim] = np.floor(rel_image_f[dim] + .5)
 
-            rel_image_i[dim] = np.clip(rel_image_i[dim], 0, s)
-            rel_image_f[dim] = np.clip(rel_image_f[dim], 0, s)
+            rel_image_i[dim] = np.clip(rel_image_i[dim], 0, s - 1)
+            rel_image_f[dim] = np.clip(rel_image_f[dim], 1, s)
 
         rel_image_slice = []
         for dim in range(n):
@@ -221,9 +221,6 @@ def affine_transform_nearest(
         rel_image_slice = tuple(rel_image_slice)
 
         rel_image = image[rel_image_slice]
-
-        print('-----', block_ind, '-----')
-        print(rel_image_slice)
 
         """Block comment for future developers explaining how `offset` is
         transformed into `offset_prime` for each output chunk.
