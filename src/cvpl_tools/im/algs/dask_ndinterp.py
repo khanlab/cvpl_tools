@@ -62,12 +62,14 @@ def scale_nearest(image: da.Array, scale: float | tuple[float, ...], output_shap
     Returns:
         Scaled dask array
     """
-    if isinstance(scale, int):
+    if isinstance(scale, (int, float)):
         scale = (scale,) * image.ndim + (1,)
+    else:
+        assert len(scale) == image.ndim, f'Scale vector should be a vector of same length as image number of dims'
+        scale = np.concatenate((scale, (1,)), axis=0)
     matrix = np.diag(1 / np.array(scale, dtype=np.float32))
     return affine_transform_nearest(image,
                                     matrix,
-                                    offset=0.,
                                     output_shape=output_shape,
                                     output_chunks=output_chunks,
                                     **kwargs)
@@ -76,7 +78,6 @@ def scale_nearest(image: da.Array, scale: float | tuple[float, ...], output_shap
 def affine_transform_nearest(
         image: da.Array,
         matrix,
-        offset=0.,
         output_shape: tuple[int, ...] = None,
         output_chunks: tuple[int, ...] = None,
         **kwargs
@@ -86,6 +87,11 @@ def affine_transform_nearest(
     of the image is processed. Chunkwise processing is performed
     either using `ndimage.affine_transform` or
     `cupyx.scipy.ndimage.affine_transform`, depending on the input type.
+
+    Position of each voxel in input and output is assumed to be the
+    center of the cube e.g. for 3d this is (x + .5, y + .5, z + .5),
+    note that this is different from scipy's affine_transform where
+    the position is (x, y, z)
 
     Notes
     -----
@@ -99,12 +105,8 @@ def affine_transform_nearest(
     ----------
     image : array_like (Numpy Array, Cupy Array, Dask Array...)
         The image array.
-    matrix : array (ndim,), (ndim, ndim), (ndim, ndim+1) or (ndim+1, ndim+1)
+    matrix : array (ndim, ndim+1) or (ndim+1, ndim+1)
         Transformation matrix.
-    offset : float or sequence, optional
-        The offset into the array where the transform is applied. If a float,
-        `offset` is the same for each axis. If a sequence, `offset` should
-        contain one value for each axis.
     output_shape : tuple of ints, optional
         The shape of the array to be returned.
     output_chunks : tuple of ints, optional
@@ -117,7 +119,15 @@ def affine_transform_nearest(
 
     """
     assert not np.isnan(matrix).any(), f'affine matrix is not supposed to contain nan, however, found matrix={matrix}'
-    assert kwargs.get('order', 0) == 0, f'Affine_transform_nearest does not take order parameter!'
+    assert kwargs.get('order', 0) == 0, f'affine_transform_nearest does not take order parameter!'
+    NDIM = image.ndim
+    assert matrix.shape[0] == NDIM or matrix.shape[0] == NDIM + 1, (f'affine matrix must be of height same as '
+                                                                    f'image.ndim or image.ndim + 1 '
+                                                                    f'(bottom row stripped), got shape {matrix.shape}')
+    assert matrix.shape[1] == NDIM + 1, (f'affine matrix must be of width same as image.ndim + 1, '
+                                         f'got shape {matrix.shape}')
+    offset = matrix[:NDIM, NDIM]
+    matrix = matrix[:NDIM, :NDIM]
 
     if not isinstance(image, da.core.Array):
         image = da.from_array(image)
@@ -129,25 +139,11 @@ def affine_transform_nearest(
         output_chunks = image.shape
 
     # Perform test run to ensure parameter validity.
-    ndimage_affine_transform(np.zeros([0] * image.ndim),
+    ndimage_affine_transform(np.zeros([0] * NDIM),
                              matrix,
-                             offset)
-
-    # Make sure parameters contained in matrix and offset
-    # are not overlapping, i.e. that the offset is valid as
-    # it needs to be modified for each chunk.
-    # Further parameter checks are performed directly by
-    # `ndimage.affine_transform`.
+                             0)
 
     matrix = np.asarray(matrix)
-    offset = np.asarray(offset).squeeze()
-
-    # these lines were copied and adapted from `ndimage.affine_transform`
-    if (matrix.ndim == 2 and matrix.shape[1] == image.ndim + 1 and
-            (matrix.shape[0] in [image.ndim, image.ndim + 1])):
-        # assume input is homogeneous coordinate transformation matrix
-        offset = matrix[:image.ndim, image.ndim]
-        matrix = matrix[:image.ndim, :image.ndim]
 
     cval = kwargs.pop('cval', 0)
     mode = kwargs.pop('mode', 'nearest')
@@ -161,7 +157,6 @@ def affine_transform_nearest(
             f"Mode {mode} is not currently supported. It must be one of "
             f"{supported_modes}.")
 
-    n = image.ndim
     image_shape = image.shape
 
     # calculate output array properties
@@ -176,7 +171,7 @@ def affine_transform_nearest(
 
     # construct dask graph for output array
     # using unique and deterministic identifier
-    output_name = 'affine_transform-' + tokenize(image, matrix, offset,
+    output_name = 'affine_transform-' + tokenize(image, matrix,
                                                  output_shape, output_chunks,
                                                  kwargs)
     output_layer = {}
@@ -184,19 +179,14 @@ def affine_transform_nearest(
     for ib, block_ind in enumerate(block_indices):
 
         out_chunk_shape = [normalized_chunks[dim][block_ind[dim]]
-                           for dim in range(n)]
+                           for dim in range(NDIM)]
         out_chunk_offset = [block_offsets[dim][block_ind[dim]]
-                            for dim in range(n)]
+                            for dim in range(NDIM)]
 
-        out_chunk_edges = np.array([i for i in np.ndindex((2,) * n)]) \
+        out_chunk_edges = np.array([i for i in np.ndindex((2,) * NDIM)]) \
                           * np.array(out_chunk_shape) + np.array(out_chunk_offset)
 
-        # map output chunk edges onto input image coordinates
-        # to define the input region relevant for the current chunk
-        if matrix.ndim == 1 and len(matrix) == image.ndim:
-            rel_image_edges = matrix * out_chunk_edges + offset
-        else:
-            rel_image_edges = np.dot(matrix, out_chunk_edges.T).T + offset
+        rel_image_edges = np.dot(matrix, out_chunk_edges.T).T + offset
 
         rel_image_i = np.min(rel_image_edges, 0)
         rel_image_f = np.max(rel_image_edges, 0)
@@ -206,7 +196,7 @@ def affine_transform_nearest(
         # https://github.com/scipy/scipy/blob/9c0d08d7d11fc33311a96d2ac3ad73c8f6e3df00/scipy/ndimage/src/ni_interpolation.c#L412-L419 # noqa: E501
         # Also see this discussion:
         # https://github.com/dask/dask-image/issues/24#issuecomment-706165593 # noqa: E501
-        for dim, s in zip(range(n), image_shape):
+        for dim, s in zip(range(NDIM), image_shape):
             rel_image_i[dim] = np.floor(rel_image_i[dim] + .5)
             rel_image_f[dim] = np.floor(rel_image_f[dim] + .5)
 
@@ -214,7 +204,7 @@ def affine_transform_nearest(
             rel_image_f[dim] = np.clip(rel_image_f[dim], 1, s)
 
         rel_image_slice = []
-        for dim in range(n):
+        for dim in range(NDIM):
             imin = int(rel_image_i[dim])
             imax = max(imin + 1, int(rel_image_f[dim]))
             rel_image_slice.append(slice(imin, imax))
@@ -235,7 +225,7 @@ def affine_transform_nearest(
         o' = o + Mx0 - y0
         """
 
-        offset_prime = offset + np.dot(matrix, out_chunk_offset) - rel_image_i
+        offset_prime = offset + np.dot(matrix, out_chunk_offset) - rel_image_i - .5
 
         output_layer[(output_name,) + block_ind] = (
             affine_transform_method,
