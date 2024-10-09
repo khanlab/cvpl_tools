@@ -44,5 +44,6 @@ or on cloud.
    cvpl_tools.im.fs.py <API/imfs>
    cvpl_tools.im.ndblock.py <API/ndblock>
    cvpl_tools.im.seg_process.py <API/seg_process>
+   cvpl_tools.im.algs <API/algs>
 
 
