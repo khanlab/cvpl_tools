@@ -1,7 +1,7 @@
 .. _imfs:
 
 cvpl_tools/im/fs.py
-============================
+===================
 
 View source at `fs.py <https://github.com/khanlab/cvpl_tools/blob/main/src/cvpl_tools/im/fs.py>`_.
 
