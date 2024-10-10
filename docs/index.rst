@@ -39,7 +39,7 @@ or on cloud.
    :maxdepth: 2
    :caption: API Reference
 
-   cvpl_tools.ome_zarr.napari.zarr_viewer.py <API/napari_zarr>
+   cvpl_tools.ome_zarr.napari.add.py <API/napari_zarr>
    cvpl_tools.ome_zarr.io.py <API/ome_zarr_io>
    cvpl_tools.im.fs.py <API/imfs>
    cvpl_tools.im.ndblock.py <API/ndblock>

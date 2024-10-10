@@ -17,8 +17,8 @@ To view an ome-zarr file this way with :code:`cvpl_tools`, use the command
 
 ::
 
-    import cvpl_tools.ome_zarr.napari.zarr_viewer as cvpl_zarr
-    cvpl_zarr.add_ome_zarr_array_from_path(viewer, "/absolute/path/to/your/ome.zarr", kwargs=dict(name="displayed_name_in_ui"))
+    import cvpl_tools.ome_zarr.napari.add as napari_add_ome_zarr
+    napari_add_ome_zarr.subarray(viewer, "/absolute/path/to/your/ome.zarr", kwargs=dict(name="displayed_name_in_ui"))
 
 - This will create a new layer named **displayed_name_in_ui** which displays your ome zarr array.
   The underlying implementation uses Napari add_image's multiscale array display
@@ -32,15 +32,15 @@ To view an ome-zarr file this way with :code:`cvpl_tools`, use the command
 
 .. code-block:: Python
 
-    import cvpl_tools.ome_zarr.napari.zarr_viewer as zarr_viewer
+    import cvpl_tools.ome_zarr.napari.add as napari_add_ome_zarr
     import gcsfs
     import zarr
     gfs = gcsfs.GCSFileSystem(token=None)
     store = gfs.get_mapper('gs://path_to_your.ome.zarr')
     zarr_group = zarr.open(store, mode='r')
-    zarr_viewer.add_ome_zarr_group(viewer, zarr_group, kwargs=dict(name="displayed_name_in_ui"))
+    napari_add_ome_zarr.group(viewer, zarr_group, kwargs=dict(name="displayed_name_in_ui"))
 
-- An extra argument is_label can be passed into the function via :code:`kwargs` dictionary.
+- An extra argument :code:`is_label` can be passed into the function via :code:`kwargs` dictionary.
   This is a boolean value that specifies whether to use :code:`viewer.add_labels`
   (if :code:`True`) or :code:`viewer.add_image` (if :code:`False`) function. This is useful for
   displaying instance segmentaion masks, where each segmented object has a distinct color.
@@ -107,7 +107,7 @@ reading or viewing an ome zarr file for convenience.
 
 The functions :code:`load_dask_array_from_path` in :code:`cvpl_tools.ome_zarr.io`, and
 :code:`load_zarr_group_from_path` as well as :code:`load_ome_zarr_array_from_path` from
-:code:`cvpl_tools.ome_zarr.napari.zarr_viewer` support specifying the slices in the following
+:code:`cvpl_tools.ome_zarr.napari.add` support specifying the slices in the following
 syntax, much similar to torch or numpy array slicing:
 
 .. code-block:: Python

@@ -142,6 +142,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             return  # don't fully initialize; used in case properties can't be inferred from arr
 
         if isinstance(arr, np.ndarray):
+            assert arr.ndim >= 1, f'NDBlock does not save 0-dimension array, ensure array is at least 1-d'
             self.arr = arr
             self._set_properties_by_numpy_array(arr)
         elif isinstance(arr, da.Array):

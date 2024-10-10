@@ -16,7 +16,7 @@ from cvpl_tools.im.ndblock import NDBlock
 import dask.array as da
 import shutil
 import os
-from cvpl_tools.ome_zarr.napari.zarr_viewer import add_ome_zarr_array_from_path
+import cvpl_tools.ome_zarr.napari.add as napari_add_ome_zarr
 
 
 def ensure_dir_exists(dir_path, remove_if_already_exists):
@@ -178,8 +178,8 @@ def display(file: str, viewer_args: dict):
         fn(im, **layer_args)
     else:
         # image saved by NDBlock.save(file)
-        add_ome_zarr_array_from_path(viewer, f'{file}/dask_im', use_zip=False, merge_channels=True,
-                                     kwargs=layer_args | dict(is_label=is_label))
+        napari_add_ome_zarr.subarray_from_path(viewer, f'{file}/dask_im', use_zip=False, merge_channels=True,
+                                               kwargs=layer_args | dict(is_label=is_label))
 
 
 # -------------------------------------File Caching---------------------------------------------
@@ -554,7 +554,7 @@ class CacheDirectory(CachePath):
             )
         self.children[cid] = cache_path
         return cache_path
-    
+
     def cache(self, cid: str = None):
         """Similar to _create_cache(), but use an intermediate object to offset the decision of is_dir
         
@@ -705,5 +705,3 @@ class CachePointer(CachePath):
     @property
     def is_dir(self):
         return NotImplementedError("A pointer offsets decision of is_dir, don't call is_dir on CachePointer")
-
-

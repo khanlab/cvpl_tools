@@ -4,6 +4,7 @@ version of the label() function of scipy.ndimage
 """
 from math import prod
 
+import dask
 import dask.array as da
 import numcodecs
 import numpy as np
@@ -21,6 +22,12 @@ from dask.distributed import print as dprint
 from collections import defaultdict
 
 
+def split_list(lst, nsplit):
+    """Split a list to nsplit roughly equal parts"""
+    size = len(lst) // nsplit
+    return [lst[i * size: (i + 1) * size] for i in range(nsplit - 1)] + [lst[(nsplit - 1) * size:]]
+
+
 class PairKVStore(SQLiteKVStore):
     def init_db(self):
         if not self.is_exists:
@@ -36,11 +43,14 @@ class PairKVStore(SQLiteKVStore):
             ON CONFLICT(id) DO UPDATE SET value2=excluded.value1;
             """
 
-    def read_all(self):
+    def ids(self):
         self.cursor.execute("""
-        SELECT id FROM kv_store
-        """)
+                SELECT id FROM kv_store
+                """)
         ids = self.cursor.fetchall()
+        return ids
+
+    def read_many(self, ids: list):
         for row in ids:
             self.cursor.execute("""
             SELECT value1, value2 FROM kv_store WHERE id = ?
@@ -72,6 +82,56 @@ def find_connected_components(edges: set[tuple[int, int]]) -> list[set[int, ...]
             components.append(component)
 
     return components
+
+
+def compute_lower_adj_set(db_path: str, compressor) -> set[tuple[int, int]]:
+    """From a SQL db of neighboring slices, compute their corresponding lower adjacency matrix as a set
+
+    Args:
+        db_path: Path to the SQL database on disk
+
+    Returns:
+        The adjacency edge set
+    """
+    lower_adj = set()
+    read_kv_store = PairKVStore(db_path)
+    ids = read_kv_store.ids()
+    read_kv_store.close()
+    print(f'Total number of ids to be processed to compute lower adj set: {len(ids)}')
+    ntask = max(len(ids) // 2000, 1)
+    split_ids = split_list(ids, ntask)
+
+    @dask.delayed
+    def compute_partial(db_path: str, partial_ids: list) -> set[tuple[int, int]]:
+        partial_lower_adj = set()
+        partial_read_kv_store = PairKVStore(db_path)
+        for value1, value2 in partial_read_kv_store.read_many(partial_ids):
+            if value1 is None or value2 is None:
+                continue
+            sli1, sli2 = loads_numpy(value1, compressor).flatten(), loads_numpy(value2, compressor).flatten()
+            sli = np.stack((sli1, sli2), axis=1)
+            tups = cvpl_algorithms.np_unique(sli, axis=0)
+            for row in tups.tolist():
+                i1, i2 = row
+                if i2 < i1:
+                    tmp = i2
+                    i2 = i1
+                    i1 = tmp
+                if i1 == 0:
+                    continue
+                assert i1 < i2, f'i1={i1} and i2={i2}!'  # can not be equal because indices are globally unique here
+                tup = (i2, i1)
+                if tup not in lower_adj:
+                    partial_lower_adj.add(tup)
+        return partial_lower_adj
+
+    tasks = [compute_partial(db_path, partial_ids) for partial_ids in split_ids]
+    results = dask.compute(*tasks)
+    lower_adj = set()
+    for partial_lower_adj in results:
+        partial_lower_adj: set[tuple[int, int]]
+        lower_adj |= partial_lower_adj
+    return lower_adj
 
 
 def label(im: npt.NDArray | da.Array | NDBlock,
@@ -166,6 +226,7 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     storage_options = viewer_args.get('storage_options', dict())
 
     server = None
+
     def compute_edge_slices():
         nonlocal server
         server = SqliteServer(slices_abs_path, nappend=nappend, get_sqlite_partd=get_sqlite_partd,
@@ -208,59 +269,44 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     if server is not None:
         server.wait_join()
 
-    if is_logging:
-        print('Process locally to obtain a lower triangular adjacency matrix')
-    read_kv_store = PairKVStore(db_path)
-    lower_adj = set()
-    for value1, value2 in read_kv_store.read_all():
-        if value1 is None or value2 is None:
-            continue
-        sli1, sli2 = loads_numpy(value1, compressor).flatten(), loads_numpy(value2, compressor).flatten()
-        sli = np.stack((sli1, sli2), axis=1)
-        tups = cvpl_algorithms.np_unique(sli, axis=0)
-        for row in tups.tolist():
-            i1, i2 = row
-            if i2 < i1:
-                tmp = i2
-                i2 = i1
-                i1 = tmp
-            if i1 == 0:
-                continue
-            assert i1 < i2, f'i1={i1} and i2={i2}!'  # can not be equal because indices are globally unique here
-            tup = (i2, i1)
-            if tup not in lower_adj:
-                lower_adj.add(tup)
-    connected_components = find_connected_components(lower_adj)
-    if is_logging:
-        print('Compute final indices remap array')
-    ind_map_np = np.arange(total_nlbl + 1, dtype=output_dtype)
-    assigned_mask = np.zeros((total_nlbl + 1), dtype=np.uint8)
-    assigned_mask[0] = 1  # we don't touch background class
     comp_i = 0
-    while comp_i < len(connected_components):
-        comp = connected_components[comp_i]
-        comp_i += 1
-        for j in comp:
-            ind_map_np[j] = comp_i
-            assigned_mask[j] = 1
-    for i in range(assigned_mask.shape[0]):
-        if assigned_mask[i] == 0:
+    def compute_globally_labeled():
+        if is_logging:
+            print('Process locally to obtain a lower triangular adjacency matrix')
+        lower_adj = compute_lower_adj_set(db_path, compressor)
+        connected_components = find_connected_components(lower_adj)
+        if is_logging:
+            print('Compute final indices remap array')
+        ind_map_np = np.arange(total_nlbl + 1, dtype=output_dtype)
+        assigned_mask = np.zeros((total_nlbl + 1), dtype=np.uint8)
+        assigned_mask[0] = 1  # we don't touch background class
+        nonlocal comp_i
+        while comp_i < len(connected_components):
+            comp = connected_components[comp_i]
             comp_i += 1
-            ind_map_np[i] = comp_i
+            for j in comp:
+                ind_map_np[j] = comp_i
+                assigned_mask[j] = 1
+        for i in range(assigned_mask.shape[0]):
+            if assigned_mask[i] == 0:
+                comp_i += 1
+                ind_map_np[i] = comp_i
 
-    read_kv_store.close()
+        if is_logging:
+            print(f'comp_i={comp_i}, Remapping the indices array to be globally consistent')
+        client = viewer_args['client']
+        ind_map_scatter = client.scatter(ind_map_np, broadcast=True)
 
-    if is_logging:
-        print(f'comp_i={comp_i}, Remapping the indices array to be globally consistent')
-    client = viewer_args['client']
-    ind_map_scatter = client.scatter(ind_map_np, broadcast=True)
+        def local_to_global(block, block_info, ind_map_scatter):
+            return ind_map_scatter[block]
 
-    def local_to_global(block, block_info, ind_map_scatter):
-        return ind_map_scatter[block]
+        return locally_labeled.map_blocks(func=local_to_global, meta=np.zeros(tuple(), dtype=output_dtype),
+                                          ind_map_scatter=ind_map_scatter)
+
+    comp_i = cdir.cache_im(lambda: np.array(comp_i, dtype=np.int64)[None], cid='comp_i').item()
 
     globally_labeled = cdir.cache_im(
-        lambda: locally_labeled.map_blocks(func=local_to_global, meta=np.zeros(tuple(), dtype=output_dtype),
-                                           ind_map_scatter=ind_map_scatter),
+        fn=compute_globally_labeled,
         cid='globally_labeled',
         viewer_args=vargs
     )
