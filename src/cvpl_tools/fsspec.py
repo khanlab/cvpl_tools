@@ -68,12 +68,12 @@ class RDirFileSystem(DirFileSystem):
         if self.fs.exists(self.path):
             if remove_if_already_exists:
                 self.fs.rm(self.path, recursive=True)
-                self.mkdir(self.path)
+                self.makedirs_cur()
         else:
-            self.mkdir(self.path)
+            self.makedirs_cur()
 
-    def mkdir(self, path, *args, **kwargs):
+    def makedirs_cur(self):
         if 'gcs' in self.fs.protocol:
-            return self.fs.touch(f'{path}/.gcs_placeholder')
+            return self.fs.touch(f'{self.path}/.gcs_placeholder')
         else:
-            return self.fs.mkdir(self._join(path), *args, **kwargs)
+            return self.fs.makedirs(self.path)
