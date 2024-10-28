@@ -259,7 +259,7 @@ stderr, since those capture Dask’s distributed print function’s text output.
     <span class="c1"># IMPORT YOUR LIBRARIES HERE</span>
 
     <span class="n">TMP_PATH</span> <span class="o">=</span> <span class="s2">&quot;C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp&quot;</span>
-    <span class="k">with</span> <span class="n">qsetup</span><span class="o">.</span><span class="n">PLComponents</span><span class="p">(</span><span class="n">TMP_PATH</span><span class="p">,</span> <span class="s1">&#39;CacheDirectoryThreading&#39;</span><span class="p">,</span>
+    <span class="k">with</span> <span class="n">qsetup</span><span class="o">.</span><span class="n">PLComponents</span><span class="p">(</span><span class="n">TMP_PATH</span><span class="p">,</span> <span class="s1">&#39;CacheDirectory&#39;</span><span class="p">,</span>
                              <span class="n">client_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
                              <span class="n">viewer_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">use_viewer</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span> <span class="k">as</span> <span class="n">plc</span><span class="p">:</span>
         <span class="c1"># DO DASK COMPUTATION, AND SHOW RESULTS IN plc.viewer</span>

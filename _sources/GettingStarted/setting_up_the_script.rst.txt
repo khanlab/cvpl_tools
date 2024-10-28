@@ -190,7 +190,7 @@ stderr, since those capture Dask's distributed print function's text output.
         # IMPORT YOUR LIBRARIES HERE
 
         TMP_PATH = "C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp"
-        with qsetup.PLComponents(TMP_PATH, 'CacheDirectoryThreading',
+        with qsetup.PLComponents(TMP_PATH, 'CacheDirectory',
                                  client_args=dict(threads_per_worker=12, n_workers=1),
                                  viewer_args=dict(use_viewer=True)) as plc:
             # DO DASK COMPUTATION, AND SHOW RESULTS IN plc.viewer
