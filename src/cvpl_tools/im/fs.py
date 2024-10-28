@@ -8,32 +8,15 @@ import enum
 import json
 from typing import Any
 
+import fsspec
 import napari
 import numcodecs
 import numpy as np
 import cvpl_tools.im.ndblock as cvpl_ndblock
 from cvpl_tools.im.ndblock import NDBlock
 import dask.array as da
-import shutil
-import os
 import cvpl_tools.ome_zarr.napari.add as napari_add_ome_zarr
-
-
-def ensure_dir_exists(dir_path, remove_if_already_exists):
-    """
-    If a directory does not exist, make a new directory with the name.
-    This assumes the parent directory must exists; otherwise a path not
-    found error will be thrown.
-    Args:
-        dir_path: The path of folder
-        remove_if_already_exists: if True and the folder already exists, then remove it and make a new one.
-    """
-    if os.path.exists(dir_path):
-        if remove_if_already_exists:
-            shutil.rmtree(dir_path)
-            os.mkdir(dir_path)
-    else:
-        os.mkdir(dir_path)
+from cvpl_tools.fsspec import RDirFileSystem
 
 
 class ImageFormat(enum.Enum):
@@ -102,7 +85,9 @@ def save(file: str,
         NDBlock.save(file, im, storage_options=storage_options)
     else:
         raise ValueError(f'Unexpected input type im {type(im)}')
-    with open(f'{file}/.save_meta.txt', mode='w') as outfile:
+
+    fs = RDirFileSystem(file)
+    with fs.open('.save_meta.txt', mode='w') as outfile:
         outfile.write(str(fmt.value))
         outfile.write(f'\n{chunksize_to_str(old_chunksize)}\n{chunksize_to_str(preferred_chunksize)}')
 
@@ -123,8 +108,9 @@ def load(file: str, storage_options: dict = None):
         Recreated image; this method attempts to keep meta and content of the loaded image stays
         the same as when they are saved
     """
-    with open(f'{file}/.save_meta.txt') as outfile:
-        items = outfile.read().split('\n')
+    fs = RDirFileSystem(file)
+    with fs.open(f'.save_meta.txt', 'r') as infile:
+        items = infile.read().split('\n')
         fmt = ImageFormat(int(items[0]))
         old_chunksize, preferred_chunksize = str_to_chunksize(items[1]), str_to_chunksize(items[2])
     if fmt == ImageFormat.NUMPY:
@@ -155,8 +141,9 @@ def display(file: str, viewer_args: dict):
     viewer: napari.Viewer = viewer_args.pop('viewer')
     layer_args = viewer_args.get('layer_args', {})
 
-    with open(f'{file}/.save_meta.txt') as outfile:
-        fmt = ImageFormat(int(outfile.read().split('\n')[0]))
+    fs = RDirFileSystem(file)
+    with fs.open(f'.save_meta.txt', mode='r') as infile:
+        fmt = ImageFormat(int(infile.read().split('\n')[0]))
     if fmt == ImageFormat.NUMPY:
         is_numpy = True
     elif fmt == ImageFormat.DASK_ARRAY:
@@ -222,7 +209,6 @@ def cache_im(fn,
             return im
         save(raw_path, im, storage_options)
 
-    assert os.path.exists(raw_path), f'Directory should be created at path {raw_path}, but it is not found'
     if not skip_cache and viewer_args.get('viewer') is not None:
         viewer_args['layer_args'] = copy.copy(viewer_args.get('layer_args', {}))
         viewer_args['layer_args'].setdefault('name', cpath.cid)
@@ -241,12 +227,13 @@ class CachePath:
     To create a CachePath object, use the CacheDirectory's cache() function to allocate a new or find
     an existing cache location.
 
-    CachePath as its name suggests is not a file but only a pointer. Creating a CachePath object will not
+    CachePath as its name suggests is not a folder but only a path. Creating a CachePath object will not
     create the associated file automatically.
     """
 
     def __init__(self, root: CacheRootDirectory, path_segs: tuple[str, ...], meta: dict = None,
-                 parent: CacheDirectory | None = None, exists: bool = False):
+                 parent: CacheDirectory | None = None, exists: bool = False,
+                 fs: RDirFileSystem = None):
         """Create a CachePath object that manages meta info about the cache file or directory
 
         Args:
@@ -261,6 +248,13 @@ class CachePath:
         assert isinstance(path_segs, tuple), f'Expected tuple for path_segs, got {type(path_segs)}'
         self._root = root
         self._path_segs = path_segs
+
+        if fs is None:
+            # initialize fsspec's file system object for file system access operations
+            self._rel_path = '/'.join(self._path_segs)
+            self._fs = self._root._fs[self._rel_path]
+        else:
+            self._fs = fs
 
         if meta is None:
             filename = path_segs[-1]
@@ -294,19 +288,31 @@ class CachePath:
         return self._path_segs[-1]
 
     @property
+    def fs(self) -> RDirFileSystem:
+        return self._fs
+
+    @property
     def rel_path(self) -> str:
         """Obtain the relative os path to the root"""
-        return '/'.join(self._path_segs)
+        return self._rel_path
+
+    @property
+    def url(self):
+        """Obtain the url associated with this CachePath object
+
+        The first time this url is associated with a CachePath object, it's supposed to be empty and can be used as the
+        address to store cache files. Afterward the next time app starts the cache can be read from this url.
+        """
+        return self._fs.url
 
     @property
     def abs_path(self):
-        """Obtain the os path under which you can create a directory
+        """Obtain the absolute path associated with this CachePath object
 
-        The first time a CachePath object is created for this path, cache_path.abs_path will point to an empty location;
-        second time onwards if the directory is not removed, then the returned cache_path.abs_path will point to the
-        previously existing directory
+        The first time this url is associated with a CachePath object, it's supposed to be empty and can be used as the
+        address to store cache files. Afterward the next time app starts the cache can be read from this url.
         """
-        return '/'.join((self._root.abs_path,) + self._path_segs)
+        return self._fs.path
 
     @property
     def is_dir(self):
@@ -429,14 +435,13 @@ class CacheDirectory(CachePath):
         self.read_if_exists = read_if_exists
         self.children: dict[str, CachePath] = {}
 
-        abs_path = self.abs_path
         if self.read_if_exists:
-            ensure_dir_exists(abs_path, remove_if_already_exists=False)
+            self._fs.ensure_dir_exists(remove_if_already_exists=False)
             self.children = self.children_from_path(
                 prefix_path_segs=self._path_segs)
         else:
             assert not exists, 'when read_if_exists=False, directory must be created so must not already exists, ' \
-                               f'please check if any file exists under {abs_path}.'
+                               f'please check if any file exists under {self.url}.'
 
     def children_from_path(self, prefix_path_segs: tuple[str, ...] = None) -> dict[str, CachePath]:
         """Examine an existing directory path, return recursively all files and directories as dict.
@@ -449,9 +454,8 @@ class CacheDirectory(CachePath):
             determine if they contain more children
         """
         children = {}
-        abs_path = self.abs_path
-        filenames = list(os.listdir(abs_path))
-        for filename in filenames:
+        for di in self._fs.ls(''):
+            filename = di['name']
             subpath_segs = prefix_path_segs + (filename,)
             meta = CachePath.meta_from_filename(filename, return_none_if_malform=True)
             if meta is not None:
@@ -610,11 +614,11 @@ class CacheDirectory(CachePath):
     def remove_tmp(self):
         """traverse all subnodes and self, removing those with is_tmp=True"""
         if self.is_tmp:
-            shutil.rmtree(self.abs_path)
+            self._fs.rm('', recursive=True)
         else:
             for ch in self.children.values():
                 if ch.is_tmp:
-                    shutil.rmtree(ch.abs_path)
+                    ch._fs.rm('', recursive=True)
                 elif ch.is_dir:
                     assert isinstance(ch, CacheDirectory)
                     ch.remove_tmp()
@@ -636,7 +640,7 @@ class CacheRootDirectory(CacheDirectory):
                 will be traversed to find any file or directory whose is_tmp is True and remote them)
             read_if_exists: If True, will read from the existing directory at the given path
         """
-        self._root_path = path
+        self._fs = RDirFileSystem(url=path)
         super().__init__(
             cid='_RootDirectory',  # not used anywhere else, put a non-empty cid for debugging
             root=self,
@@ -644,13 +648,8 @@ class CacheRootDirectory(CacheDirectory):
             remove_when_done=remove_when_done,
             read_if_exists=read_if_exists,
             parent=None,
-            exists=os.path.exists(path)
+            exists=self._fs.exists('')
         )
-
-    @property
-    def abs_path(self):
-        """Obtain the root directory path itself in the operating system"""
-        return self._root_path
 
     def __enter__(self):
         """Called using the syntax:

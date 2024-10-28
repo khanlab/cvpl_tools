@@ -8,8 +8,6 @@ import abc
 import enum
 import json
 import pickle
-import numcodecs
-import threading
 from typing import Callable, Sequence, Any, Generic, TypeVar
 import copy
 
@@ -23,6 +21,7 @@ import functools
 import operator
 import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
 from cvpl_tools.im.partd_server import SQLitePartd, SqliteServer
+from cvpl_tools.fsspec import RDirFileSystem
 
 
 class ReprFormat(enum.Enum):
@@ -194,7 +193,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     @staticmethod
     def save_properties(file: str, properties: dict):
-        with open(file, mode='w') as outfile:
+        with RDirFileSystem(file).open('', mode='w') as outfile:
             # convert repr_format and dtype to appropriate format for serialization
             # reference: https://stackoverflow.com/questions/47641404/serializing-numpy-dtype-objects-human-readable
             properties = copy.copy(properties)
@@ -231,12 +230,14 @@ class NDBlock(Generic[ElementType], abc.ABC):
         ndblock.ensure_materialized()
 
         fmt = ndblock.get_repr_format()
-        os.makedirs(file, exist_ok=False)
+        fs = RDirFileSystem(file)
+        fs.makedirs('', exist_ok=False)
         if fmt == ReprFormat.NUMPY_ARRAY:
             if compressor is None:
-                np.save(f'{file}/im.npy', ndblock.arr)
+                with fs.open('im.npy', mode='wb') as fd:
+                    np.save(fd, ndblock.arr)
             else:
-                with open(f'{file}/im_compressed.bin', 'wb') as binfile:
+                with fs.open(f'im_compressed.bin', 'wb') as binfile:
                     binfile.write(dumps_numpy(ndblock.arr, compressor=compressor))
         elif fmt == ReprFormat.DASK_ARRAY:
             MAX_LAYER = storage_options.get('multiscale') or 0
@@ -265,7 +266,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     @staticmethod
     def load_properties(file: str) -> dict:
-        with open(file, mode='r') as infile:
+        with RDirFileSystem(file).open('', mode='r') as infile:
             properties = json.load(fp=infile)
 
             properties['repr_format'] = ReprFormat(properties['repr_format'])
@@ -302,10 +303,12 @@ class NDBlock(Generic[ElementType], abc.ABC):
         ndblock = NDBlock(None)
         ndblock.properties = properties
         if fmt == ReprFormat.NUMPY_ARRAY:
+            fs = RDirFileSystem(file)
             if compressor is None:
-                ndblock.arr = np.load(f'{file}/im.npy')
+                with fs.open('im.npy', 'rb') as fd:
+                    ndblock.arr = np.load(fd)
             else:
-                with open(f'{file}/im_compressed.bin', 'rb') as binfile:
+                with fs.open(f'im_compressed.bin', 'rb') as binfile:
                     ndblock.arr = loads_numpy(binfile.read(), compressor)
         elif fmt == ReprFormat.DASK_ARRAY:
             ndblock.arr = da.from_zarr(cvpl_ome_zarr_io.load_zarr_group_from_path(
@@ -485,7 +488,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 - Tests if the array if just loaded from disk; if it is, then no double computation possible since 
                     there are no intermediate steps in the first place
                 """
-                if not os.path.exists(tmp_dirpath):
+                if not RDirFileSystem(tmp_dirpath).exists(''):
                     NDBlock.save(tmp_dirpath, self)
                 ndblock_to_be_combined = NDBlock.load(tmp_dirpath)
             else:

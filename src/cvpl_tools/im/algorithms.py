@@ -2,7 +2,7 @@
 This file is for cv algorithms
 """
 import enum
-from typing import Callable, Type
+from typing import Callable, Type, Iterable
 import numpy as np
 import numpy.typing as npt
 import skimage
@@ -206,7 +206,7 @@ def npindices_from_os(
 # ------------------------------------------Watershed------------------------------------------
 
 
-def watershed(seg_bin, dist_thres=1., remove_smaller_than=None):
+def watershed(seg_bin: npt.NDArray, dist_thres=1., remove_smaller_than=None):
     """Run Watershed algorithm to perform instance segmentation.
 
     The result is an index labeled int64 mask
@@ -254,7 +254,7 @@ def watershed(seg_bin, dist_thres=1., remove_smaller_than=None):
     return result
 
 
-def split_labeled_objects(lbl_im, size_thres, connectivity=1):
+def split_labeled_objects(lbl_im: npt.NDArray, size_thres: int | float, connectivity: int = 1):
     component_sizes = np.bincount(lbl_im.ravel())
     small_inds = component_sizes < size_thres
     small_inds[0] = False
@@ -265,7 +265,7 @@ def split_labeled_objects(lbl_im, size_thres, connectivity=1):
     return small_mask, big_mask
 
 
-def split_objects(seg, size_thres, connectivity=1):
+def split_objects(seg: npt.NDArray, size_thres: int | float, connectivity: int = 1):
     lbl_im = skimage.morphology.label(seg, connectivity=connectivity)
     return split_labeled_objects(lbl_im, size_thres, connectivity)
 
@@ -337,12 +337,13 @@ def voronoi_ndarray(im_shape: tuple, centroids: npt.NDArray[np.int32]) -> npt.ND
 # --------------------------------Statistical Analysis-------------------------------------
 
 
-def Stats_MAE(counted, gt):
+def Stats_MAE(counted: list, gt: Iterable[float]):
     """
-    Params
-        counted (list) - the counted cells in each image
-        gt (Iterable[float]) - the ground truth number of cells in each image
-    Returns
+    Args:
+        counted: the counted cells in each image
+        gt: the ground truth number of cells in each image
+
+    Returns:
         the mean absolute difference between counted and gt
     """
     return np.abs(np.array(counted, dtype=np.float64) - np.array(gt, dtype=np.float64)).mean().item()

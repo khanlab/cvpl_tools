@@ -2,9 +2,9 @@
 Contains default, quick setup of the pipeline essential objects to run subclasses of SegProcess class
 """
 import dataclasses
-import os.path
 
 import cvpl_tools.im.fs as imfs
+from cvpl_tools.fsspec import RDirFileSystem
 from dask.distributed import Client
 import napari
 
@@ -59,7 +59,7 @@ class PLComponents:
         sys.stdout = imfs.MultiOutputStream(sys.stdout, logfile_stdout)
         sys.stderr = imfs.MultiOutputStream(sys.stderr, logfile_stderr)
 
-        imfs.ensure_dir_exists(self.tmp_path, remove_if_already_exists=False)
+        RDirFileSystem(self.tmp_path).ensure_dir_exists(remove_if_already_exists=False)
 
         self._dask_config = dask.config.set({'temporary_directory': self.tmp_path})
         self._dask_config.__enter__()  # emulate the with clause which is what dask.config.set is used in

@@ -8,12 +8,12 @@ import ome_zarr
 import ome_zarr.io
 import cvpl_tools.ome_zarr.ome_zarr_writer_patched as writer
 import os
-import shutil
 import zarr
 import dask.array as da
 import numpy as np
 import urllib.parse
 import numcodecs
+from cvpl_tools.fsspec import RDirFileSystem
 
 
 # ----------------------------------Part 1: utilities---------------------------------------
@@ -45,7 +45,7 @@ def load_zarr_group_from_path(path: str,
     if use_zip:
         store = zarr.ZipStore(path, mode=mode)
     else:
-        store = zarr.DirectoryStore(path)
+        store = RDirFileSystem(path).get_mapper()
     zarr_group = zarr.open(store, mode=mode)
     if level is not None:
         assert isinstance(level, int)
@@ -249,7 +249,8 @@ def write_ome_zarr_image(ome_zarr_path: str,
         lbl_storage_options: options for storing the labels
     """
     if tmp_path is not None:
-        os.makedirs(tmp_path, exist_ok=True)
+        tmp_fs = RDirFileSystem(tmp_path)
+        tmp_fs.makedirs('', exist_ok=True)
 
     if make_zip is None:
         make_zip = ome_zarr_path.endswith('.zip')
@@ -258,8 +259,9 @@ def write_ome_zarr_image(ome_zarr_path: str,
     if make_zip:
         encode_name = encode_path_as_filename(ome_zarr_path)
         folder_ome_zarr_path = f'{tmp_path}/{encode_name}.temp'
-        if os.path.exists(folder_ome_zarr_path):
-            shutil.rmtree(folder_ome_zarr_path)
+        fs = RDirFileSystem(folder_ome_zarr_path)
+        if fs.exists(''):
+            fs.rm('', recursive=True)
     else:
         folder_ome_zarr_path = ome_zarr_path
 
@@ -285,7 +287,8 @@ def write_ome_zarr_image(ome_zarr_path: str,
         if logging:
             print('Zip is written.')
         # remove the temp folder
-        shutil.rmtree(folder_ome_zarr_path)
+        if fs.exists(''):
+            fs.rm('', recursive=True)
 
 
 # ------------------------------Part 3: synthetic dataset-----------------------------------

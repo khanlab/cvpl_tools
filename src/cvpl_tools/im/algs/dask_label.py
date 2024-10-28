@@ -208,8 +208,8 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     if is_logging:
         print('Setting up cache sqlite database')
     cache_file = cdir.cache_subpath(cid='border_slices')
-    slices_abs_path = cache_file.abs_path
-    os.makedirs(slices_abs_path, exist_ok=True)
+    cache_file.fs.makedirs('', exist_ok=True)
+    slices_abs_path = cache_file.url
     db_path = f'{slices_abs_path}/border_slices.db'
 
     def create_kv_store():
