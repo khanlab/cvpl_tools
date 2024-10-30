@@ -33,9 +33,11 @@ class RDirFileSystem(DirFileSystem):
         fs: AbstractFileSystem
             An instantiated filesystem to wrap.
         """
+
         AsyncFileSystem.__init__(self, **storage_options)
 
         if parent is None:
+            url = url.rstrip('/')
             base_fs, path = url_to_fs(url)
 
             if self.asynchronous and not base_fs.async_impl:
@@ -45,8 +47,8 @@ class RDirFileSystem(DirFileSystem):
                 raise ValueError("both dirfs and fs should be in the same sync/async mode")
         else:
             assert isinstance(parent, RDirFileSystem)
-            base_fs, path = parent.fs, '/'.join((parent.path, url))
-            url = '/'.join((parent.url, url))
+            base_fs, path = parent.fs, '/'.join((parent.path.rstrip('/'), url)).rstrip('/')
+            url = '/'.join((parent.url.rstrip('/'), url)).rstrip('/')
 
         self.url = url
         self.path = path

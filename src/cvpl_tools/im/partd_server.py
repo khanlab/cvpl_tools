@@ -40,6 +40,15 @@ class SQLiteKVStore:
         SELECT value FROM kv_store WHERE id = ?
         """
 
+    def ids(self) -> list[str, ...]:
+        self.cursor.execute("""
+                SELECT id FROM kv_store
+                """)
+        ids = self.cursor.fetchall()
+
+        # TEXT retrieved from sqlite3 will be in bytes format
+        return [i[0].decode() for i in ids]
+
     def write_rows(self, tups):
         self.cursor.executemany(self.write_row_stmt, tups)
 
@@ -204,15 +213,6 @@ class SqliteServer:
     https://github.com/dask/partd/blob/main/partd/zmq.py
     """
     def __init__(self, path, nappend, available_memory=None, get_sqlite_partd=None, port_protocol='tcp'):
-        """
-        Args:
-            path:
-            available_memory:
-            get_sqlite_partd:
-            nappend: Number of messages to append, after which point the server closes
-            port_protocol: 'tcp' for network or 'ipc' for linux
-        """
-
         self.path = path
         self.available_memory = available_memory
         if get_sqlite_partd is None:
@@ -283,9 +283,8 @@ class SqliteServer:
                     buffer_partd.append(data, lock=False)
                     logger.debug('Server appends %d keys', len(data))
                     self.ack(address)
-                    self.nappended += 1
+                    self.nappended += len(data)
                     if self.nappend == self.nappended:
-                        dprint(f'nappended reached nappend={self.nappend}')
                         break
 
                 elif command == b'iset':
@@ -300,6 +299,11 @@ class SqliteServer:
                     result = buffer_partd.get(keys)
                     self.send_to_client(address, result)
                     self.ack(address, flow_control=False)
+
+                    self.nappended += len(keys)
+                    if self.nappend == self.nappended:
+                        dprint(f'nappended reached nappend={self.nappend}')
+                        break
 
                 elif command == b'syn':
                     self.ack(address)

@@ -12,7 +12,7 @@ from typing import Callable, Sequence, Any, Generic, TypeVar
 import copy
 
 import partd
-from dask.distributed import print as dprint
+from dask.distributed import print as dprint, get_client as get_client
 import numpy as np
 import numpy.typing as npt
 import dask.array as da
@@ -54,7 +54,7 @@ def loads_numpy(buf: bytes, compressor) -> npt.NDArray:
 
 
 class NDBlockLazyLoadDictBlockInfo:
-    def __init__(self, db_path: str, compressor=None):
+    def __init__(self, db_path: str, storage_options: dict = None):
         """Initialize an info object containing information about how to load the NDBlock
 
         This class is for optimization purpose (lazy loading) where in some cases the computation is not
@@ -65,7 +65,10 @@ class NDBlockLazyLoadDictBlockInfo:
             compressor: A compressor that supports encode and decode interfaces on bytes to bytes compression
         """
         self.db_path = db_path
-        self.compressor = compressor
+
+        if storage_options is None:
+            storage_options = {}
+        self.storage_options = storage_options
 
     def get_db_path(self):
         return self.db_path
@@ -83,9 +86,10 @@ class NDBlockLazyLoadDictBlockInfo:
         block_indices = ndblock.properties['block_indices']
         slices_list = ndblock.properties['slices_list']
         ndblock.arr = {}
+        compressor = self.storage_options.get('compressor')
 
         def load_block_with_compression(sqlite_file, block_id):
-            return loads_numpy(sqlite_file.get(block_id, lock=False), self.compressor)
+            return loads_numpy(sqlite_file.get(block_id, lock=False), compressor)
 
         if force_numpy or ndblock.properties['is_numpy']:
             sqlite_file = SQLitePartd(self.db_path)
@@ -100,13 +104,29 @@ class NDBlockLazyLoadDictBlockInfo:
             sqlite_file.close()
             ndblock.properties['is_numpy'] = True
         else:
+            server = SqliteServer(self.db_path, nappend=len(ndblock.arr), available_memory=1e6,
+                                  port_protocol='tcp')
+            server_address = server.address
+            dprint(f'NDBlock lazy load: Server serving on address {server_address}')
+
+            def serve(server):
+                import threading
+                dprint(f'Server serving on thread {threading.get_ident()}')
+                server.wait_join()
+                server.close()
+                dprint('Server thread has completed execution')
+
+            import threading
+            threading.Thread(target=serve, kwargs=dict(server=server)).start()
+
             @dask.delayed
             def load_block(block_index):
-                block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
-                sqlite_file = SQLitePartd(self.db_path)
-                block = load_block_with_compression(sqlite_file, block_id)
+                block_id = '_'.join(str(i) for i in block_index)
+                client = partd.Client(server_address)
+                buf = client.get(block_id)
+                client.close()
+                block = loads_numpy(buf, compressor)
                 assert isinstance(block, np.ndarray)
-                sqlite_file.close()
                 return block
 
             for i in range(len(slices_list)):
@@ -262,7 +282,42 @@ class NDBlock(Generic[ElementType], abc.ABC):
             tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
             dask.compute(*tasks)
             server.wait_join()
+            server.close()
         NDBlock.save_properties(f'{file}/properties.json', ndblock.properties)
+
+    def persist(self: NDBlock, compressor=None) -> NDBlock:
+        """Using dask client persist() to save and reload the NDBlock object
+
+        Args:
+            ndblock: The NDBlock to be saved
+            compressor: The compression used
+
+        Returns:
+            Reloaded NDBlock object; if is numpy, then no saving is done and the object is directly returned
+        """
+        self.ensure_materialized()
+
+        fmt = self.get_repr_format()
+        if fmt == ReprFormat.NUMPY_ARRAY:
+            return self
+        elif fmt == ReprFormat.DASK_ARRAY:
+            out_ndblock = NDBlock(None)
+            out_ndblock.properties = self.properties
+            out_ndblock.arr = self.arr.persist(compressor=compressor)
+            return out_ndblock
+        else:
+            just_loaded_flag = isinstance(self.arr, NDBlockLazyLoadDictBlockInfo) and self.arr.is_just_loaded()
+            if not self.properties['is_numpy'] and not just_loaded_flag:
+                out_ndblock = NDBlock(None)
+                out_ndblock.properties = self.properties
+
+                ks = list(self.arr.keys())
+                vs = [self.arr[k][0] for k in ks]
+                vs = get_client().persist(vs, compressor=compressor)
+                out_ndblock.arr = {ks[i]: (vs[i], self.arr[ks[i]][1]) for i in range(len(ks))}
+                return out_ndblock
+            return self
+
 
     @staticmethod
     def load_properties(file: str) -> dict:
@@ -287,7 +342,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
         Args:
             file: The path to load from, same as used in the save() function
-            storage_options: Specifies options in saving method and saved file format
+            storage_options: Specifies options in saving method and saved file format; this includes 'compressor' and
+                'port_protocol'
 
         Returns:
             The loaded NDBlock. Guaranteed to have the same properties as the saved one, and the content of each
@@ -317,7 +373,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 level=0
             ))
         else:
-            ndblock.arr = NDBlockLazyLoadDictBlockInfo(db_path=f'{file}/blocks_kvstore', compressor=compressor)
+            ndblock.arr = NDBlockLazyLoadDictBlockInfo(db_path=f'{file}/blocks_kvstore', storage_options=storage_options)
         return ndblock
 
     def is_numpy(self) -> bool:
@@ -372,17 +428,16 @@ class NDBlock(Generic[ElementType], abc.ABC):
         other.to_numpy_array()
         return other.arr
 
-    def as_dask_array(self, tmp_dirpath: str | None = None) -> da.Array:
+    def as_dask_array(self, storage_options: dict | None = None) -> da.Array:
         """Get a copy of the array value as dask array
 
         Args:
-            tmp_dirpath: Avoid double computation, best provided if input format
-                is ReprFormat.DICT_BLOCK_INDEX_SLICES and is dask instead of numpy
+            storage_options: Optionally, specify a compression format when persist
         Returns:
             converted/retrieved dask array
         """
         other = NDBlock(self)
-        other.to_dask_array(tmp_dirpath)
+        other.to_dask_array(storage_options)
         return other.arr
 
     @staticmethod
@@ -450,20 +505,18 @@ class NDBlock(Generic[ElementType], abc.ABC):
         self.properties['repr_format'] = ReprFormat.NUMPY_ARRAY
         self.properties['is_numpy'] = True
 
-    def to_dask_array(self, tmp_dirpath: str | None = None):
+    def to_dask_array(self, storage_options: dict | None = None):
         """Convert representation format to dask array
 
         Args:
-            tmp_dirpath: An empty path to create a temporary save file, best provided if input format
-                is ReprFormat.DICT_BLOCK_INDEX_SLICES and is dask instead of numpy, and you want to
-                avoid repeated computations
+            storage_options: Optionally, specify a compression format when persist
         """
+        if storage_options is None:
+            storage_options = {}
 
         rformat = self.properties['repr_format']
         if rformat == ReprFormat.DASK_ARRAY:
             return
-
-        just_loaded_flag = isinstance(self.arr, NDBlockLazyLoadDictBlockInfo) and self.arr.is_just_loaded()
 
         if rformat == ReprFormat.NUMPY_ARRAY:
             self.ensure_materialized()
@@ -473,27 +526,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             numblocks = self.get_numblocks()
             dtype = self.get_dtype()
 
-            if not self.properties['is_numpy'] and tmp_dirpath is not None and not just_loaded_flag:
-                """Explanation of the branching statement: this if branch is optional and purely for 
-                optimization purpose i.e. some dask computation may be triggered twice unexpectedly and 
-                this avoids it
-                
-                not self.properties['is_numpy']
-                - If numpy, the array is already computed and no double computation possible
-                
-                tmp_dirpath is not None
-                - If tmp_dirpath is None, then we don't have a place to put our temporary save files
-                
-                not just_loaded_flag
-                - Tests if the array if just loaded from disk; if it is, then no double computation possible since 
-                    there are no intermediate steps in the first place
-                """
-                if not RDirFileSystem(tmp_dirpath).exists(''):
-                    NDBlock.save(tmp_dirpath, self)
-                ndblock_to_be_combined = NDBlock.load(tmp_dirpath)
-            else:
-                ndblock_to_be_combined = self
-            ndblock_to_be_combined.ensure_materialized()
+            ndblock_to_be_combined = NDBlock.persist(self, compressor=storage_options.get('compressor'))
 
             # reference: https://github.com/dask/dask-image/blob/adcb217de766dd6fef99895ed1a33bf78a97d14b/dask_image/ndmeasure/__init__.py#L299
             ndlists = np.empty(numblocks, dtype=object)

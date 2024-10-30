@@ -17,6 +17,7 @@ from cvpl_tools.im.ndblock import NDBlock
 import dask.array as da
 import cvpl_tools.ome_zarr.napari.add as napari_add_ome_zarr
 from cvpl_tools.fsspec import RDirFileSystem
+from distributed import get_client
 
 
 class ImageFormat(enum.Enum):
@@ -31,6 +32,26 @@ def chunksize_to_str(chunksize: tuple[int, ...]):
 
 def str_to_chunksize(chunksize_str: str):
     return tuple(int(s) for s in chunksize_str.split(','))
+
+
+def persist(im, storage_options: dict = None):
+    """Use dask built-in persist to save the image object
+
+    Args:
+        im: Image object to be saved
+        storage_options: Under which 'compressor' specifies the compression algorithm to use for saving
+
+    Returns:
+        Image object loaded from persist(), or return the input if is numpy
+    """
+    if isinstance(im, np.ndarray):
+        return im
+    elif isinstance(im, da.Array):
+        return im.persist(compressor=storage_options.get('compressor'))
+    elif isinstance(im, NDBlock):
+        return im.persist(compressor=storage_options.get('compressor'))
+    else:
+        raise ValueError(f'Unrecognized object type, im={im}')
 
 
 def save(file: str,
@@ -203,10 +224,12 @@ def cache_im(fn,
 
     raw_path = cpath.abs_path
     skip_cache = viewer_args.get('skip_cache', False) or cache_level > viewer_args.get('cache_level', np.inf)
-    if not cpath.exists:
+    if skip_cache:
         im = fn()
-        if skip_cache:
-            return im
+        loaded = get_client().persist(im)
+        return im
+    elif not cpath.exists:
+        im = fn()
         save(raw_path, im, storage_options)
 
     if not skip_cache and viewer_args.get('viewer') is not None:

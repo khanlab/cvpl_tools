@@ -28,34 +28,15 @@ def split_list(lst, nsplit):
     return [lst[i * size: (i + 1) * size] for i in range(nsplit - 1)] + [lst[(nsplit - 1) * size:]]
 
 
-class PairKVStore(SQLiteKVStore):
-    def init_db(self):
-        if not self.is_exists:
-            self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS kv_store (
-                id TEXT PRIMARY KEY,
-                value1 TEXT,
-                value2 TEXT
-            )
-            ''')
-            self.write_row_stmt = """
-            INSERT INTO kv_store (id, value1, value2) VALUES (?, ?, NULL)
-            ON CONFLICT(id) DO UPDATE SET value2=excluded.value1;
-            """
-
-    def ids(self):
-        self.cursor.execute("""
-                SELECT id FROM kv_store
-                """)
-        ids = self.cursor.fetchall()
-        return ids
-
-    def read_many(self, ids: list):
-        for row in ids:
-            self.cursor.execute("""
-            SELECT value1, value2 FROM kv_store WHERE id = ?
-            """, row)
-            yield self.cursor.fetchone()
+def nsurfaces_from_numblocks(numblocks: tuple) -> int:
+    """Calculating number of contacting surfaces inside a nd-rectangle, including repetition in both sides"""
+    assert isinstance(numblocks, tuple), type(numblocks)
+    ndim = len(numblocks)
+    nblocks = np.prod(numblocks)
+    ntotal = np.zeros((1,), dtype=np.float64)
+    for i in range(ndim):
+        ntotal += nblocks * (1 - 1. / numblocks[i])
+    return int(ntotal.item()) * 2
 
 
 def find_connected_components(edges: set[tuple[int, int]]) -> list[set[int, ...], ...]:
@@ -84,30 +65,32 @@ def find_connected_components(edges: set[tuple[int, int]]) -> list[set[int, ...]
     return components
 
 
-def compute_lower_adj_set(db_path: str, compressor) -> set[tuple[int, int]]:
+def compute_lower_adj_set(slices_abs_path: str, compressor, create_server) -> set[tuple[int, int]]:
     """From a SQL db of neighboring slices, compute their corresponding lower adjacency matrix as a set
 
     Args:
-        db_path: Path to the SQL database on disk
+        slices_abs_path: Path to the SQL database on disk
 
     Returns:
         The adjacency edge set
     """
     lower_adj = set()
-    read_kv_store = PairKVStore(db_path)
-    ids = read_kv_store.ids()
+    read_kv_store = SQLiteKVStore(f'{slices_abs_path}/sqlite.db')
+    ids = list(set(i[:i.rfind('_')] for i in read_kv_store.ids()))
     read_kv_store.close()
     print(f'Total number of ids to be processed to compute lower adj set: {len(ids)}')
     ntask = max(len(ids) // 2000, 1)
     split_ids = split_list(ids, ntask)
 
+    server = create_server()
+    server_addr = server.address
+
     @dask.delayed
-    def compute_partial(db_path: str, partial_ids: list) -> set[tuple[int, int]]:
+    def compute_partial(partial_ids: list) -> set[tuple[int, int]]:
         partial_lower_adj = set()
-        partial_read_kv_store = PairKVStore(db_path)
-        for value1, value2 in partial_read_kv_store.read_many(partial_ids):
-            if value1 is None or value2 is None:
-                continue
+        client = partd.Client(server_addr)
+        for cur_id in partial_ids:
+            value1, value2 = client.get([f'{cur_id}_0', f'{cur_id}_1'])
             sli1, sli2 = loads_numpy(value1, compressor).flatten(), loads_numpy(value2, compressor).flatten()
             sli = np.stack((sli1, sli2), axis=1)
             tups = cvpl_algorithms.np_unique(sli, axis=0)
@@ -125,8 +108,12 @@ def compute_lower_adj_set(db_path: str, compressor) -> set[tuple[int, int]]:
                     partial_lower_adj.add(tup)
         return partial_lower_adj
 
-    tasks = [compute_partial(db_path, partial_ids) for partial_ids in split_ids]
+    tasks = [compute_partial(partial_ids) for partial_ids in split_ids]
     results = dask.compute(*tasks)
+
+    server.wait_join()
+    server.close()
+
     lower_adj = set()
     for partial_lower_adj in results:
         partial_lower_adj: set[tuple[int, int]]
@@ -155,7 +142,7 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     is_dask = isinstance(im, da.Array)
     if not is_dask:
         assert isinstance(im, NDBlock)
-        im = im.as_dask_array(tmp_dirpath=cdir.abs_path)
+        im = im.as_dask_array(storage_options=vargs)
 
     def map_block(block: npt.NDArray, block_info: dict):
         lbl_im = scipy_label(block, output=output_dtype)[0]
@@ -210,32 +197,29 @@ def label(im: npt.NDArray | da.Array | NDBlock,
     cache_file = cdir.cache_subpath(cid='border_slices')
     cache_file.fs.makedirs('', exist_ok=True)
     slices_abs_path = cache_file.url
-    db_path = f'{slices_abs_path}/border_slices.db'
-
-    def create_kv_store():
-        kv_store = PairKVStore(db_path)
-        return kv_store
-
-    def get_sqlite_partd():
-        partd = SQLitePartd(slices_abs_path, create_kv_store=create_kv_store)
-        return partd
 
     if is_logging:
         print('Setting up partd server')
-    nappend = im.ndim * 2 * prod(locally_labeled.numblocks)
+    numblocks = locally_labeled.numblocks
+    nappend = nsurfaces_from_numblocks(numblocks)
     storage_options = viewer_args.get('storage_options', dict())
+
+    def create_server():
+        return SqliteServer(slices_abs_path,
+                            nappend=nappend,
+                            get_sqlite_partd=None,
+                            port_protocol=storage_options.get('port_protocol', 'tcp'))
 
     server = None
 
     def compute_edge_slices():
         nonlocal server
-        server = SqliteServer(slices_abs_path, nappend=nappend, get_sqlite_partd=get_sqlite_partd,
-                              port_protocol=storage_options.get('port_protocol', 'tcp'))
+        server = create_server()
         server_address = server.address
 
         # compute edge slices
         if is_logging:
-            print('Computing edge slices, writing to database')
+            print(f'Computing edge slices, writing to database with nappend={nappend} and numblocks={numblocks}')
 
         def compute_slices(block: npt.NDArray, block2: npt.NDArray, block_info: dict = None):
             # block is the local label, block2 is the single element prefix summed number of labels
@@ -243,16 +227,19 @@ def label(im: npt.NDArray | da.Array | NDBlock,
             client = partd.Client(server_address)
             block_index = list(block_info[0]['chunk-location'])
             block = block + (block != 0).astype(block.dtype) * block2
+            toappend = dict()
             for ax in range(block.ndim):
                 for face in range(2):
                     block_index[ax] += face
-                    indstr = '_'.join(str(index) for index in block_index) + f'_{ax}'
+                    if block_index[ax] == 0 or block_index[ax] == numblocks[ax]:
+                        block_index[ax] -= face
+                        continue
+                    indstr = '_'.join(str(index) for index in block_index) + f'_{ax}_{face}'
                     sli_idx = face * (block.shape[ax] - 1)
                     sli = np.take(block, indices=sli_idx, axis=ax)
-                    client.append({
-                        indstr: dumps_numpy(sli, compressor)
-                    })
+                    toappend[indstr] = dumps_numpy(sli, compressor)
                     block_index[ax] -= face
+            client.append(toappend)
             client.close()
             return block
 
@@ -270,10 +257,11 @@ def label(im: npt.NDArray | da.Array | NDBlock,
         server.wait_join()
 
     comp_i = 0
+
     def compute_globally_labeled():
         if is_logging:
             print('Process locally to obtain a lower triangular adjacency matrix')
-        lower_adj = compute_lower_adj_set(db_path, compressor)
+        lower_adj = compute_lower_adj_set(slices_abs_path, compressor, create_server)
         connected_components = find_connected_components(lower_adj)
         if is_logging:
             print('Compute final indices remap array')
