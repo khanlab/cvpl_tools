@@ -43,6 +43,8 @@ def load_zarr_group_from_path(path: str,
     if use_zip is None:
         use_zip = path.endswith('.zip')
     if use_zip:
+        assert mode is not None, ("ZipFile requires mode 'r', 'w', 'x', or 'a', but "
+                                  "load_zarr_group_from_path() got mode=None")
         store = zarr.ZipStore(path, mode=mode)
     else:
         store = RDirFileSystem(path).get_mapper()
@@ -159,7 +161,7 @@ def _get_axes_for_write(ndim: int) -> list:
     return list(reversed(axes[:ndim]))
 
 
-def write_ome_zarr_image_direct(zarr_group: zarr.Group,
+def write_ome_zarr_image_direct(group_url: str,
                                 da_arr: da.Array | None = None,
                                 lbl_arr: da.Array | None = None,
                                 lbl_name: str | None = None,
@@ -169,7 +171,7 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
     """Direct write of dask array to target ome zarr group (can not be a zip)
 
     Args:
-        zarr_group: The output zarr group which we will write an ome zarr image to
+        group_url: The output zarr group which we will write an ome zarr image to
         da_arr: (dask array) The content of the image to write
         lbl_arr: If provided, this is the array to write at zarr_group['labels'][lbl_name]
         lbl_name: name of the label array subgroup
@@ -177,22 +179,20 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
         storage_options: options for storing the image
         lbl_storage_options: options for storing the labels
     """
+    # group_url is supposed to point to non-zip since this is a write operation
+    # write to zip is not directly supported by ome-zarr library
+
     if storage_options is None:
         compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
         storage_options = dict(
             dimension_separator='/',
             compressor=compressor
         )
-    if da_arr is not None:
-        # assert the group is empty, since we are writing a new group
-        for mem in zarr_group:
-            raise ValueError('ZARR group is Non-empty, please remove the original ZARR before running the program to '
-                             f'create synthetic data. ZARR group: {zarr_group}')
 
     scaler = ome_zarr.scale.Scaler(max_layer=MAX_LAYER, method='nearest')
     if da_arr is not None:
         writer.write_image(image=da_arr,
-                           group=zarr_group,
+                           group_url=group_url,
                            scaler=scaler,
                            coordinate_transformations=_get_coord_transform_yx_for_write(da_arr.ndim, MAX_LAYER),
                            storage_options=storage_options,
@@ -210,7 +210,7 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
             compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
             lbl_storage_options = dict(compressor=compressor)
         writer.write_labels(labels=lbl_arr,
-                            group=zarr_group,
+                            group_url=group_url,
                             scaler=scaler,
                             name=lbl_name,
                             coordinate_transformations=_get_coord_transform_yx_for_write(lbl_arr.ndim, MAX_LAYER),
@@ -221,7 +221,7 @@ def write_ome_zarr_image_direct(zarr_group: zarr.Group,
         #                      properties=properties)
 
 
-def write_ome_zarr_image(ome_zarr_path: str,
+def write_ome_zarr_image(out_ome_zarr_path: str,
                          tmp_path: str = None,  # provide this if making a zip file
                          da_arr: da.Array | None = None,
                          lbl_arr: da.Array | None = None,
@@ -237,10 +237,10 @@ def write_ome_zarr_image(ome_zarr_path: str,
     output and copy it into a zip after done. This is why tmp_path is required if make_zip=True
 
     Args:
-        ome_zarr_path: The path to target ome zarr folder, or ome zarr zip folder if make_zip is True
+        out_ome_zarr_path: The path to target ome zarr folder, or ome zarr zip folder if make_zip is True
         tmp_path: temporary files will be stored under this,
-        da_arr: If provided, this is the array to write at {ome_zarr_path}
-        lbl_arr: If provided, this is the array to write at {ome_zarr_path}/labels/{lbl_name}
+        da_arr: If provided, this is the array to write at {out_ome_zarr_path}
+        lbl_arr: If provided, this is the array to write at {out_ome_zarr_path}/labels/{lbl_name}
         lbl_name: name of the folder of the label array
         make_zip: bool, if True the output is a zip; if False a folder; if None, then determine based on file suffix
         MAX_LAYER: The maximum layer of down sampling; starting at layer=0
@@ -253,34 +253,32 @@ def write_ome_zarr_image(ome_zarr_path: str,
         tmp_fs.makedirs('', exist_ok=True)
 
     if make_zip is None:
-        make_zip = ome_zarr_path.endswith('.zip')
+        make_zip = out_ome_zarr_path.endswith('.zip')
     if logging:
         print('Writing Folder.')
     if make_zip:
-        encode_name = encode_path_as_filename(ome_zarr_path)
-        folder_ome_zarr_path = f'{tmp_path}/{encode_name}.temp'
-        fs = RDirFileSystem(folder_ome_zarr_path)
-        if fs.exists(''):
-            fs.rm('', recursive=True)
+        encode_name = encode_path_as_filename(out_ome_zarr_path)
+        folder_out_ome_zarr_path = f'{tmp_path}/{encode_name}.temp'
     else:
-        folder_ome_zarr_path = ome_zarr_path
+        folder_out_ome_zarr_path = out_ome_zarr_path
+    fs = RDirFileSystem(folder_out_ome_zarr_path)
 
-    store = ome_zarr.io.parse_url(folder_ome_zarr_path, mode='w').store
-    g = zarr.group(store)
-    write_ome_zarr_image_direct(g, da_arr, lbl_arr, lbl_name, MAX_LAYER=MAX_LAYER,
+    if fs.exists(''):
+        fs.rm('', recursive=True)
+    fs.makedirs_cur()
+    write_ome_zarr_image_direct(folder_out_ome_zarr_path, da_arr, lbl_arr, lbl_name, MAX_LAYER=MAX_LAYER,
                                 storage_options=storage_options,
                                 lbl_storage_options=lbl_storage_options)
     if logging:
         print('Folder is written.')
-    store.close()
 
     if make_zip:
         if logging:
             print('Writing zip.')
-        store = ome_zarr.io.parse_url(folder_ome_zarr_path,
+        store = ome_zarr.io.parse_url(folder_out_ome_zarr_path,
                                       mode='r').store  # same folder but this time we open it in read mode
         g = zarr.group(store)
-        with zarr.ZipStore(ome_zarr_path, mode='w') as target_store:
+        with zarr.ZipStore(out_ome_zarr_path, mode='w') as target_store:
             target_g = zarr.group(target_store)
             zarr.copy_all(g, target_g)
 

@@ -46,6 +46,7 @@ from ome_zarr.axes import Axes
 from ome_zarr.format import CurrentFormat, Format
 from ome_zarr.scale import Scaler
 from ome_zarr.types import JSONDict
+from ome_zarr.io import parse_url
 
 LOGGER = logging.getLogger("ome_zarr.writer")
 
@@ -353,7 +354,7 @@ def write_well_metadata(
 
 def write_image(
     image: ArrayLike,
-    group: zarr.Group,
+    group_url: str,
     scaler: Scaler = Scaler(),
     chunks: Optional[Union[Tuple[Any, ...], int]] = None,
     fmt: Format = CurrentFormat(),
@@ -371,8 +372,8 @@ def write_image(
       if the scaler argument is non-None.
       Image array MUST be up to 5-dimensional with dimensions
       ordered (t, c, z, y, x).  Image can be a numpy or dask Array.
-    :type group: :class:`zarr.hierarchy.Group`
-    :param group: The group within the zarr store to write the metadata in.
+    :type group: :class:`str`
+    :param group: The url to the group within the zarr store to write the metadata in.
     :type scaler: :class:`ome_zarr.scale.Scaler`
     :param scaler:
       Scaler implementation for downsampling the image argument. If None,
@@ -413,7 +414,7 @@ def write_image(
     if isinstance(image, da.Array):
         dask_delayed_jobs: list = _write_dask_image(
             image,
-            group,
+            group_url,
             scaler,
             chunks=chunks,
             fmt=fmt,
@@ -444,7 +445,7 @@ def _resolve_storage_options(
 
 def _write_dask_image(
     image: da.Array,
-    group: zarr.Group,
+    group_url: str,
     scaler: Scaler = Scaler(),
     chunks: Optional[Union[Tuple[Any, ...], int]] = None,
     fmt: Format = CurrentFormat(),
@@ -477,6 +478,8 @@ Please use the 'storage_options' argument instead."""
     # for path, data in enumerate(pyramid):
     max_layer: int = scaler.max_layer if scaler is not None else 0
     shapes = []
+
+    group = zarr.hierarchy.open_group(group_url, mode='w')
     for path in range(0, max_layer + 1):
         # LOGGER.debug(f"write_image path: {path}")
         options = _resolve_storage_options(storage_options, path)
@@ -501,12 +504,11 @@ Please use the 'storage_options' argument instead."""
         LOGGER.debug(
             "write dask.array to_zarr shape: %s, dtype: %s", image.shape, image.dtype
         )
-        component = str(Path(group.path, str(path)))
         delayed.append(
             da.to_zarr(
                 arr=image,
-                url=group.store,
-                component=str(Path(group.path, str(path))),
+                url=group_url,
+                component=f'{path}',
                 storage_options=options,
                 compute=False,
                 compressor=options.get("compressor", zarr.storage.default_compressor),
@@ -588,7 +590,7 @@ def write_label_metadata(
 
 def write_labels(
     labels: Union[np.ndarray, da.Array],
-    group: zarr.Group,
+    group_url: str,
     name: str,
     scaler: Scaler = Scaler(),
     chunks: Optional[Union[Tuple[Any, ...], int]] = None,
@@ -656,12 +658,14 @@ def write_labels(
         :class:`dask.delayed.Delayed` representing the value to be computed by
         dask.
     """
+
+    group = zarr.hierarchy.open_group(group_url, mode='w')
     sub_group = group.require_group(f"labels/{name}")
 
     if isinstance(labels, da.Array):
         dask_delayed_jobs: list = _write_dask_image(
             labels,
-            sub_group,
+            f'{group_url}/labels/{name}',
             scaler,
             chunks=chunks,
             fmt=fmt,

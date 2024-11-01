@@ -79,3 +79,20 @@ class RDirFileSystem(DirFileSystem):
             return self.fs.touch(f'{self.path}/.gcs_placeholder')
         else:
             return self.fs.makedirs(self.path)
+
+
+def copyfile(src: str | RDirFileSystem, tgt: str | RDirFileSystem, chunksize: int | None = None):
+    """Copy a file from src to tgt
+
+    reference: martindurant's reply in thread https://github.com/fsspec/filesystem_spec/issues/909
+    """
+    if isinstance(src, str):
+        src = RDirFileSystem(src)
+    if isinstance(tgt, str):
+        tgt = RDirFileSystem(tgt)
+    with src.open('', mode='rb') as src_file, tgt.open('', mode='wb') as tgt_file:
+        while True:
+            data = src_file.read(chunksize)
+            if not data:
+                break
+            tgt_file.write(data)

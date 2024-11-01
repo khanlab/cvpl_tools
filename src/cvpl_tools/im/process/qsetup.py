@@ -16,7 +16,7 @@ class PLComponents:
     dask_client: Client
     viewer: napari.Viewer
 
-    def __init__(self, tmp_path, cachedir_name: str, client_args: dict, viewer_args: dict):
+    def __init__(self, tmp_path: str, cachedir_name: str, client_args: dict, viewer_args: dict):
         """Create a PLComponents object
 
         on __enter__, the instance will set up necessary components for running most SegProcess classes
@@ -35,10 +35,10 @@ class PLComponents:
         assert isinstance(viewer_args, dict), f'Expected dictionary, got {type(viewer_args)}'
         self._viewer_args = viewer_args
 
-        self.tmp_path = tmp_path
-        self.cache_root = None
-        self.dask_client = None
-        self.viewer = None
+        self.tmp_path: str = tmp_path
+        self.cache_root: imfs.CacheRootDirectory = None
+        self.dask_client: Client = None
+        self.viewer: napari.Viewer = None
 
     def __enter__(self):
         """Called using the syntax:

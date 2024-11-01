@@ -123,17 +123,17 @@ class DirectOSToLC(SegProcess):
         recons = {ind: [] for ind in block_indices}
 
         rf = self.reduced_np_features
-        ordered = rf[np.argsort(rf[:, -1])]
+        rf = rf[np.argsort(rf[:, -1])]
         if rf.shape[0] == 0:
             cnt_ranges = []
         else:
-            cnt_ranges = list(find_objects(ordered[:, -1].astype(np.int32)))
+            cnt_ranges = list(find_objects(rf[:, -1].astype(np.int32)))
 
         nvoxel_ind = self.full_statistics_map['nvoxel']
         for i, rg in enumerate(cnt_ranges):
             if rg is None:
                 continue
-            # lbl = i + 1
+            lbl = i + 1
             subrf = rf[rg]
             nvoxel = subrf[:, ndim + nvoxel_ind]
             nvoxel_tot = nvoxel.sum()
@@ -141,7 +141,7 @@ class DirectOSToLC(SegProcess):
 
             row = centroid.tolist()
             row.append(nvoxel_tot)
-            row.append(i)
+            row.append(lbl)
             row = np.array(row, dtype=np.float64)
             ind = tuple(np.floor(centroid / chunk_shape).astype(np.int32).tolist())
             recons[ind].append(row)
