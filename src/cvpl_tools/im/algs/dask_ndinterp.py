@@ -365,7 +365,7 @@ def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
         IDEAL_SIZE = 1000000  # a block size to aim for
         nexpand = max(int(np.power((IDEAL_SIZE / np.prod(block_size)), 1/ndim).item()), 1)
         input_chunks = tuple(nexpand * s for s in block_size)
-    image.rechunk(input_chunks)
+    image = image.rechunk(input_chunks)
 
     result = image.map_blocks(process_block, meta=np.array(tuple(), dtype=image.dtype)).persist()
 
