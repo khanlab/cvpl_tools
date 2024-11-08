@@ -8,7 +8,10 @@ viewer by wrapping the add_image or add_labels functions of napari viewer.
 from typing import Callable
 
 import napari
-from napari.layers import Layer
+try:
+    from napari.layers import Layer
+except OSError:
+    Layer = None  # if no graphical display is needed and napari backend is missing, import will fail
 import zarr
 import dask.array as da
 import cvpl_tools.ome_zarr.io as ome_io

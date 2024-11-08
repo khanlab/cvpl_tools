@@ -69,9 +69,12 @@ import cvpl_tools.im.algorithms as algorithms
 from cvpl_tools.im.ndblock import NDBlock
 import dask.array as da
 from dask.distributed import print as dprint
-import napari
 import numpy as np
 import numpy.typing as npt
+try:
+    from napari import Viewer
+except OSError:
+    Viewer = None  # if no graphical display is needed and napari backend is missing, import will fail
 
 import skimage
 from scipy.ndimage import (
@@ -86,7 +89,7 @@ from scipy.ndimage import (
 
 def lc_interpretable_napari(layer_name: str,
                             lc: npt.NDArray,
-                            viewer: napari.Viewer,
+                            viewer: Viewer,
                             ndim: int,
                             extra_features: Sequence,
                             text_color: str = 'green'):
@@ -636,7 +639,7 @@ def heatmap_logging(aggregate_ndblock: NDBlock[np.float64],
 
     if viewer_args is None:
         viewer_args = {}
-    viewer: napari.Viewer = viewer_args.get('viewer', None)
+    viewer: Viewer = viewer_args.get('viewer', None)
 
     block = np.load(np_arr_path)
     if viewer:

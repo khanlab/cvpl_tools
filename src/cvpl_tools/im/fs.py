@@ -8,14 +8,10 @@ import enum
 import json
 from typing import Any
 
-import fsspec
-import napari
-import numcodecs
 import numpy as np
 import cvpl_tools.im.ndblock as cvpl_ndblock
 from cvpl_tools.im.ndblock import NDBlock
 import dask.array as da
-import cvpl_tools.ome_zarr.napari.add as napari_add_ome_zarr
 from cvpl_tools.fsspec import RDirFileSystem
 from distributed import get_client
 
@@ -158,6 +154,9 @@ def display(file: str, viewer_args: dict):
         file: Full path to the directory to be read from
         viewer_args: contains viewer and arguments passed to the viewer's add image functions
     """
+    import napari
+    import cvpl_tools.ome_zarr.napari.add as napari_add_ome_zarr
+
     viewer_args = copy.copy(viewer_args)
     viewer: napari.Viewer = viewer_args.pop('viewer')
     layer_args = viewer_args.get('layer_args', {})

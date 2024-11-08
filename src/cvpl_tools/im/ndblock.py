@@ -12,13 +12,16 @@ from typing import Callable, Sequence, Any, Generic, TypeVar
 import copy
 
 import partd
-from dask.distributed import print as dprint, get_client as get_client
+from dask.distributed import print as dprint
 import numpy as np
 import numpy.typing as npt
 import dask.array as da
 import dask
 import functools
 import operator
+
+from distributed import worker_client
+
 import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
 from cvpl_tools.im.partd_server import SQLitePartd, SqliteServer
 from cvpl_tools.fsspec import RDirFileSystem
@@ -313,7 +316,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
                 ks = list(self.arr.keys())
                 vs = [self.arr[k][0] for k in ks]
-                vs = get_client().persist(vs, compressor=compressor)
+                with worker_client() as client:  # TODO: this is assumed to be done on a worker, is this a good assumption?
+                    vs = client.persist(vs, compressor=compressor)
                 out_ndblock.arr = {ks[i]: (vs[i], self.arr[ks[i]][1]) for i in range(len(ks))}
                 return out_ndblock
             return self
