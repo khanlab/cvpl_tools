@@ -64,6 +64,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.is_numpy"><code class="docutils literal notranslate"><span class="pre">NDBlock.is_numpy()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.load"><code class="docutils literal notranslate"><span class="pre">NDBlock.load()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.map_ndblocks"><code class="docutils literal notranslate"><span class="pre">NDBlock.map_ndblocks()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.persist"><code class="docutils literal notranslate"><span class="pre">NDBlock.persist()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.reduce"><code class="docutils literal notranslate"><span class="pre">NDBlock.reduce()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.save"><code class="docutils literal notranslate"><span class="pre">NDBlock.save()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock.select_columns"><code class="docutils literal notranslate"><span class="pre">NDBlock.select_columns()</span></code></a></li>
@@ -120,12 +121,11 @@ of size (5, 10)</p>
 from the side of the tail first</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.as_dask_array">
-<span class="sig-name descname"><span class="pre">as_dask_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tmp_dirpath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Array</span></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.as_dask_array" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">as_dask_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Array</span></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.as_dask_array" title="Permalink to this definition"></a></dt>
 <dd><p>Get a copy of the array value as dask array</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>tmp_dirpath</strong> – Avoid double computation, best provided if input format
-is ReprFormat.DICT_BLOCK_INDEX_SLICES and is dask instead of numpy</p>
+<dd class="field-odd"><p><strong>storage_options</strong> – Optionally, specify a compression format when persist</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>converted/retrieved dask array</p>
@@ -173,7 +173,8 @@ and in the latter case is_numpy() will return False.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>file</strong> – The path to load from, same as used in the save() function</p></li>
-<li><p><strong>storage_options</strong> – Specifies options in saving method and saved file format</p></li>
+<li><p><strong>storage_options</strong> – Specifies options in saving method and saved file format; this includes ‘compressor’ and
+‘port_protocol’</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -204,6 +205,23 @@ sized blocks)</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Result mapped, of format ReprFormat.DICT_BLOCK_INDEX_SLICES</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.persist">
+<span class="sig-name descname"><span class="pre">persist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">compressor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.persist" title="Permalink to this definition"></a></dt>
+<dd><p>Using dask client persist() to save and reload the NDBlock object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ndblock</strong> – The NDBlock to be saved</p></li>
+<li><p><strong>compressor</strong> – The compression used</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Reloaded NDBlock object; if is numpy, then no saving is done and the object is directly returned</p>
 </dd>
 </dl>
 </dd></dl>
@@ -262,13 +280,11 @@ outputting to analysis that requires numpy input</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="cvpl_tools.im.ndblock.NDBlock.to_dask_array">
-<span class="sig-name descname"><span class="pre">to_dask_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tmp_dirpath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.to_dask_array" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">to_dask_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.ndblock.NDBlock.to_dask_array" title="Permalink to this definition"></a></dt>
 <dd><p>Convert representation format to dask array</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>tmp_dirpath</strong> – An empty path to create a temporary save file, best provided if input format
-is ReprFormat.DICT_BLOCK_INDEX_SLICES and is dask instead of numpy, and you want to
-avoid repeated computations</p>
+<dd class="field-odd"><p><strong>storage_options</strong> – Optionally, specify a compression format when persist</p>
 </dd>
 </dl>
 </dd></dl>

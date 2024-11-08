@@ -59,11 +59,80 @@
 <li class="toctree-l1"><a class="reference internal" href="imfs.html">cvpl_tools.im.fs.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ndblock.html">cvpl_tools.im.ndblock.py</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.im.seg_process.py</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#bs-to-os">bs_to_os</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#lc-to-cc">lc_to_cc</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#os-to-cc">os_to_cc</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#os-to-lc">os_to_lc</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#any-to-any">any_to_any</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.seg_process.SegProcess"><code class="docutils literal notranslate"><span class="pre">SegProcess</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.seg_process.SegProcess.forward"><code class="docutils literal notranslate"><span class="pre">SegProcess.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.seg_process.BlockToBlockProcess"><code class="docutils literal notranslate"><span class="pre">BlockToBlockProcess</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.seg_process.BlockToBlockProcess.forward"><code class="docutils literal notranslate"><span class="pre">BlockToBlockProcess.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.seg_process.lc_interpretable_napari"><code class="docutils literal notranslate"><span class="pre">lc_interpretable_napari()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.seg_process.GaussianBlur"><code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.seg_process.BSPredictor"><code class="docutils literal notranslate"><span class="pre">BSPredictor</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.seg_process.SimpleThreshold"><code class="docutils literal notranslate"><span class="pre">SimpleThreshold</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.seg_process.BlobDog"><code class="docutils literal notranslate"><span class="pre">BlobDog</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.seg_process.BlobDog.forward"><code class="docutils literal notranslate"><span class="pre">BlobDog.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.seg_process.SumScaledIntensity"><code class="docutils literal notranslate"><span class="pre">SumScaledIntensity</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.seg_process.SumScaledIntensity.forward"><code class="docutils literal notranslate"><span class="pre">SumScaledIntensity.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance"><code class="docutils literal notranslate"><span class="pre">BinaryAndCentroidListToInstance</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance.bacl_forward"><code class="docutils literal notranslate"><span class="pre">BinaryAndCentroidListToInstance.bacl_forward()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance.forward"><code class="docutils literal notranslate"><span class="pre">BinaryAndCentroidListToInstance.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#bs-to-os">bs_to_os</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.process.bs_to_os.DirectBSToOS"><code class="docutils literal notranslate"><span class="pre">DirectBSToOS</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.bs_to_os.DirectBSToOS.forward"><code class="docutils literal notranslate"><span class="pre">DirectBSToOS.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.process.bs_to_os.Watershed3SizesBSToOS"><code class="docutils literal notranslate"><span class="pre">Watershed3SizesBSToOS</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#lc-to-cc">lc_to_cc</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.process.lc_to_cc.CountLCBySize"><code class="docutils literal notranslate"><span class="pre">CountLCBySize</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.lc_to_cc.CountLCBySize.cc_list"><code class="docutils literal notranslate"><span class="pre">CountLCBySize.cc_list()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.lc_to_cc.CountLCBySize.forward"><code class="docutils literal notranslate"><span class="pre">CountLCBySize.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized"><code class="docutils literal notranslate"><span class="pre">CountLCEdgePenalized</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.cc_list"><code class="docutils literal notranslate"><span class="pre">CountLCEdgePenalized.cc_list()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.forward"><code class="docutils literal notranslate"><span class="pre">CountLCEdgePenalized.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.np_features"><code class="docutils literal notranslate"><span class="pre">CountLCEdgePenalized.np_features()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#os-to-cc">os_to_cc</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.process.os_to_cc.CountOSBySize"><code class="docutils literal notranslate"><span class="pre">CountOSBySize</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.os_to_cc.CountOSBySize.forward"><code class="docutils literal notranslate"><span class="pre">CountOSBySize.forward()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#os-to-lc">os_to_lc</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.process.os_to_lc.DirectOSToLC"><code class="docutils literal notranslate"><span class="pre">DirectOSToLC</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.os_to_lc.DirectOSToLC.aggregate_by_id"><code class="docutils literal notranslate"><span class="pre">DirectOSToLC.aggregate_by_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.os_to_lc.DirectOSToLC.forward"><code class="docutils literal notranslate"><span class="pre">DirectOSToLC.forward()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#any-to-any">any_to_any</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor"><code class="docutils literal notranslate"><span class="pre">DownsamplingByIntFactor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor.forward"><code class="docutils literal notranslate"><span class="pre">DownsamplingByIntFactor.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor"><code class="docutils literal notranslate"><span class="pre">UpsamplingByIntFactor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor.forward"><code class="docutils literal notranslate"><span class="pre">UpsamplingByIntFactor.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor.np_forward"><code class="docutils literal notranslate"><span class="pre">UpsamplingByIntFactor.np_forward()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="algs.html">cvpl_tools.im.algs</a></li>
@@ -103,12 +172,211 @@ are the same.
 For general processing whose output are list of centroids, or when input shape of any block is not the same as
 output shape of that block, use <code class="code docutils literal notranslate"><span class="pre">BlockToBlockProcess</span></code>.</p>
 <p class="rubric">APIs</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.SegProcess">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.seg_process.</span></span><span class="sig-name descname"><span class="pre">SegProcess</span></span><a class="headerlink" href="#cvpl_tools.im.seg_process.SegProcess" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.SegProcess.forward">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#cvpl_tools.im.seg_process.SegProcess.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.BlockToBlockProcess">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.seg_process.</span></span><span class="sig-name descname"><span class="pre">BlockToBlockProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dtype</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_chunk_sizes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.seg_process.BlockToBlockProcess" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.BlockToBlockProcess.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.seg_process.BlockToBlockProcess.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.lc_interpretable_napari">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.seg_process.</span></span><span class="sig-name descname"><span class="pre">lc_interpretable_napari</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'green'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.seg_process.lc_interpretable_napari" title="Permalink to this definition"></a></dt>
+<dd><p>This function is used to display feature points for LC-typed output</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>layer_name</strong> – displayed name of the layer</p></li>
+<li><p><strong>lc</strong> – The list of features, each row of length (ndim + nextra)</p></li>
+<li><p><strong>viewer</strong> – Napari viewer to add points to</p></li>
+<li><p><strong>ndim</strong> – dimension of the image</p></li>
+<li><p><strong>extra_features</strong> – extra features to be displayed as text</p></li>
+<li><p><strong>text_color</strong> – to be used as display text color</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <p class="rubric">Built-in Subclasses for SegProcess</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.GaussianBlur">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.seg_process.</span></span><span class="sig-name descname"><span class="pre">GaussianBlur</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.seg_process.GaussianBlur" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.BSPredictor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.seg_process.</span></span><span class="sig-name descname"><span class="pre">BSPredictor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pred_fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.seg_process.BSPredictor" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.SimpleThreshold">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.seg_process.</span></span><span class="sig-name descname"><span class="pre">SimpleThreshold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.seg_process.SimpleThreshold" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.BlobDog">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.seg_process.</span></span><span class="sig-name descname"><span class="pre">BlobDog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.seg_process.BlobDog" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.BlobDog.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float32</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.seg_process.BlobDog.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.SumScaledIntensity">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.seg_process.</span></span><span class="sig-name descname"><span class="pre">SumScaledIntensity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.008</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_thres</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spatial_box_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.seg_process.SumScaledIntensity" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.SumScaledIntensity.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.seg_process.SumScaledIntensity.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.seg_process.</span></span><span class="sig-name descname"><span class="pre">BinaryAndCentroidListToInstance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maxSplit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance" title="Permalink to this definition"></a></dt>
+<dd><p>Defines a SegProcess</p>
+<p>This class’ instance forward() takes two inputs: The binary mask segmenting objects, and centroids
+detected by the blobdog algorithm. Then it splits the pixels in the binary mask into instance
+segmentation based on the centroids found by blobdog. The result is a more finely segmented mask
+where objects closer together are more likely to be correctly segmented as two</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance.bacl_forward">
+<span class="sig-name descname"><span class="pre">bacl_forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">uint8</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">int32</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance.bacl_forward" title="Permalink to this definition"></a></dt>
+<dd><p>For a numpy block and list of centroids in block, return segmentation based on centroids</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">uint8</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">int32</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></span><a class="headerlink" href="#cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 <section id="bs-to-os">
 <h2>bs_to_os<a class="headerlink" href="#bs-to-os" title="Permalink to this heading"></a></h2>
 <p>binary segmentation to ordinal segmentation</p>
 <p>This section contains algorithms whose input is binary (0-1) segmentation mask, and output is instance segmentation
 (0-N) integer mask where the output ndarray is of the same shape as input.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.bs_to_os.DirectBSToOS">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.process.bs_to_os.</span></span><span class="sig-name descname"><span class="pre">DirectBSToOS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">is_global</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.process.bs_to_os.DirectBSToOS" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.bs_to_os.DirectBSToOS.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a></span></span><a class="headerlink" href="#cvpl_tools.im.process.bs_to_os.DirectBSToOS.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.bs_to_os.Watershed3SizesBSToOS">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.process.bs_to_os.</span></span><span class="sig-name descname"><span class="pre">Watershed3SizesBSToOS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size_thres</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_thres</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_thres2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_thres2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.process.bs_to_os.Watershed3SizesBSToOS" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
 </section>
 <section id="lc-to-cc">
 <h2>lc_to_cc<a class="headerlink" href="#lc-to-cc" title="Permalink to this heading"></a></h2>
@@ -116,24 +384,255 @@ output shape of that block, use <code class="code docutils literal notranslate">
 <p>This section contains algorithms whose input is a 2d array or a 2d array of each block describing the centroid
 locations and meta information about the objects associated with the centroids in each block. The output is a single
 number summarizing statistics for each block.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.lc_to_cc.CountLCBySize">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.process.lc_to_cc.</span></span><span class="sig-name descname"><span class="pre">CountLCBySize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.006</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(3.0,</span> <span class="pre">-0.5,</span> <span class="pre">2.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.process.lc_to_cc.CountLCBySize" title="Permalink to this definition"></a></dt>
+<dd><p>Counting list of cells by size</p>
+<p>Several features:
+1. A size threshold, below which each contour is counted as a single cell (or part of a single cell,
+in the case it is neighbor to boundary of the image)
+2. Above size threshold, the contour is seen as a cluster of cells an estimate of cell count is given
+based on the volume of the contour
+3. For cells on the boundary location, their estimated ncell is penalized according to the distance
+between the cell centroid and the boundary of the image; if the voxels of the cell do not touch
+edge, this penalty does not apply
+4. A min_size threshold, below (&lt;=) which the contour is simply discarded because it’s likely just
+an artifact</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.lc_to_cc.CountLCBySize.cc_list">
+<span class="sig-name descname"><span class="pre">cc_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">os_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.process.lc_to_cc.CountLCBySize.cc_list" title="Permalink to this definition"></a></dt>
+<dd><p>Assumption: lc[:, ndim] is nvoxel and lc[:, ndim + 1] is edge_contact</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.lc_to_cc.CountLCBySize.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.process.lc_to_cc.CountLCBySize.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.process.lc_to_cc.</span></span><span class="sig-name descname"><span class="pre">CountLCEdgePenalized</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chunks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(3.0,</span> <span class="pre">-0.5,</span> <span class="pre">2.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized" title="Permalink to this definition"></a></dt>
+<dd><p>From a list of cell centroid locations, calculate a cell count estimate</p>
+<p>You need to provide an image_shape parameter due to the fact that lc does not contain
+information about input image shape</p>
+<p>Each centroid is simply treated as 1 cell when they are sufficiently far from the edge,
+but as they get closer to the edge the divisor becomes &gt;1. and their estimate decreases
+towards 0, since cells near the edge may be double-counted (or triple or more counted
+if at a corner etc.)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.cc_list">
+<span class="sig-name descname"><span class="pre">cc_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.cc_list" title="Permalink to this definition"></a></dt>
+<dd><p>Returns a cell count estimate for each contour in the list of centroids</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lc</strong> – The list of centroids to be given cell estimates for</p></li>
+<li><p><strong>block_index</strong> – The index of the block which this lc corresponds to</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A 1-d list, each element is a scalar cell count for the corresponding contour centroid in lc</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.np_features">
+<span class="sig-name descname"><span class="pre">np_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized.np_features" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate cell counts, then concat centroid locations to the left of cell counts</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="os-to-cc">
 <h2>os_to_cc<a class="headerlink" href="#os-to-cc" title="Permalink to this heading"></a></h2>
 <p>oridnal segmentation to cell counts</p>
 <p>This section contains algorithms whose input is instance segmentation (0-N) integer mask where the output is a single
 number summarizing statistics for each block.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.os_to_cc.CountOSBySize">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.process.os_to_cc.</span></span><span class="sig-name descname"><span class="pre">CountOSBySize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.006</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(3.0,</span> <span class="pre">-0.5,</span> <span class="pre">2.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_global</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.process.os_to_cc.CountOSBySize" title="Permalink to this definition"></a></dt>
+<dd><p>Counting ordinal segmentation contours</p>
+<p>Several features:
+1. A size threshold, below which each contour is counted as a single cell (or part of a single cell,
+in the case it is neighbor to boundary of the image)
+2. Above size threshold, the contour is seen as a cluster of cells an estimate of cell count is given
+based on the volume of the contour
+3. For cells on the boundary location, their estimated ncell is penalized according to the distance
+between the cell centroid and the boundary of the image; if the voxels of the cell do not touch
+edge, this penalty does not apply
+4. A min_size threshold, below (&lt;=) which the contour is simply discarded because it’s likely just
+an artifact</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.os_to_cc.CountOSBySize.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">int32</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.process.os_to_cc.CountOSBySize.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="os-to-lc">
 <h2>os_to_lc<a class="headerlink" href="#os-to-lc" title="Permalink to this heading"></a></h2>
 <p>ordinal segmentation to list of centroids</p>
 <p>This section contains algorithms whose input is instance segmentation (0-N) integer mask where the output is a list
 of centroids with meta information.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.os_to_lc.DirectOSToLC">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.process.os_to_lc.</span></span><span class="sig-name descname"><span class="pre">DirectOSToLC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_global</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ex_statistics</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.process.os_to_lc.DirectOSToLC" title="Permalink to this definition"></a></dt>
+<dd><p>Convert a 0-N contour mask to a list of N centroids, one for each contour</p>
+<p>The converted list of centroids is in the same order as the original contour order (The contour labeled
+1 will come first and before contour labeled 2, 3 and so on)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.os_to_lc.DirectOSToLC.aggregate_by_id">
+<span class="sig-name descname"><span class="pre">aggregate_by_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.process.os_to_lc.DirectOSToLC.aggregate_by_id" title="Permalink to this definition"></a></dt>
+<dd><p>Aggregate self._ndblock by id</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.os_to_lc.DirectOSToLC.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">int32</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ndblock.html#cvpl_tools.im.ndblock.NDBlock" title="cvpl_tools.im.ndblock.NDBlock"><span class="pre">NDBlock</span></a><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.process.os_to_lc.DirectOSToLC.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs from inputs (args)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – args inputs to forward()</p></li>
+<li><p><strong>viewer_args</strong> – If not specified, this is just a forward step; if specified, visualization of the step
+underlying working mechanism will be displayed in Napari viewer object viewer_args[‘viewer’] for
+interpretation of results and debugging purposes</p></li>
+<li><p><strong>**kwargs</strong> – kwargs inputs to forward</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>computed output</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="any-to-any">
 <h2>any_to_any<a class="headerlink" href="#any-to-any" title="Permalink to this heading"></a></h2>
 <p>other</p>
 <p>This sections contain image processing steps whose inputs and outputs may adapt to different types of data or are not
 adequately described by the current classifications.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.process.any_to_any.</span></span><span class="sig-name descname"><span class="pre">DownsamplingByIntFactor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor" title="Permalink to this definition"></a></dt>
+<dd><p><em>DEPRECATED</em></p>
+<p>use cvpl_tools.im.algs.dask_ndinterp.scale_nearest instead</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></span><a class="headerlink" href="#cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Downsample the image and</p>
+<p>The function will display the downsampled image if viewer is provided in viewer_args, so make sure
+you set is_label to True if the image is a label instead of brightness/RGB</p>
+<p>If you want displayed image to be of the same scale of original, set the scale in viewer_args
+correspondingly</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>im</strong> – Image to be downsampled (np or dask array)</p></li>
+<li><p><strong>cid</strong> – Caching id under the current tmp directory</p></li>
+<li><p><strong>viewer_args</strong> – Arguments for the viewer</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The down-sampled image</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.process.any_to_any.</span></span><span class="sig-name descname"><span class="pre">UpsamplingByIntFactor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor" title="Permalink to this definition"></a></dt>
+<dd><p><em>DEPRECATED</em></p>
+<p>use cvpl_tools.im.algs.dask_ndinterp.scale_nearest instead</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CachePointer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></span><a class="headerlink" href="#cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Upsample the image</p>
+<p>The function will display the upsampled image if viewer is provided in viewer_args, so make sure
+you set is_label to True if the image is a label instead of brightness/RGB</p>
+<p>If you want displayed image to be of the same scale of original, set the scale in viewer_args
+correspondingly</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>im</strong> – Image to be upsampled (np or dask array)</p></li>
+<li><p><strong>cid</strong> – Caching id under the current tmp directory</p></li>
+<li><p><strong>viewer_args</strong> – Arguments for the viewer</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The up-sampled image</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor.np_forward">
+<span class="sig-name descname"><span class="pre">np_forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor.np_forward" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate cell counts, then concat centroid locations to the left of cell counts</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 
