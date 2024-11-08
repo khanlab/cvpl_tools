@@ -48,9 +48,14 @@ from dask_image.dispatch._dispatch_ndinterp import (
 from dask_image.ndfilters._utils import _get_depth_boundary
 
 
+# ----------------------------------- affine transform -----------------------------------------
+
+
 def scale_nearest(image: da.Array, scale: float | tuple[float, ...], output_shape: tuple[int, ...],
                   output_chunks: tuple[int, ...] = None, **kwargs) -> da.Array:
     """Scaling the image without interpolation (order=0)
+
+    Note this function may cause a noticeable positional shift when scaling down
 
     Args:
         image: The image to be scaled by the given factor
@@ -232,7 +237,7 @@ def affine_transform_nearest(
             (da.core.concatenate3, rel_image.__dask_keys__()),
             asarray_method(matrix),
             offset_prime,
-            tuple(out_chunk_shape),  # output_shape
+            tuple(out_chunk_shape),
             None,  # out
             0,
             mode,
@@ -330,3 +335,49 @@ def spline_filter(
     )
 
     return result
+
+
+# ----------------------------------- block reduce -----------------------------------------
+
+
+def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
+                         reduce_fn, cval: int | float = 0, input_chunks: tuple[int, ...] = None) -> da.Array:
+    """Extension of skimage block reduce to dask"""
+    from skimage.measure import block_reduce
+
+    ndim = image.ndim
+    if isinstance(block_size, int):
+        block_size = (block_size,) * ndim
+
+    def process_block(block, block_info=None):
+        im = block_reduce(block, block_size=block_size, func=reduce_fn, cval=cval)
+        return im
+
+    if input_chunks is None:
+        IDEAL_SIZE = 1000000  # a block size to aim for
+        nexpand = max(int(np.power((IDEAL_SIZE / np.prod(block_size)), 1/ndim).item()), 1)
+        input_chunks = tuple(nexpand * s for s in block_size)
+    image.rechunk(input_chunks)
+
+    result = image.map_blocks(process_block, meta=np.array(tuple(), dtype=image.dtype))
+    return result
+
+
+if __name__ == '__main__':
+    import dask.array as da
+    from numpy.testing import assert_equal
+
+    im = da.from_array(np.zeros((3, 2), dtype=np.int32))
+    im[1, 1] = 2
+    im[2, 0] = 1
+    im = measure_block_reduce(im, block_size=(2, 3), reduce_fn=np.max)
+
+    # chunk would be chosen to fit IDEAL_SIZE which covers the entire image in this case
+    im.compute_chunk_sizes()
+    assert im.chunksize == (2, 1), im.chunksize
+
+    assert_equal(im.compute(), np.array(((2,), (1,)), dtype=np.int32))
+
+    im = da.from_array(np.ones((3, 3, 6), dtype=np.float32))
+    im = measure_block_reduce(im, block_size=(2, 3, 3), reduce_fn=np.min, cval=-1)
+    assert_equal(im.compute(), np.array((((1, 1),), ((-1, -1),)), dtype=np.float32))
