@@ -359,7 +359,9 @@ def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
         input_chunks = tuple(nexpand * s for s in block_size)
     image.rechunk(input_chunks)
 
-    result = image.map_blocks(process_block, meta=np.array(tuple(), dtype=image.dtype))
+    result = image.map_blocks(process_block, meta=np.array(tuple(), dtype=image.dtype)).persist()
+
+    result.compute_chunk_sizes()
     return result
 
 
