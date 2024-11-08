@@ -342,7 +342,10 @@ def spline_filter(
 
 def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
                          reduce_fn, cval: int | float = 0, input_chunks: tuple[int, ...] = None) -> da.Array:
-    """Extension of skimage block reduce to dask"""
+    """Extension of skimage block reduce to dask
+
+    TODO: support cval argument
+    """
     from skimage.measure import block_reduce
 
     ndim = image.ndim
@@ -350,7 +353,12 @@ def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
         block_size = (block_size,) * ndim
 
     def process_block(block, block_info=None):
-        im = block_reduce(block, block_size=block_size, func=reduce_fn, cval=cval)
+        eff_block_range = tuple((block.shape[i] // block_size[i]) * block_size[i]
+                                for i in range(len(block_size)))
+        if np.prod(eff_block_range) == 0:
+            return np.zeros(eff_block_range, dtype=block.dtype)
+        eff_block = block[tuple(slice(0, s) for s in eff_block_range)]
+        im = block_reduce(eff_block, block_size=block_size, func=reduce_fn, cval=cval)
         return im
 
     if input_chunks is None:
@@ -367,7 +375,7 @@ def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
 
 if __name__ == '__main__':
     import dask.array as da
-    from numpy.testing import assert_equal
+    from numpy.testing import assert_equal, assert_almost_equal
 
     im = da.from_array(np.zeros((3, 2), dtype=np.int32))
     im[1, 1] = 2
@@ -375,11 +383,12 @@ if __name__ == '__main__':
     im = measure_block_reduce(im, block_size=(2, 3), reduce_fn=np.max)
 
     # chunk would be chosen to fit IDEAL_SIZE which covers the entire image in this case
-    im.compute_chunk_sizes()
-    assert im.chunksize == (2, 1), im.chunksize
-
-    assert_equal(im.compute(), np.array(((2,), (1,)), dtype=np.int32))
+    assert im.compute().size == 0, im.compute()
 
     im = da.from_array(np.ones((3, 3, 6), dtype=np.float32))
-    im = measure_block_reduce(im, block_size=(2, 3, 3), reduce_fn=np.min, cval=-1)
-    assert_equal(im.compute(), np.array((((1, 1),), ((-1, -1),)), dtype=np.float32))
+    im = measure_block_reduce(im, block_size=(2, 3, 3), reduce_fn=np.min)
+    assert_equal(im.compute(), np.array((((1, 1),),), dtype=np.float32))
+
+    im = da.from_array(np.array((1, 2, 3, 4, 5), dtype=np.float32))
+    im = measure_block_reduce(im, block_size=(2,), reduce_fn=np.mean)
+    assert_almost_equal(im.compute(), np.array((1.5, 3.5), dtype=np.float32))
