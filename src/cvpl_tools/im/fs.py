@@ -14,6 +14,8 @@ from cvpl_tools.im.ndblock import NDBlock
 import dask.array as da
 from cvpl_tools.fsspec import RDirFileSystem
 from distributed import get_client
+import asyncio
+import inspect
 
 
 class ImageFormat(enum.Enum):
@@ -50,9 +52,9 @@ def persist(im, storage_options: dict = None):
         raise ValueError(f'Unrecognized object type, im={im}')
 
 
-def save(file: str,
-         im,
-         storage_options: dict = None):
+async def save(file: str,
+               im,
+               storage_options: dict = None):
     """Save an image object into given path
 
     Supported im object types:
@@ -91,15 +93,15 @@ def save(file: str,
         preferred_chunksize = storage_options.get('preferred_chunksize') or old_chunksize
 
     if isinstance(im, np.ndarray):
-        NDBlock.save(file, NDBlock(im), storage_options=storage_options)
+        await NDBlock.save(file, NDBlock(im), storage_options=storage_options)
     elif isinstance(im, da.Array):
         if old_chunksize != preferred_chunksize:
             im = im.rechunk(preferred_chunksize)
-        NDBlock.save(file, NDBlock(im), storage_options=storage_options)
+        await NDBlock.save(file, NDBlock(im), storage_options=storage_options)
     elif isinstance(im, NDBlock):
         if im.get_repr_format() == cvpl_ndblock.ReprFormat.DASK_ARRAY and old_chunksize != preferred_chunksize:
             im = NDBlock(im.get_arr().rechunk(preferred_chunksize))
-        NDBlock.save(file, im, storage_options=storage_options)
+        await NDBlock.save(file, im, storage_options=storage_options)
     else:
         raise ValueError(f'Unexpected input type im {type(im)}')
 
@@ -192,10 +194,10 @@ def display(file: str, viewer_args: dict):
 # -------------------------------------File Caching---------------------------------------------
 
 
-def cache_im(fn,
-             cpath: CachePath,
-             cache_level: int | float = 0,
-             viewer_args: dict = None):
+async def cache_im(fn,
+                   cpath: CachePath,
+                   cache_level: int | float = 0,
+                   viewer_args: dict = None):
     """Caches an image object
 
     Args:
@@ -224,12 +226,24 @@ def cache_im(fn,
     raw_path = cpath.abs_path
     skip_cache = viewer_args.get('skip_cache', False) or cache_level > viewer_args.get('cache_level', np.inf)
     if skip_cache:
-        im = fn()
-        loaded = get_client().persist(im)
+        if inspect.iscoroutine(fn):
+            im = await fn
+        elif inspect.iscoroutinefunction(fn):
+            im = await fn()
+        else:
+            im = fn()
+
+        im = get_client().persist(im)
         return im
     elif not cpath.exists:
-        im = fn()
-        save(raw_path, im, storage_options)
+        if inspect.iscoroutine(fn):
+            im = await fn
+        elif inspect.iscoroutinefunction(fn):
+            im = await fn()
+        else:
+            im = fn()
+
+        await save(raw_path, im, storage_options)
 
     if not skip_cache and viewer_args.get('viewer') is not None:
         viewer_args['layer_args'] = copy.copy(viewer_args.get('layer_args', {}))
@@ -613,11 +627,11 @@ class CacheDirectory(CachePath):
         """
         return self._create_cache(is_dir=True, cid=cid)
 
-    def cache_im(self,
-                 fn,
-                 cid: str = None,
-                 cache_level: int | float = 0,
-                 viewer_args: dict = None):
+    async def cache_im(self,
+                       fn,
+                       cid: str = None,
+                       cache_level: int | float = 0,
+                       viewer_args: dict = None):
         """Caches an image object
 
         Args:
@@ -631,7 +645,7 @@ class CacheDirectory(CachePath):
             The cached image loaded
         """
         cpath = self.cache_subpath(cid=cid)
-        return cache_im(fn, cpath, cache_level, viewer_args)
+        return await cache_im(fn, cpath, cache_level, viewer_args)
 
     def remove_tmp(self):
         """traverse all subnodes and self, removing those with is_tmp=True"""
@@ -720,8 +734,8 @@ class CachePointer(CachePath):
         """Create a CacheDirectory under the parent of this pointer, at the location pointed by this pointer"""
         return self.parent.cache_subdir(cid=self.cid)
 
-    def im(self, *args, **kwargs):
-        return self.parent.cache_im(cid=self.cid, *args, **kwargs)
+    async def im(self, *args, **kwargs):
+        return await self.parent.cache_im(cid=self.cid, *args, **kwargs)
 
     @property
     def is_dir(self):

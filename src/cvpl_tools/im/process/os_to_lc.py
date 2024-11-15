@@ -2,6 +2,7 @@ from typing import Sequence
 
 from cvpl_tools.im.fs import CachePointer
 from cvpl_tools.im.seg_process import SegProcess, lc_interpretable_napari
+from cvpl_tools.tools.dask_utils import compute, get_dask_client
 import numpy as np
 import numpy.typing as npt
 from cvpl_tools.im.ndblock import NDBlock
@@ -45,17 +46,17 @@ class DirectOSToLC(SegProcess):
         self._reduced_np_features = None
 
     @property
-    def reduced_features(self):
+    async def reduced_features(self):
         if self._reduced_features is None:
-            self._reduced_features = self._ndblock.reduce(force_numpy=False)
+            self._reduced_features = await self._ndblock.reduce(force_numpy=False)
         return self._reduced_features
 
     @property
-    def reduced_np_features(self):
+    async def reduced_np_features(self):
         if self._reduced_np_features is None:
-            rf = self.reduced_features
+            rf = await self.reduced_features
             if isinstance(rf, da.Array):
-                rf = rf.compute()
+                rf = await compute(get_dask_client(), rf)
             self._reduced_np_features = rf
         return self._reduced_np_features
 
@@ -109,10 +110,10 @@ class DirectOSToLC(SegProcess):
         else:
             return np.zeros(block.shape, dtype=np.float64)
 
-    def feature_forward(self, im: npt.NDArray[np.int32] | da.Array) -> NDBlock[np.float64]:
-        return NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float64)
+    async def feature_forward(self, im: npt.NDArray[np.int32] | da.Array) -> NDBlock[np.float64]:
+        return await NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float64)
 
-    def aggregate_by_id(self):
+    async def aggregate_by_id(self):
         """Aggregate self._ndblock by id"""
 
         ref_ndblock: NDBlock = self._ndblock
@@ -122,7 +123,7 @@ class DirectOSToLC(SegProcess):
         chunk_shape = np.array(tuple(s.stop - s.start for s in slices_list[0]), dtype=np.float64)
         recons = {ind: [] for ind in block_indices}
 
-        rf = self.reduced_np_features
+        rf = await self.reduced_np_features
         rf = rf[np.argsort(rf[:, -1])]
         if rf.shape[0] == 0:
             cnt_ranges = []
@@ -157,30 +158,30 @@ class DirectOSToLC(SegProcess):
         self._ndblock = NDBlock.create_from_dict_and_properties(recons,
                                                                 ref_ndblock.get_properties() | dict(is_numpy=True))
 
-    def forward(self,
-                im: npt.NDArray[np.int32] | da.Array,
-                cptr: CachePointer,
-                viewer_args: dict = None) -> NDBlock[np.float64] | npt.NDArray[np.float64]:
+    async def forward(self,
+                      im: npt.NDArray[np.int32] | da.Array,
+                      cptr: CachePointer,
+                      viewer_args: dict = None) -> NDBlock[np.float64] | npt.NDArray[np.float64]:
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
 
         cdir = cptr.subdir()
 
-        def compute():
-            self._ndblock = cdir.cache_im(fn=lambda: self.feature_forward(im),
-                                          cache_level=1,
-                                          cid='block_level_lc_ndblock')
+        async def ndblock_compute():
+            self._ndblock = await cdir.cache_im(fn=self.feature_forward(im),
+                                                cache_level=1,
+                                                cid='block_level_lc_ndblock')
             if self.is_global:
                 # update and aggregate the rows in ndblock that correspond to the same contour
-                self.aggregate_by_id()
+                await self.aggregate_by_id()
                 self._reduced_features = None
                 self._reduced_np_features = None
             return self._ndblock
 
-        self._ndblock = cdir.cache_im(fn=compute,
-                                      cache_level=1,
-                                      cid='lc_ndblock')
+        self._ndblock = await cdir.cache_im(fn=ndblock_compute,
+                                            cache_level=1,
+                                            cid='lc_ndblock')
 
         if viewer and viewer_args.get('display_points', True):
             if self.is_global:
@@ -189,7 +190,7 @@ class DirectOSToLC(SegProcess):
                 extras = list(self.full_statistics_map.keys())
             lc_interpretable_napari(
                 'os_to_lc_centroids',
-                self.reduced_np_features,
+                await self.reduced_np_features,
                 viewer,
                 im.ndim,
                 extras
@@ -197,7 +198,7 @@ class DirectOSToLC(SegProcess):
 
         ret_cols = tuple(range(im.ndim)) + tuple(r + im.ndim for r in self.ret_cols)
         if self.reduce:
-            ret = self.reduced_features[:, ret_cols]
+            ret = (await self.reduced_features)[:, ret_cols]
         else:
             ret = self._ndblock.select_columns(ret_cols)
         self._ndblock = None

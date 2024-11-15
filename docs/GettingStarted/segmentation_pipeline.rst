@@ -120,7 +120,7 @@ and two optional parameters: cid and viewer_args.
   .. code-block:: Python
 
       class ExampleSegProcess(SegProcess):
-          def forward(self, im, cptr: CachePointer, viewer: napari.Viewer = None):
+          async def forward(self, im, cptr: CachePointer, viewer: napari.Viewer = None):
               cache_path = cptr.subpath()
 
               # in the case cache does not exists, cache_path.abs_path is an empty path we can create a folder in:
@@ -139,11 +139,11 @@ and two optional parameters: cid and viewer_args.
   .. code-block:: Python
 
       class ExampleSegProcess(SegProcess):
-          def forward(self, im, cptr: CachePointer, viewer_args: dict = None):
+          async def forward(self, im, cptr: CachePointer, viewer_args: dict = None):
               if viewer_args is None:
                   viewer_args = {}
               result = compute_result(im)
-              result = cptr.im(lambda: result, viewer_args=viewer_args)  # caching result at location pointed by cptr
+              result = await cptr.im(lambda: result, viewer_args=viewer_args)  # caching result at location pointed by cptr
               return result
       # ...
       viewer = napari.Viewer(ndisplay=2)
@@ -154,7 +154,7 @@ and two optional parameters: cid and viewer_args.
           multiscale=4 if viewer else 0,  # maximum downsampling level of ome zarr files, necessary for very large images
       )
       process = ExampleSegProcess()
-      process.forward(im, cptr = root_dir.cache(cid='compute'), viewer_args=viewer_args)
+      await process.forward(im, cptr = root_dir.cache(cid='compute'), viewer_args=viewer_args)
 
   :code:`viewer_args` is a parameter that allows us to visualize the saved results as part of the caching
   function. The reason we need this is that displaying the saved result often requires a different (flatter)
@@ -191,7 +191,7 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
             process.set_tmpdir(temp_directory)
             viewer = napari.Viewer()
             viewer_args = dict(viewer=viewer)
-            process.forward(im, cid='cell_count_cache', viewer_args=viewer_args)
+            await process.forward(im, cid='cell_count_cache', viewer_args=viewer_args)
 
             client.close()
             viewer.show(block=True)

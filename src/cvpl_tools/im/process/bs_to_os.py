@@ -26,23 +26,23 @@ class DirectBSToOS(BlockToBlockProcess):
         super().__init__(np.int32, is_label=True)
         self.is_global = is_global
 
-    def forward(self,
+    async def forward(self,
                 im: npt.NDArray | da.Array | NDBlock,
                 cptr: CachePointer,
                 viewer_args=None
                 ) -> npt.NDArray | da.Array | NDBlock:
         if not self.is_global or isinstance(im, np.ndarray):
-            return super().forward(im, cptr, viewer_args)
+            return await super().forward(im, cptr, viewer_args)
 
         if viewer_args is None:
             viewer_args = {}
 
-        im = dask_label.label(
+        im = (await dask_label.label(
             im,
             cptr=cptr,
             output_dtype=np.int32,
             viewer_args=viewer_args | dict(logging=True, client=viewer_args['client'])
-        )[0]
+        ))[0]
         return im
 
     def np_forward(self, bs: npt.NDArray[np.uint8], block_info=None) -> npt.NDArray[np.int32]:

@@ -1,6 +1,5 @@
 from typing import Sequence
 
-from cvpl_tools.im import seg_process
 from cvpl_tools.im.fs import CachePointer
 from cvpl_tools.im.seg_process import SegProcess, lc_interpretable_napari, heatmap_logging, map_ncell_vector_to_total
 import numpy as np
@@ -85,50 +84,50 @@ class CountLCBySize(SegProcess):
         features = np.concatenate((lc[:, :ndim], cc_list[:, None]), axis=1)
         return features
 
-    def feature_forward(self, lc: NDBlock[np.float64]) -> NDBlock[np.float64]:
-        return NDBlock.map_ndblocks([NDBlock(lc)], self.np_features, out_dtype=np.float64)
+    async def feature_forward(self, lc: NDBlock[np.float64]) -> NDBlock[np.float64]:
+        return await NDBlock.map_ndblocks([NDBlock(lc)], self.np_features, out_dtype=np.float64)
 
-    def forward(self,
-                lc: NDBlock[np.float64],
-                ndim: int,
-                cptr: CachePointer,
-                viewer_args: dict = None
-                ) -> npt.NDArray[np.float64]:
+    async def forward(self,
+                      lc: NDBlock[np.float64],
+                      ndim: int,
+                      cptr: CachePointer,
+                      viewer_args: dict = None
+                      ) -> npt.NDArray[np.float64]:
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
         cdir = cptr.subdir()
-        ndblock = cdir.cache_im(fn=lambda: self.feature_forward(lc),
-                                cid='lc_by_size_features',
-                                cache_level=1)
+        ndblock = await cdir.cache_im(fn=self.feature_forward(lc),
+                                      cid='lc_by_size_features',
+                                      cache_level=1)
 
         dp = viewer_args.get('display_points', True)
         if viewer:
             if dp:
-                features = ndblock.reduce(force_numpy=True)
+                features = await ndblock.reduce(force_numpy=True)
                 features = features[features[:, -1] > 0., :]
                 lc_interpretable_napari('bysize_ncells',
                                         features, viewer, ndim, ['ncells'])
 
-            aggregate_ndblock: NDBlock[np.float64] = cdir.cache_im(
-                fn=lambda: map_ncell_vector_to_total(ndblock), cid='aggregate_ndblock',
+            aggregate_ndblock: NDBlock[np.float64] = await cdir.cache_im(
+                fn=map_ncell_vector_to_total(ndblock), cid='aggregate_ndblock',
                 cache_level=2
             )
             if dp:
-                aggregate_features: npt.NDArray[np.float64] = cdir.cache_im(
-                    fn=lambda: aggregate_ndblock.reduce(force_numpy=True), cid='block_cell_count',
+                aggregate_features: npt.NDArray[np.float64] = await cdir.cache_im(
+                    fn=aggregate_ndblock.reduce(force_numpy=True), cid='block_cell_count',
                     cache_level=2
                 )
                 lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
                                         ndim, ['ncells'], text_color='red')
 
             chunk_size = lc.get_chunksize()
-            heatmap_logging(aggregate_ndblock, cdir.cache(cid='cell_density_map'), viewer_args, chunk_size)
+            await heatmap_logging(aggregate_ndblock, cdir.cache(cid='cell_density_map'), viewer_args, chunk_size)
 
         ndblock = ndblock.select_columns([-1])
 
         if self.reduce:
-            ndblock = ndblock.reduce(force_numpy=False)
+            ndblock = await ndblock.reduce(force_numpy=False)
         ndblock = ndblock.sum(keepdims=True)
         return ndblock
 
@@ -207,13 +206,13 @@ class CountLCEdgePenalized(SegProcess):
         features = np.concatenate((lc[:, :len(self.chunks)], cc_list[:, None]), axis=1)
         return features
 
-    def feature_forward(self, lc: NDBlock[np.float64]) -> NDBlock[np.float64]:
-        return NDBlock.map_ndblocks([lc], self.np_features, out_dtype=np.float64)
+    async def feature_forward(self, lc: NDBlock[np.float64]) -> NDBlock[np.float64]:
+        return await NDBlock.map_ndblocks([lc], self.np_features, out_dtype=np.float64)
 
-    def forward(self,
-                lc: NDBlock[np.float64],
-                cptr: CachePointer,
-                viewer_args: dict = None) -> NDBlock[np.float64]:
+    async def forward(self,
+                      lc: NDBlock[np.float64],
+                      cptr: CachePointer,
+                      viewer_args: dict = None) -> NDBlock[np.float64]:
         if viewer_args is None:
             viewer_args = {}
         viewer = viewer_args.get('viewer', None)
@@ -221,39 +220,39 @@ class CountLCEdgePenalized(SegProcess):
                                                       f'provided, expected {self.numblocks} but got '
                                                       f'{lc.get_numblocks()}')
         cdir = cptr.subdir()
-        ndblock = cdir.cache_im(fn=lambda: self.feature_forward(lc), cid='lc_cc_edge_penalized',
-                                cache_level=1)
+        ndblock = await cdir.cache_im(fn=self.feature_forward(lc), cid='lc_cc_edge_penalized',
+                                      cache_level=1)
 
         dp = viewer_args.get('display_points', True)
         if viewer:
             if viewer_args.get('display_checkerboard', True):
-                checkerboard = cdir.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
-                                             cid='checkerboard',
-                                             cache_level=2,
-                                             viewer_args=viewer_args | dict(is_label=True))
+                checkerboard = await cdir.cache_im(fn=lambda: cvpl_ome_zarr_io.dask_checkerboard(self.chunks),
+                                                   cid='checkerboard',
+                                                   cache_level=2,
+                                                   viewer_args=viewer_args | dict(is_label=True))
 
             if dp:
-                features = ndblock.reduce(force_numpy=True)
+                features = await ndblock.reduce(force_numpy=True)
                 lc_interpretable_napari('lc_cc_edge_penalized', features, viewer,
                                         len(self.chunks), ['ncells'])
 
-            aggregate_ndblock: NDBlock[np.float64] = cdir.cache_im(
-                fn=lambda: map_ncell_vector_to_total(ndblock), cid='aggregate_ndblock',
+            aggregate_ndblock: NDBlock[np.float64] = await cdir.cache_im(
+                fn=map_ncell_vector_to_total(ndblock), cid='aggregate_ndblock',
                 cache_level=2
             )
             if dp:
-                aggregate_features: npt.NDArray[np.float64] = cdir.cache_im(
-                    fn=lambda: aggregate_ndblock.reduce(force_numpy=True), cid='block_cell_count',
+                aggregate_features: npt.NDArray[np.float64] = await cdir.cache_im(
+                    fn=aggregate_ndblock.reduce(force_numpy=True), cid='block_cell_count',
                     cache_level=2
                 )
                 lc_interpretable_napari('block_cell_count', aggregate_features, viewer,
                                         len(self.chunks), ['ncells'], text_color='red')
 
             chunk_size = tuple(ax[0] for ax in self.chunks)
-            heatmap_logging(aggregate_ndblock, cdir.cache(cid='cell_density_map'), viewer_args, chunk_size)
+            await heatmap_logging(aggregate_ndblock, cdir.cache(cid='cell_density_map'), viewer_args, chunk_size)
 
         ndblock = ndblock.select_columns([-1])
         if self.reduce:
-            ndblock = ndblock.reduce(force_numpy=False)
+            ndblock = await ndblock.reduce(force_numpy=False)
         ndblock = ndblock.sum(keepdims=True)
         return ndblock

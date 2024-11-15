@@ -20,11 +20,10 @@ import dask
 import functools
 import operator
 
-from distributed import worker_client
-
 import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
 from cvpl_tools.im.partd_server import SQLitePartd, SqliteServer
 from cvpl_tools.fsspec import RDirFileSystem
+from cvpl_tools.tools.dask_utils import compute, get_dask_client
 
 
 class ReprFormat(enum.Enum):
@@ -230,7 +229,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             json.dump(properties, fp=outfile, indent=2)
 
     @staticmethod
-    def save(file: str, ndblock: NDBlock, storage_options: dict | None = None):
+    async def save(file: str, ndblock: NDBlock, storage_options: dict | None = None):
         """Save the NDBlock to the given path
 
         Will compute immediately if the ndblock is delayed dask computations
@@ -264,9 +263,9 @@ class NDBlock(Generic[ElementType], abc.ABC):
                     binfile.write(dumps_numpy(ndblock.arr, compressor=compressor))
         elif fmt == ReprFormat.DASK_ARRAY:
             MAX_LAYER = storage_options.get('multiscale') or 0
-            cvpl_ome_zarr_io.write_ome_zarr_image(f'{file}/dask_im', da_arr=ndblock.arr,
-                                                  make_zip=False, MAX_LAYER=MAX_LAYER,
-                                                  storage_options=storage_options)
+            await cvpl_ome_zarr_io.write_ome_zarr_image(f'{file}/dask_im', da_arr=ndblock.arr,
+                                                        make_zip=False, MAX_LAYER=MAX_LAYER,
+                                                        storage_options=storage_options)
         else:
             server = SqliteServer(f'{file}/blocks_kvstore', nappend=len(ndblock.arr), available_memory=1e6,
                                   port_protocol=storage_options.get('port_protocol', 'tcp'))
@@ -283,7 +282,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 store.close()
 
             tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
-            dask.compute(*tasks)
+            await compute(get_dask_client(), tasks)
             server.wait_join()
             server.close()
         NDBlock.save_properties(f'{file}/properties.json', ndblock.properties)
@@ -316,12 +315,10 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
                 ks = list(self.arr.keys())
                 vs = [self.arr[k][0] for k in ks]
-                with worker_client() as client:  # TODO: this is assumed to be done on a worker, is this a good assumption?
-                    vs = client.persist(vs, compressor=compressor)
+                vs = get_dask_client().persist(vs, compressor=compressor)
                 out_ndblock.arr = {ks[i]: (vs[i], self.arr[ks[i]][1]) for i in range(len(ks))}
                 return out_ndblock
             return self
-
 
     @staticmethod
     def load_properties(file: str) -> dict:
@@ -377,7 +374,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 level=0
             ))
         else:
-            ndblock.arr = NDBlockLazyLoadDictBlockInfo(db_path=f'{file}/blocks_kvstore', storage_options=storage_options)
+            ndblock.arr = NDBlockLazyLoadDictBlockInfo(db_path=f'{file}/blocks_kvstore',
+                                                       storage_options=storage_options)
         return ndblock
 
     def is_numpy(self) -> bool:
@@ -427,9 +425,9 @@ class NDBlock(Generic[ElementType], abc.ABC):
         chunksize = tuple(s.stop - s.start for s in slices)
         return chunksize
 
-    def as_numpy(self) -> npt.NDArray:
+    async def as_numpy(self) -> npt.NDArray:
         other = NDBlock(self)
-        other.to_numpy_array()
+        await other.to_numpy_array()
         return other.arr
 
     def as_dask_array(self, storage_options: dict | None = None) -> da.Array:
@@ -489,7 +487,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     # ReprFormat conversion functions
 
-    def to_numpy_array(self):
+    async def to_numpy_array(self):
         """Convert representation format to numpy array"""
         rformat = self.properties['repr_format']
         if rformat == ReprFormat.NUMPY_ARRAY:
@@ -503,7 +501,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             rformat = self.get_repr_format()
 
         assert rformat == ReprFormat.DASK_ARRAY
-        self.arr = self.arr.compute()
+        self.arr = await compute(get_dask_client(), self.arr)
         self._set_properties_by_numpy_array(self.arr)  # here some blocks may be merged to one
 
         self.properties['repr_format'] = ReprFormat.NUMPY_ARRAY
@@ -571,7 +569,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
         self.properties['repr_format'] = ReprFormat.DICT_BLOCK_INDEX_SLICES
 
-    def reduce(self, force_numpy: bool = False) -> npt.NDArray | da.Array:
+    async def reduce(self, force_numpy: bool = False) -> npt.NDArray | da.Array:
         """Concatenate all blocks on the first axis
 
         Args:
@@ -598,7 +596,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 shape = None
                 for block_index, (block, slices) in other.arr.items():
                     if not isinstance(block, np.ndarray):
-                        block = block.compute()
+                        block = await compute(get_dask_client(), block)
                     shape = (np.nan,) + block.shape[1:]
                     break
                 blocks = [da.from_delayed(block,
@@ -609,7 +607,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
                 reduced = da.concatenate(blocks, axis=0)
                 if force_numpy:
-                    return reduced.compute()
+                    return await compute(get_dask_client(), reduced)
                 else:
                     return reduced
 
@@ -625,7 +623,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             new_ndblock.arr = self.arr.sum(axis=axis)
 
     @staticmethod
-    def map_ndblocks(
+    async def map_ndblocks(
             inputs: Sequence[NDBlock],
             fn: Callable,
             out_dtype: np.dtype,
@@ -668,7 +666,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             block_info = []
             for i in range(len(inputs)):
                 ndblock = inputs[i]
-                arr = ndblock.as_numpy()
+                arr = await ndblock.as_numpy()
                 block_info.append({
                     'chunk-location': (0,) * arr.ndim,
                     'array-location': list((0, s) for s in arr.shape)

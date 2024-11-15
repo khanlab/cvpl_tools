@@ -28,7 +28,7 @@ class DownsamplingByIntFactor(SegProcess):
         super().__init__()
         self._factor = factor
 
-    def forward(self,
+    async def forward(self,
                 im: npt.NDArray | da.Array,
                 cptr: CachePointer,
                 viewer_args: dict = None
@@ -56,7 +56,7 @@ class DownsamplingByIntFactor(SegProcess):
         else:
             factor = self._factor
         slices = tuple(slice(None, None, factor[i]) for i in range(im.ndim))
-        im = cptr.im(fn=lambda: im[slices],
+        im = await cptr.im(fn=lambda: im[slices],
                      cache_level=1,
                      viewer_args=viewer_args)
         im.compute_chunk_sizes()
@@ -93,7 +93,7 @@ class UpsamplingByIntFactor(BlockToBlockProcess):
         assert start_dtype == end_dtype, f'start:{start_dtype} end:{end_dtype} are not the same!'
         return im
 
-    def forward(self,
+    async def forward(self,
                 im: npt.NDArray | da.Array,
                 cptr: CachePointer,
                 viewer_args: dict = None
@@ -114,7 +114,7 @@ class UpsamplingByIntFactor(BlockToBlockProcess):
         Returns:
             The up-sampled image
         """
-        return block_to_block_forward(
+        return await block_to_block_forward(
             np_forward=self.np_forward,
             cptr=cptr,
             im=im,

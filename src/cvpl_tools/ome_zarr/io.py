@@ -161,13 +161,13 @@ def _get_axes_for_write(ndim: int) -> list:
     return list(reversed(axes[:ndim]))
 
 
-def write_ome_zarr_image_direct(group_url: str,
-                                da_arr: da.Array | None = None,
-                                lbl_arr: da.Array | None = None,
-                                lbl_name: str | None = None,
-                                MAX_LAYER: int = 3,
-                                storage_options: dict = None,
-                                lbl_storage_options: dict = None):
+async def write_ome_zarr_image_direct(group_url: str,
+                                      da_arr: da.Array | None = None,
+                                      lbl_arr: da.Array | None = None,
+                                      lbl_name: str | None = None,
+                                      MAX_LAYER: int = 3,
+                                      storage_options: dict = None,
+                                      lbl_storage_options: dict = None):
     """Direct write of dask array to target ome zarr group (can not be a zip)
 
     Args:
@@ -191,12 +191,12 @@ def write_ome_zarr_image_direct(group_url: str,
 
     scaler = ome_zarr.scale.Scaler(max_layer=MAX_LAYER, method='nearest')
     if da_arr is not None:
-        writer.write_image(image=da_arr,
-                           group_url=group_url,
-                           scaler=scaler,
-                           coordinate_transformations=_get_coord_transform_yx_for_write(da_arr.ndim, MAX_LAYER),
-                           storage_options=storage_options,
-                           axes=_get_axes_for_write(da_arr.ndim))
+        await writer.write_image(image=da_arr,
+                                 group_url=group_url,
+                                 scaler=scaler,
+                                 coordinate_transformations=_get_coord_transform_yx_for_write(da_arr.ndim, MAX_LAYER),
+                                 storage_options=storage_options,
+                                 axes=_get_axes_for_write(da_arr.ndim))
 
     if lbl_arr is not None:
         assert lbl_name is not None, ('ERROR: Please provide lbl_name along when writing labels '
@@ -209,28 +209,28 @@ def write_ome_zarr_image_direct(group_url: str,
         if lbl_storage_options is None:
             compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
             lbl_storage_options = dict(compressor=compressor)
-        writer.write_labels(labels=lbl_arr,
-                            group_url=group_url,
-                            scaler=scaler,
-                            name=lbl_name,
-                            coordinate_transformations=_get_coord_transform_yx_for_write(lbl_arr.ndim, MAX_LAYER),
-                            storage_options=lbl_storage_options,
-                            axes=lbl_axes)
+        await writer.write_labels(labels=lbl_arr,
+                                  group_url=group_url,
+                                  scaler=scaler,
+                                  name=lbl_name,
+                                  coordinate_transformations=_get_coord_transform_yx_for_write(lbl_arr.ndim, MAX_LAYER),
+                                  storage_options=lbl_storage_options,
+                                  axes=lbl_axes)
         # ome_zarr.writer.write_label_metadata(group=g,
         #                      name=f'/labels/{lbl_name}',
         #                      properties=properties)
 
 
-def write_ome_zarr_image(out_ome_zarr_path: str,
-                         tmp_path: str = None,  # provide this if making a zip file
-                         da_arr: da.Array | None = None,
-                         lbl_arr: da.Array | None = None,
-                         lbl_name: str | None = None,
-                         make_zip: bool | None = None,
-                         MAX_LAYER: int = 0,
-                         logging=False,
-                         storage_options: dict = None,
-                         lbl_storage_options: dict = None):
+async def write_ome_zarr_image(out_ome_zarr_path: str,
+                               tmp_path: str = None,  # provide this if making a zip file
+                               da_arr: da.Array | None = None,
+                               lbl_arr: da.Array | None = None,
+                               lbl_name: str | None = None,
+                               make_zip: bool | None = None,
+                               MAX_LAYER: int = 0,
+                               logging=False,
+                               storage_options: dict = None,
+                               lbl_storage_options: dict = None):
     """Write dask array as an ome zarr
 
     For writing to zip file: due to dask does not directly support write to zip file, we instead create a temp ome zarr
@@ -266,9 +266,9 @@ def write_ome_zarr_image(out_ome_zarr_path: str,
     if fs.exists(''):
         fs.rm('', recursive=True)
     fs.makedirs_cur()
-    write_ome_zarr_image_direct(folder_out_ome_zarr_path, da_arr, lbl_arr, lbl_name, MAX_LAYER=MAX_LAYER,
-                                storage_options=storage_options,
-                                lbl_storage_options=lbl_storage_options)
+    await write_ome_zarr_image_direct(folder_out_ome_zarr_path, da_arr, lbl_arr, lbl_name, MAX_LAYER=MAX_LAYER,
+                                      storage_options=storage_options,
+                                      lbl_storage_options=lbl_storage_options)
     if logging:
         print('Folder is written.')
 
@@ -292,12 +292,12 @@ def write_ome_zarr_image(out_ome_zarr_path: str,
 # ------------------------------Part 3: synthetic dataset-----------------------------------
 
 
-def generate_synthetic_dataset(ome_zarr_path: str,
-                               tmp_path: str = None,
-                               arr_sz: tuple = (2, 224, 1600, 2048),
-                               chunks: tuple = (1, 1, 1024, 1024),
-                               make_zip: bool | None = None,
-                               MAX_LAYER=0) -> zarr.Group:
+async def generate_synthetic_dataset(ome_zarr_path: str,
+                                     tmp_path: str = None,
+                                     arr_sz: tuple = (2, 224, 1600, 2048),
+                                     chunks: tuple = (1, 1, 1024, 1024),
+                                     make_zip: bool | None = None,
+                                     MAX_LAYER=0) -> zarr.Group:
     """Generate a 4d synthetic test ome zarr image physically stored in ome_zarr_path.
 
     Args:
@@ -332,7 +332,7 @@ def generate_synthetic_dataset(ome_zarr_path: str,
         return im
 
     arr = arr.map_blocks(process_block, dtype=np.uint16)
-    write_ome_zarr_image(ome_zarr_path, tmp_path, da_arr=arr, make_zip=make_zip, MAX_LAYER=MAX_LAYER)
+    await write_ome_zarr_image(ome_zarr_path, tmp_path, da_arr=arr, make_zip=make_zip, MAX_LAYER=MAX_LAYER)
     group = load_zarr_group_from_path(ome_zarr_path, mode='r', use_zip=make_zip)
     return group
 
@@ -358,4 +358,3 @@ def dask_checkerboard(chunks: Sequence[Sequence[int]]) -> da.Array:
 
     checkerboard = checkerboard.map_blocks(map_fn, meta=np.zeros(tuple(), dtype=np.uint8), dtype=np.uint8)
     return checkerboard
-

@@ -85,7 +85,7 @@ def upsample_pad_crop_fit(src_arr: da.Array, tgt_arr: da.Array, cptr: CachePoint
     tgt_shape = tgt_arr.shape
     scale, residue = approx_upsample_scale(src_shape, tgt_shape)
     upsampler = sp_any_to_any.UpsamplingByIntFactor(factor=tuple(scale), order=0)
-    arr = upsampler.forward(src_arr, cptr=cptr, viewer_args=viewer_args)
+    arr = await upsampler.forward(src_arr, cptr=cptr, viewer_args=viewer_args)
 
     change_width = tuple((0, -r) for r in residue)
     arr = pad_crop(arr, change_width=change_width, mode=mode, **kwargs)

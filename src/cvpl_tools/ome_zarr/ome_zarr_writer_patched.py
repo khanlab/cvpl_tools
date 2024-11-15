@@ -40,13 +40,12 @@ import dask
 import dask.array as da
 import numpy as np
 import zarr
-from dask.graph_manipulation import bind
+from cvpl_tools.tools.dask_utils import get_dask_client, compute as dask_compute
 
 from ome_zarr.axes import Axes
 from ome_zarr.format import CurrentFormat, Format
 from ome_zarr.scale import Scaler
 from ome_zarr.types import JSONDict
-from ome_zarr.io import parse_url
 
 LOGGER = logging.getLogger("ome_zarr.writer")
 
@@ -352,7 +351,7 @@ def write_well_metadata(
     group.attrs["well"] = well
 
 
-def write_image(
+async def write_image(
     image: ArrayLike,
     group_url: str,
     scaler: Scaler = Scaler(),
@@ -412,7 +411,7 @@ def write_image(
         dask.
     """
     if isinstance(image, da.Array):
-        dask_delayed_jobs: list = _write_dask_image(
+        dask_delayed_jobs: list = await _write_dask_image(
             image,
             group_url,
             scaler,
@@ -443,7 +442,7 @@ def _resolve_storage_options(
     return options
 
 
-def _write_dask_image(
+async def _write_dask_image(
     image: da.Array,
     group_url: str,
     scaler: Scaler = Scaler(),
@@ -517,12 +516,12 @@ Please use the 'storage_options' argument instead."""
         )
         if str(path) == '0' and max_layer > 0:
             # for the second image onward, we need to read the written image and then write new images
-            da.compute(*delayed)
+            await dask_compute(get_dask_client(), delayed)
             delayed = []
             image = da.from_zarr(group['0'])
         datasets.append({"path": str(path)})
 
-    da.compute(*delayed)
+    await dask_compute(get_dask_client(), delayed)
     delayed = []
 
     if coordinate_transformations is None:
@@ -588,7 +587,7 @@ def write_label_metadata(
     group.attrs["labels"] = label_list
 
 
-def write_labels(
+async def write_labels(
     labels: Union[np.ndarray, da.Array],
     group_url: str,
     name: str,
@@ -663,7 +662,7 @@ def write_labels(
     sub_group = group.require_group(f"labels/{name}")
 
     if isinstance(labels, da.Array):
-        dask_delayed_jobs: list = _write_dask_image(
+        dask_delayed_jobs: list = await _write_dask_image(
             labels,
             f'{group_url}/labels/{name}',
             scaler,

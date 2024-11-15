@@ -1,4 +1,4 @@
-from cvpl_tools.im.seg_process import SegProcess, lc_interpretable_napari, heatmap_logging, map_ncell_vector_to_total
+from cvpl_tools.im.seg_process import SegProcess
 import numpy as np
 import numpy.typing as npt
 from cvpl_tools.im.ndblock import NDBlock
@@ -44,13 +44,13 @@ class CountOSBySize(SegProcess):
                                                border_params=border_params,
                                                reduce=reduce)
 
-    def forward(self,
+    async def forward(self,
                 im: npt.NDArray[np.int32] | da.Array,
                 cptr: CachePointer,
                 viewer_args: dict = None
                 ) -> npt.NDArray[np.float64]:
         cdir = cptr.subdir()
-        lc = self.os_to_lc.forward(im, cdir.cache(cid='os_to_lc'), viewer_args)
-        cc = self.lc_to_cc.forward(lc,  im.ndim, cdir.cache(cid='lc_to_cc'), viewer_args)
+        lc = await self.os_to_lc.forward(im, cdir.cache(cid='os_to_lc'), viewer_args)
+        cc = await self.lc_to_cc.forward(lc,  im.ndim, cdir.cache(cid='lc_to_cc'), viewer_args)
 
         return cc
