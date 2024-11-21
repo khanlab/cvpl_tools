@@ -250,7 +250,7 @@ async def write_ome_zarr_image(out_ome_zarr_path: str,
     """
     if tmp_path is not None:
         tmp_fs = RDirFileSystem(tmp_path)
-        tmp_fs.makedirs('', exist_ok=True)
+        tmp_fs.makedirs_cur()
 
     if make_zip is None:
         make_zip = out_ome_zarr_path.endswith('.zip')

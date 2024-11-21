@@ -67,6 +67,7 @@ from typing import Callable, Any, Sequence
 import cvpl_tools.im.fs as imfs
 import cvpl_tools.im.algorithms as algorithms
 from cvpl_tools.im.ndblock import NDBlock
+from cvpl_tools.fsspec import RDirFileSystem
 import dask.array as da
 from dask.distributed import print as dprint
 import numpy as np
@@ -627,7 +628,7 @@ async def heatmap_logging(aggregate_ndblock: NDBlock[np.float64],
                           viewer_args: dict,
                           chunk_size: tuple):
     cdir = cptr.subdir()
-    np_arr_path = f'{cdir.abs_path}/density_map.npy'
+    fs = RDirFileSystem(cdir.url)
     if not cdir.exists:
         block = aggregate_ndblock.select_columns([-1])
         ndim = block.get_ndim()
@@ -635,15 +636,17 @@ async def heatmap_logging(aggregate_ndblock: NDBlock[np.float64],
         def map_fn(block: npt.NDArray[np.float64], block_info=None):
             return block.reshape((1,) * ndim)
 
-        block = block.map_ndblocks([block], map_fn, out_dtype=np.float64)
+        block = await block.map_ndblocks([block], map_fn, out_dtype=np.float64)
         block = await block.as_numpy()
-        np.save(np_arr_path, block)
+        with fs.open('density_map.npy', mode='wb') as fd:
+            np.save(fd, block)
 
     if viewer_args is None:
         viewer_args = {}
     viewer: Viewer = viewer_args.get('viewer', None)
 
-    block = np.load(np_arr_path)
+    with fs.open('density_map.npy', mode='rb') as fd:
+        block = np.load(fd)
     if viewer:
         block = np.log2(block + 1.)
         viewer.add_image(block, name='cell_density_map', scale=chunk_size, blending='additive', colormap='red',

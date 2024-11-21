@@ -74,7 +74,9 @@ class RDirFileSystem(DirFileSystem):
         else:
             self.makedirs_cur()
 
-    def makedirs_cur(self):
+    def makedirs_cur(self, exists_ok: bool = False):
+        if exists_ok and self.exists(''):
+            return
         if 'gcs' in self.fs.protocol:
             return self.fs.touch(f'{self.path}/.gcs_placeholder')
         else:

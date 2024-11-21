@@ -41,7 +41,7 @@ class DirectBSToOS(BlockToBlockProcess):
             im,
             cptr=cptr,
             output_dtype=np.int32,
-            viewer_args=viewer_args | dict(logging=True, client=viewer_args['client'])
+            viewer_args=viewer_args | dict(logging=True)
         ))[0]
         return im
 

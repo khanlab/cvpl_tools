@@ -10,12 +10,17 @@ from typing import Any
 
 import numpy as np
 import cvpl_tools.im.ndblock as cvpl_ndblock
-from cvpl_tools.im.ndblock import NDBlock
+from cvpl_tools.im.ndblock import NDBlock, ReprFormat
 import dask.array as da
 from cvpl_tools.fsspec import RDirFileSystem
 from distributed import get_client
 import asyncio
 import inspect
+import logging
+
+
+DEBUG = True
+logger = logging.getLogger('coiled')
 
 
 class ImageFormat(enum.Enum):
@@ -42,6 +47,8 @@ def persist(im, storage_options: dict = None):
     Returns:
         Image object loaded from persist(), or return the input if is numpy
     """
+    if DEBUG:
+        logger.error(f'persist() being called on image of type {type(im)}')
     if isinstance(im, np.ndarray):
         return im
     elif isinstance(im, da.Array):
@@ -75,6 +82,8 @@ async def save(file: str,
         im: Object to be saved
         storage_options: Specifies options in saving method and saved file format
     """
+    if DEBUG:
+        logger.error(f'Saving image to path {file}')
     if isinstance(im, np.ndarray):
         old_chunksize = im.shape
         fmt = ImageFormat.NUMPY
@@ -127,6 +136,7 @@ def load(file: str, storage_options: dict = None):
         Recreated image; this method attempts to keep meta and content of the loaded image stays
         the same as when they are saved
     """
+    logger.error(f'Loading image from path {file}')
     fs = RDirFileSystem(file)
     with fs.open(f'.save_meta.txt', 'r') as infile:
         items = infile.read().split('\n')
@@ -223,9 +233,10 @@ async def cache_im(fn,
     if multiscale is not None:
         storage_options['multiscale'] = multiscale
 
-    raw_path = cpath.abs_path
+    raw_path = cpath.url
     skip_cache = viewer_args.get('skip_cache', False) or cache_level > viewer_args.get('cache_level', np.inf)
-    if skip_cache:
+    do_compute = skip_cache or not cpath.exists
+    if do_compute:
         if inspect.iscoroutine(fn):
             im = await fn
         elif inspect.iscoroutinefunction(fn):
@@ -233,17 +244,16 @@ async def cache_im(fn,
         else:
             im = fn()
 
-        im = get_client().persist(im)
-        return im
-    elif not cpath.exists:
-        if inspect.iscoroutine(fn):
-            im = await fn
-        elif inspect.iscoroutinefunction(fn):
-            im = await fn()
+        # DICT_BLOCK_INDEX_SLICES is a special case when save() is not implemneted for this type of NDBlock
+        # In this case, persist it regardless of skip_cache
+        if skip_cache or (isinstance(im, NDBlock) and im.get_repr_format() == ReprFormat.DICT_BLOCK_INDEX_SLICES):
+            if DEBUG:
+                logger.error(f'persist() called on image at path {raw_path}')
+            im = persist(im, storage_options=storage_options)
+            return im
         else:
-            im = fn()
-
-        await save(raw_path, im, storage_options)
+            # assert not cpath.exists
+            await save(raw_path, im, storage_options)
 
     if not skip_cache and viewer_args.get('viewer') is not None:
         viewer_args['layer_args'] = copy.copy(viewer_args.get('layer_args', {}))
@@ -563,7 +573,7 @@ class CacheDirectory(CachePath):
         else:
             if cid in self.children:
                 file = self.children[cid]
-                assert file.is_dir == is_dir, f'Unexpected file/directory at {file.abs_path}'
+                assert file.is_dir == is_dir, f'Unexpected file/directory at {file.url}'
                 return self.children[cid]
 
         # create a new cached object, exists=False

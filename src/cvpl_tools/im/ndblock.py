@@ -21,7 +21,6 @@ import functools
 import operator
 
 import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
-from cvpl_tools.im.partd_server import SQLitePartd, SqliteServer
 from cvpl_tools.fsspec import RDirFileSystem
 from cvpl_tools.tools.dask_utils import compute, get_dask_client
 
@@ -53,88 +52,6 @@ def loads_numpy(buf: bytes, compressor) -> npt.NDArray:
     if compressor is not None:
         buf = compressor.decode(buf)
     return pickle.loads(buf)
-
-
-class NDBlockLazyLoadDictBlockInfo:
-    def __init__(self, db_path: str, storage_options: dict = None):
-        """Initialize an info object containing information about how to load the NDBlock
-
-        This class is for optimization purpose (lazy loading) where in some cases the computation is not
-        necessary
-
-        Args:
-            db_path: path to the database object where NDBlock.save saves a DICT_BLOCK_INDEX_SLICES object
-            compressor: A compressor that supports encode and decode interfaces on bytes to bytes compression
-        """
-        self.db_path = db_path
-
-        if storage_options is None:
-            storage_options = {}
-        self.storage_options = storage_options
-
-    def get_db_path(self):
-        return self.db_path
-
-    def is_just_loaded(self):
-        """Returns True if just loaded from files
-
-        In some cases we save and then load an NDBlock to avoid double computation, but if the NDBlock
-        is just loaded from disk then it is unnecessary to do save and load again. This function is for
-        testing for that to avoid such situation
-        """
-        return True
-
-    def materialize(self, ndblock: NDBlock, force_numpy=False):
-        block_indices = ndblock.properties['block_indices']
-        slices_list = ndblock.properties['slices_list']
-        ndblock.arr = {}
-        compressor = self.storage_options.get('compressor')
-
-        def load_block_with_compression(sqlite_file, block_id):
-            return loads_numpy(sqlite_file.get(block_id, lock=False), compressor)
-
-        if force_numpy or ndblock.properties['is_numpy']:
-            sqlite_file = SQLitePartd(self.db_path)
-
-            for i in range(len(slices_list)):
-                block_index, slices = block_indices[i], slices_list[i]
-
-                block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
-                block = load_block_with_compression(sqlite_file, block_id)
-
-                ndblock.arr[block_index] = (block, slices)
-            sqlite_file.close()
-            ndblock.properties['is_numpy'] = True
-        else:
-            server = SqliteServer(self.db_path, nappend=len(ndblock.arr), available_memory=1e6,
-                                  port_protocol='tcp')
-            server_address = server.address
-            dprint(f'NDBlock lazy load: Server serving on address {server_address}')
-
-            def serve(server):
-                import threading
-                dprint(f'Server serving on thread {threading.get_ident()}')
-                server.wait_join()
-                server.close()
-                dprint('Server thread has completed execution')
-
-            import threading
-            threading.Thread(target=serve, kwargs=dict(server=server)).start()
-
-            @dask.delayed
-            def load_block(block_index):
-                block_id = '_'.join(str(i) for i in block_index)
-                client = partd.Client(server_address)
-                buf = client.get(block_id)
-                client.close()
-                block = loads_numpy(buf, compressor)
-                assert isinstance(block, np.ndarray)
-                return block
-
-            for i in range(len(slices_list)):
-                block_index, slices = block_indices[i], slices_list[i]
-
-                ndblock.arr[block_index] = (load_block(block_index), slices)
 
 
 class NDBlock(Generic[ElementType], abc.ABC):
@@ -206,12 +123,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
         assert isinstance(numblocks[0], int)
 
     def get_arr(self):
-        self.ensure_materialized()
         return self.arr
-
-    def ensure_materialized(self, **kwargs):
-        if isinstance(self.arr, NDBlockLazyLoadDictBlockInfo):
-            self.arr.materialize(self, **kwargs)
 
     @staticmethod
     def save_properties(file: str, properties: dict):
@@ -249,11 +161,9 @@ class NDBlock(Generic[ElementType], abc.ABC):
             storage_options = {}
         compressor = storage_options.get('compressor', None)
 
-        ndblock.ensure_materialized()
-
         fmt = ndblock.get_repr_format()
         fs = RDirFileSystem(file)
-        fs.makedirs('', exist_ok=False)
+        fs.makedirs_cur()
         if fmt == ReprFormat.NUMPY_ARRAY:
             if compressor is None:
                 with fs.open('im.npy', mode='wb') as fd:
@@ -267,24 +177,9 @@ class NDBlock(Generic[ElementType], abc.ABC):
                                                         make_zip=False, MAX_LAYER=MAX_LAYER,
                                                         storage_options=storage_options)
         else:
-            server = SqliteServer(f'{file}/blocks_kvstore', nappend=len(ndblock.arr), available_memory=1e6,
-                                  port_protocol=storage_options.get('port_protocol', 'tcp'))
-            server_address = server.address
-
-            @dask.delayed
-            def save_block(block_index, block):
-                block_id = ('_'.join(str(i) for i in block_index)).encode('utf-8')
-                store = partd.Client(server_address)
-                assert isinstance(block, np.ndarray), type(block)
-                store.append({
-                    block_id: dumps_numpy(block, compressor=compressor)
-                })
-                store.close()
-
-            tasks = [save_block(block_index, block) for block_index, (block, _) in ndblock.arr.items()]
-            await compute(get_dask_client(), tasks)
-            server.wait_join()
-            server.close()
+            assert fmt == ReprFormat.DICT_BLOCK_INDEX_SLICES, fmt
+            raise ValueError(f'NDBlock type to be saved at path {file} is of '
+                             f'ReprFormat.DICT_BLOCK_INDEX_SLICES which is unsupported')
         NDBlock.save_properties(f'{file}/properties.json', ndblock.properties)
 
     def persist(self: NDBlock, compressor=None) -> NDBlock:
@@ -297,8 +192,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
         Returns:
             Reloaded NDBlock object; if is numpy, then no saving is done and the object is directly returned
         """
-        self.ensure_materialized()
-
         fmt = self.get_repr_format()
         if fmt == ReprFormat.NUMPY_ARRAY:
             return self
@@ -308,8 +201,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             out_ndblock.arr = self.arr.persist(compressor=compressor)
             return out_ndblock
         else:
-            just_loaded_flag = isinstance(self.arr, NDBlockLazyLoadDictBlockInfo) and self.arr.is_just_loaded()
-            if not self.properties['is_numpy'] and not just_loaded_flag:
+            if not self.properties['is_numpy']:
                 out_ndblock = NDBlock(None)
                 out_ndblock.properties = self.properties
 
@@ -374,8 +266,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
                 level=0
             ))
         else:
-            ndblock.arr = NDBlockLazyLoadDictBlockInfo(db_path=f'{file}/blocks_kvstore',
-                                                       storage_options=storage_options)
+            assert fmt == ReprFormat.DICT_BLOCK_INDEX_SLICES, fmt
+            raise ValueError('NDBlock type to be loaded is of ReprFormat.DICT_BLOCK_INDEX_SLICES which is unsupported')
         return ndblock
 
     def is_numpy(self) -> bool:
@@ -493,8 +385,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
         if rformat == ReprFormat.NUMPY_ARRAY:
             return
 
-        self.ensure_materialized()
-
         if rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             # TODO: optimize this
             self.to_dask_array()
@@ -521,7 +411,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
             return
 
         if rformat == ReprFormat.NUMPY_ARRAY:
-            self.ensure_materialized()
             self.arr = da.from_array(self.arr)
         else:
             assert rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES
@@ -547,8 +436,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
         rformat = self.properties['repr_format']
         if rformat == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             return
-
-        self.ensure_materialized()
 
         slices_list = self.properties['slices_list']
         block_indices = self.properties['block_indices']
@@ -580,8 +467,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
             The concatenated result, is Numpy if previous array is Numpy, or if force_numpy is True
         """
         other = NDBlock(self)
-        other.ensure_materialized(force_numpy=force_numpy)
-
         if other.properties['repr_format'] == ReprFormat.NUMPY_ARRAY:
             return np.copy(other.arr)
         else:
@@ -614,7 +499,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
     def sum(self, axis: Sequence | None = None, keepdims: bool = False):
         """sum over axes for each block"""
         new_ndblock = NDBlock(self)
-        new_ndblock.ensure_materialized()
         if self.properties['repr_format'] == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             for block_index, (block, slices) in self.arr.items():
                 new_ndblock.arr[block_index] = (block.sum(axis=axis, keepdims=keepdims), slices)
@@ -677,7 +561,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
         block_iterators = []
         for ndblock in inputs:
             new_block = NDBlock(ndblock)
-            new_block.ensure_materialized()
             if ndblock.get_repr_format() != ReprFormat.DICT_BLOCK_INDEX_SLICES:
                 new_block.to_dict_block_index_slices()
             block_iterators.append(new_block)
@@ -725,7 +608,6 @@ class NDBlock(Generic[ElementType], abc.ABC):
     def select_columns(self, cols: slice | Sequence[int] | int) -> NDBlock:
         """Performs columns selection on a 2d array"""
         ndblock = NDBlock(self)
-        ndblock.ensure_materialized()
         if self.properties['repr_format'] == ReprFormat.DICT_BLOCK_INDEX_SLICES:
             results = {
                 block_index: (block[:, cols], slices) for block_index, (block, slices) in ndblock.arr.items()

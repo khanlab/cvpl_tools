@@ -123,12 +123,12 @@ and two optional parameters: cid and viewer_args.
           async def forward(self, im, cptr: CachePointer, viewer: napari.Viewer = None):
               cache_path = cptr.subpath()
 
-              # in the case cache does not exists, cache_path.abs_path is an empty path we can create a folder in:
+              # in the case cache does not exists, cache_path.url is an empty path we can create a folder in:
               if not cache_path.exists:
-                  os.makedirs(cache_path.abs_path)
+                  os.makedirs(cache_path.url)
                   result = compute_result(im)
-                  save(cache_path.abs_path, result)
-              result = load(cache_path.abs_path)
+                  save(cache_path.url, result)
+              result = load(cache_path.url)
               return result
 
 - The :code:`viewer_args` parameter specifies the napari viewer to display the intermediate results. If not provided

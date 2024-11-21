@@ -149,22 +149,22 @@ which there are intermediate files. To create a cache directory, we write
             # Use case #1. Create a data directory for caching computation results
             cache_path = temp_directory.cache_subpath(cid='some_cache_path')
             if not cache_path.exists:
-                os.makedirs(cache_path.abs_path, exists_ok=True)
-                # PUT CODE HERE: Now write your data into cache_path.abs_path and load it back later
+                os.makedirs(cache_path.url, exists_ok=True)
+                # PUT CODE HERE: Now write your data into cache_path.url and load it back later
 
             # Use case #2. Create a sub-directory and pass it to other processes for caching
             def multi_step_computation(cache_at: imfs.CacheDirectory):
                 cache_path = cache_at.cache_subpath(cid='A')
                 if not cache_path.exists:
                     A = computeA()
-                    save(cache_path.abs_path, A)
-                A = load(cache_path.abs_path)
+                    save(cache_path.url, A)
+                A = load(cache_path.url)
 
                 cache_path_B = cache_at.cache_subpath(cid='B')
                 if not cache_path_B.exists:
                     B = computeBFromA()
-                    save(cache_path_B.abs_path, B)
-                B = load(cache_path_B.abs_path)
+                    save(cache_path_B.url, B)
+                B = load(cache_path_B.url)
                 return B
 
             sub_temp_directory = temp_directory.cache_subdir(cid='mult_step_cache')

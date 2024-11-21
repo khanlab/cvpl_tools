@@ -2,8 +2,6 @@
 dask-image's label function encounters memory error when in large dataset. This file defines a distributed, on-disk
 version of the label() function of scipy.ndimage
 """
-from math import prod
-
 import dask
 import dask.array as da
 import numcodecs
@@ -11,32 +9,12 @@ import numpy as np
 import numpy.typing as npt
 
 from cvpl_tools.im.ndblock import NDBlock, dumps_numpy, loads_numpy
-from cvpl_tools.im.partd_server import SQLiteKVStore, SQLitePartd, SqliteServer
 from cvpl_tools.im.fs import CacheDirectory, CachePointer
-from cvpl_tools.tools.dask_utils import compute
+from cvpl_tools.tools.dask_utils import compute, get_dask_client
 from scipy.ndimage import label as scipy_label
-import partd
 import cvpl_tools.im.algorithms as cvpl_algorithms
 from dask.distributed import print as dprint
 from collections import defaultdict
-import inspect
-
-
-def split_list(lst, nsplit):
-    """Split a list to nsplit roughly equal parts"""
-    size = len(lst) // nsplit
-    return [lst[i * size: (i + 1) * size] for i in range(nsplit - 1)] + [lst[(nsplit - 1) * size:]]
-
-
-def nsurfaces_from_numblocks(numblocks: tuple) -> int:
-    """Calculating number of contacting surfaces inside a nd-rectangle, including repetition in both sides"""
-    assert isinstance(numblocks, tuple), type(numblocks)
-    ndim = len(numblocks)
-    nblocks = np.prod(numblocks)
-    ntotal = np.zeros((1,), dtype=np.float64)
-    for i in range(ndim):
-        ntotal += nblocks * (1 - 1. / numblocks[i])
-    return int(ntotal.item()) * 2
 
 
 def find_connected_components(edges: set[tuple[int, int]]) -> list[set[int, ...], ...]:
@@ -65,37 +43,39 @@ def find_connected_components(edges: set[tuple[int, int]]) -> list[set[int, ...]
     return components
 
 
-async def compute_lower_adj_set(slices_abs_path: str, compressor, create_server,
-                                client: dask.distributed.Client) -> set[tuple[int, int]]:
+async def compute_lower_adj_set(locally_labeled: da.Array,
+                                cptr: CachePointer,
+                                compressor,
+                                viewer_args) -> set[tuple[int, int]]:
     """From a SQL db of neighboring slices, compute their corresponding lower adjacency matrix as a set
 
     Args:
-        slices_abs_path: Path to the SQL database on disk
+        locally_labeled: Path to the SQL database on disk
+        compressor:
+        client:
 
     Returns:
         The adjacency edge set
     """
-    lower_adj = set()
-    read_kv_store = SQLiteKVStore(f'{slices_abs_path}/sqlite.db')
-    ids = list(set(i[:i.rfind('_')] for i in read_kv_store.ids()))
-    read_kv_store.close()
-    print(f'Total number of ids to be processed to compute lower adj set: {len(ids)}')
-    ntask = max(len(ids) // 2000, 1)
-    split_ids = split_list(ids, ntask)
+    numblocks = locally_labeled.numblocks
 
-    server = create_server()
-    server_addr = server.address
+    def find_neib(block, block_info):
+        if block_info is None:
+            return np.zeros(block.shape, dtype=np.int64)
+        block_index = tuple(block_info[0]['chunk-location'])
 
-    @dask.delayed
-    def compute_partial(partial_ids: list) -> set[tuple[int, int]]:
-        partial_lower_adj = set()
-        client = partd.Client(server_addr)
-        for cur_id in partial_ids:
-            value1, value2 = client.get([f'{cur_id}_0', f'{cur_id}_1'])
-            sli1, sli2 = loads_numpy(value1, compressor).flatten(), loads_numpy(value2, compressor).flatten()
-            sli = np.stack((sli1, sli2), axis=1)
-            tups = cvpl_algorithms.np_unique(sli, axis=0)
-            for row in tups.tolist():
+        neibs = set()
+        for ax in range(block.ndim):
+            if block_index[ax] == 0:
+                continue
+            # flatten two flat surfaces into two 1d arrays
+            sli = np.moveaxis(np.take(block, indices=(0, 1), axis=ax), ax, 0).reshape(2, -1)
+            tups = cvpl_algorithms.np_unique(sli, axis=1)
+            assert tups.shape[0] == 2, (
+                f'Expected tups 2 rows, got tups.shape={tups.shape}, at block_index={block_index}, '
+                f'over ax={ax}. \nsli.shape={sli.shape}, '
+                f'block.shape={block.shape}, numblocks={numblocks}. \nsli={sli}')
+            for row in tups.transpose().tolist():
                 i1, i2 = row
                 if i2 < i1:
                     tmp = i2
@@ -105,19 +85,22 @@ async def compute_lower_adj_set(slices_abs_path: str, compressor, create_server,
                     continue
                 assert i1 < i2, f'i1={i1} and i2={i2}!'  # can not be equal because indices are globally unique here
                 tup = (i2, i1)
-                if tup not in lower_adj:
-                    partial_lower_adj.add(tup)
-        return partial_lower_adj
+                neibs.add(tup)
+        if len(neibs) == 0:
+            return np.zeros((0, 2), dtype=np.int64)
+        neibs = np.array(tuple(neibs), dtype=np.int64)
+        assert neibs.ndim == 2 and neibs.shape[1] == 2, neibs.shape
+        return neibs
 
-    tasks = [compute_partial(partial_ids) for partial_ids in split_ids]
-    results = await compute(client, tasks)
-    server.wait_join()
-    server.close()
+    depth = {dim: (1, 0) for dim in range(locally_labeled.ndim)}
+    padded = locally_labeled.map_overlap(func=lambda x: x, depth=depth, trim=False).persist(compressor=compressor)
+    result = NDBlock(padded)
+    result = await NDBlock.map_ndblocks((result,), find_neib, out_dtype=np.int64)
+    neibs = await result.reduce(force_numpy=True)
 
     lower_adj = set()
-    for partial_lower_adj in results:
-        partial_lower_adj: set[tuple[int, int]]
-        lower_adj |= partial_lower_adj
+    for pair in neibs:
+        lower_adj.add(tuple(pair))
     return lower_adj
 
 
@@ -133,7 +116,7 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
     ndim = im.ndim
     assert viewer_args is not None, viewer_args
     is_logging = viewer_args.get('logging', False)
-    dask_client: dask.distributed.Client = viewer_args['client']
+    dask_client: dask.distributed.Client = get_dask_client()
     compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
     vargs = dict(compressor=compressor)  # this is for compressing labels of uint8 or int32 types
 
@@ -191,56 +174,14 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
         print(f'total_nlbl={total_nlbl}, Convert prefix sum to a dask array then to NDBlock')
     cumsum_da_arr = da.from_array(cumsum_np_arr, chunks=(1,) * cumsum_np_arr.ndim)
 
-    # Prepare cache file to be used
-    if is_logging:
-        print('Setting up cache sqlite database')
-    cache_file = cdir.cache_subpath(cid='border_slices')
-    cache_file.fs.makedirs('', exist_ok=True)
-    slices_abs_path = cache_file.url
-
-    if is_logging:
-        print('Setting up partd server')
-    numblocks = locally_labeled.numblocks
-    nappend = nsurfaces_from_numblocks(numblocks)
-    storage_options = viewer_args.get('storage_options', dict())
-
-    def create_server():
-        return SqliteServer(slices_abs_path,
-                            nappend=nappend,
-                            get_sqlite_partd=None,
-                            port_protocol=storage_options.get('port_protocol', 'tcp'))
-
-    server = None
-
-    def compute_edge_slices():
-        nonlocal server
-        server = create_server()
-        server_address = server.address
-
-        # compute edge slices
+    def compute_locally_labeled():
         if is_logging:
-            print(f'Computing edge slices, writing to database with nappend={nappend} and numblocks={numblocks}')
+            print(f'Computing locally labeled')
 
         def compute_slices(block: npt.NDArray, block2: npt.NDArray, block_info: dict = None):
             # block is the local label, block2 is the single element prefix summed number of labels
 
-            client = partd.Client(server_address)
-            block_index = list(block_info[0]['chunk-location'])
             block = block + (block != 0).astype(block.dtype) * block2
-            toappend = dict()
-            for ax in range(block.ndim):
-                for face in range(2):
-                    block_index[ax] += face
-                    if block_index[ax] == 0 or block_index[ax] == numblocks[ax]:
-                        block_index[ax] -= face
-                        continue
-                    indstr = '_'.join(str(index) for index in block_index) + f'_{ax}_{face}'
-                    sli_idx = face * (block.shape[ax] - 1)
-                    sli = np.take(block, indices=sli_idx, axis=ax)
-                    toappend[indstr] = dumps_numpy(sli, compressor)
-                    block_index[ax] -= face
-            client.append(toappend)
-            client.close()
             return block
 
         nonlocal locally_labeled
@@ -249,12 +190,10 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
         return locally_labeled
 
     locally_labeled = await cdir.cache_im(
-        compute_edge_slices,
+        compute_locally_labeled,
         cid='locally_labeled_with_cumsum',
         viewer_args=vargs
     )
-    if server is not None:
-        server.wait_join()
 
     comp_i = 0
 
@@ -262,7 +201,10 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
         nonlocal dask_client
         if is_logging:
             print('Process locally to obtain a lower triangular adjacency matrix')
-        lower_adj = await compute_lower_adj_set(slices_abs_path, compressor, create_server, dask_client)
+        lower_adj = await compute_lower_adj_set(locally_labeled,
+                                                cptr=cdir.cache(cid='local_labeled_with_cumsum_padded'),
+                                                compressor=compressor,
+                                                viewer_args=viewer_args)
         print(f'The set of adjacency edges is of size {len(lower_adj)}')
         connected_components = find_connected_components(lower_adj)
         if is_logging:
@@ -284,8 +226,7 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
 
         if is_logging:
             print(f'comp_i={comp_i}, Remapping the indices array to be globally consistent')
-        client = viewer_args['client']
-        ind_map_scatter = await client.scatter(ind_map_np, broadcast=True)
+        ind_map_scatter = await get_dask_client().scatter(ind_map_np, broadcast=True)
 
         def local_to_global(block, block_info, ind_map_scatter):
             return ind_map_scatter[block]
