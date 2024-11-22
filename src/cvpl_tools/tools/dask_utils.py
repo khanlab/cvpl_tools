@@ -112,7 +112,7 @@ async def dask_url_io_test(client: Client, url: str):
 
     omefs = RDirFileSystem(f'{TMP_DIR}/testim2.ome.zarr')
     log(client, f'Test writing dask array as ome zarr image at path {omefs.url}:', end='')
-    await ome_io.write_ome_zarr_image(out_ome_zarr_path=omefs.url, da_arr=dask_arr)
+    await ome_io.write_ome_zarr_image(out_ome_zarr_path=omefs.url, da_arr=dask_arr, asynchronous=True)
     log(client, f'ok.')
     log(client, f'Test reading dask array from ome zarr image just written:', end='')
     read_arr = await ome_io.load_dask_array_from_path(f'{omefs.url}/0', mode='r')

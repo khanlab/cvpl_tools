@@ -1,5 +1,8 @@
-LOCAL_TESTING = False
-USE_GCS = True
+import numpy as np
+
+LOCAL_TESTING = True
+USE_GCS = False
+COMP_SLI = np.index_exp[:, :256, :256]
 
 
 async def main(dask_worker):
@@ -282,7 +285,7 @@ async def main(dask_worker):
 
         cur_im = da.from_zarr(cvpl_ome_zarr_io.load_zarr_group_from_path(
             path=ORIG_IM_PATH, mode='r', level=0
-        )) / 1000
+        ))[COMP_SLI] / 1000
         assert cur_im.ndim == 3
         print(f'imshape={cur_im.shape}')
         cur_im = cur_im.rechunk(chunks=(64, 64, 64))
@@ -306,7 +309,7 @@ async def main(dask_worker):
                 neg_mask = tifffile.imread(infile)
             neg_mask = da.from_array(neg_mask, chunks=(64, 64, 64))
             neg_mask = dask_ndinterp.scale_nearest(neg_mask,
-                                                   scale=1, output_shape=cur_im.shape, output_chunks=(64, 64, 64))
+                                                   scale=1, output_shape=cur_im.shape, output_chunks=(64, 64, 64))[COMP_SLI]
             neg_mask = await temp_directory.cache_im(fn=lambda: neg_mask,
                                                      cid='neg_mask_upsampling',
                                                      viewer_args=viewer_args | dict(is_label=True))

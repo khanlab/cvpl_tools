@@ -3,3 +3,6 @@
 *__pycache__/
 /docs/_build/
 /src/experiment/
+
+*/log_stderr.txt
+*/log_stdout.txt

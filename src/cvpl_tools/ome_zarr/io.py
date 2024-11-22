@@ -167,7 +167,8 @@ async def write_ome_zarr_image_direct(group_url: str,
                                       lbl_name: str | None = None,
                                       MAX_LAYER: int = 3,
                                       storage_options: dict = None,
-                                      lbl_storage_options: dict = None):
+                                      lbl_storage_options: dict = None,
+                                      asynchronous: bool = False):
     """Direct write of dask array to target ome zarr group (can not be a zip)
 
     Args:
@@ -196,7 +197,8 @@ async def write_ome_zarr_image_direct(group_url: str,
                                  scaler=scaler,
                                  coordinate_transformations=_get_coord_transform_yx_for_write(da_arr.ndim, MAX_LAYER),
                                  storage_options=storage_options,
-                                 axes=_get_axes_for_write(da_arr.ndim))
+                                 axes=_get_axes_for_write(da_arr.ndim),
+                                 asynchronous=asynchronous)
 
     if lbl_arr is not None:
         assert lbl_name is not None, ('ERROR: Please provide lbl_name along when writing labels '
@@ -215,7 +217,8 @@ async def write_ome_zarr_image_direct(group_url: str,
                                   name=lbl_name,
                                   coordinate_transformations=_get_coord_transform_yx_for_write(lbl_arr.ndim, MAX_LAYER),
                                   storage_options=lbl_storage_options,
-                                  axes=lbl_axes)
+                                  axes=lbl_axes,
+                                  asynchronous=asynchronous)
         # ome_zarr.writer.write_label_metadata(group=g,
         #                      name=f'/labels/{lbl_name}',
         #                      properties=properties)
@@ -230,7 +233,8 @@ async def write_ome_zarr_image(out_ome_zarr_path: str,
                                MAX_LAYER: int = 0,
                                logging=False,
                                storage_options: dict = None,
-                               lbl_storage_options: dict = None):
+                               lbl_storage_options: dict = None,
+                               asynchronous: bool = False):
     """Write dask array as an ome zarr
 
     For writing to zip file: due to dask does not directly support write to zip file, we instead create a temp ome zarr
@@ -268,7 +272,8 @@ async def write_ome_zarr_image(out_ome_zarr_path: str,
     fs.makedirs_cur()
     await write_ome_zarr_image_direct(folder_out_ome_zarr_path, da_arr, lbl_arr, lbl_name, MAX_LAYER=MAX_LAYER,
                                       storage_options=storage_options,
-                                      lbl_storage_options=lbl_storage_options)
+                                      lbl_storage_options=lbl_storage_options,
+                                      asynchronous=asynchronous)
     if logging:
         print('Folder is written.')
 

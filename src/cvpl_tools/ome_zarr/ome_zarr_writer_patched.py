@@ -361,6 +361,7 @@ async def write_image(
     coordinate_transformations: Optional[List[List[Dict[str, Any]]]] = None,
     storage_options: Optional[Union[JSONDict, List[JSONDict]]] = None,
     compute: Optional[bool] = True,
+    asynchronous: bool = False,
     **metadata: Union[str, JSONDict, List[JSONDict]],
 ) -> List:
     """Writes an image to the zarr store according to ome-zarr specification
@@ -422,6 +423,7 @@ async def write_image(
             storage_options=storage_options,
             name=None,
             compute=compute,
+            asynchronous=asynchronous,
             **metadata,
         )
         return dask_delayed_jobs
@@ -453,6 +455,7 @@ async def _write_dask_image(
     storage_options: Optional[Union[JSONDict, List[JSONDict]]] = None,
     name: Optional[str] = None,
     compute: Optional[bool] = True,
+    asynchronous: bool = False,
     **metadata: Union[str, JSONDict, List[JSONDict]],
 ) -> List:
     assert compute, 'ERROR: PATCH ONLY ALLOWS COMPUTE=TRUE!'
@@ -516,12 +519,18 @@ Please use the 'storage_options' argument instead."""
         )
         if str(path) == '0' and max_layer > 0:
             # for the second image onward, we need to read the written image and then write new images
-            await dask_compute(get_dask_client(), delayed)
+            if asynchronous:
+                await dask_compute(get_dask_client(), delayed)
+            else:
+                dask.compute(delayed)
             delayed = []
             image = da.from_zarr(group['0'])
         datasets.append({"path": str(path)})
 
-    await dask_compute(get_dask_client(), delayed)
+    if asynchronous:
+        await dask_compute(get_dask_client(), delayed)
+    else:
+        dask.compute(delayed)
     delayed = []
 
     if coordinate_transformations is None:
@@ -599,6 +608,7 @@ async def write_labels(
     storage_options: Optional[Union[JSONDict, List[JSONDict]]] = None,
     label_metadata: Optional[JSONDict] = None,
     compute: Optional[bool] = True,
+    asynchronous: bool = False,
     **metadata: JSONDict,
 ) -> List:
     """
@@ -673,6 +683,7 @@ async def write_labels(
             storage_options=storage_options,
             name=name,
             compute=compute,
+            asynchronous=asynchronous,
             **metadata,
         )
     else:

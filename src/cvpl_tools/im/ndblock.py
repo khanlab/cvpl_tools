@@ -175,7 +175,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             MAX_LAYER = storage_options.get('multiscale') or 0
             await cvpl_ome_zarr_io.write_ome_zarr_image(f'{file}/dask_im', da_arr=ndblock.arr,
                                                         make_zip=False, MAX_LAYER=MAX_LAYER,
-                                                        storage_options=storage_options)
+                                                        storage_options=storage_options, asynchronous=True)
         else:
             assert fmt == ReprFormat.DICT_BLOCK_INDEX_SLICES, fmt
             raise ValueError(f'NDBlock type to be saved at path {file} is of '
