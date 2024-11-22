@@ -28,11 +28,15 @@ def find_connected_components(edges: set[tuple[int, int]]) -> list[set[int, ...]
     components = []
 
     def dfs(node, component):
-        visited.add(node)
-        component.add(node)
-        for neighbor in graph[node]:
-            if neighbor not in visited:
-                dfs(neighbor, component)
+        # avoid recursive implementation, which fails if maximum recursion limits is exceeded on large datasets
+        nodes = {node}
+        while len(nodes) > 0:
+            node = nodes.pop()
+            visited.add(node)
+            component.add(node)
+            for neighbor in graph[node]:
+                if neighbor not in visited:
+                    nodes.add(neighbor)
 
     for node in graph:
         if node not in visited:

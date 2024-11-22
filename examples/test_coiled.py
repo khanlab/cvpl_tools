@@ -2,7 +2,7 @@ import numpy as np
 
 LOCAL_TESTING = True
 USE_GCS = False
-COMP_SLI = np.index_exp[:, :256, :256]
+COMP_SLI = np.index_exp[:]
 
 
 async def main(dask_worker):
