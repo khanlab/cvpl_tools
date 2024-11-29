@@ -221,22 +221,22 @@ which there are intermediate files. To create a cache directory, we write</p>
         <span class="c1"># Use case #1. Create a data directory for caching computation results</span>
         <span class="n">cache_path</span> <span class="o">=</span> <span class="n">temp_directory</span><span class="o">.</span><span class="n">cache_subpath</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;some_cache_path&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">abs_path</span><span class="p">,</span> <span class="n">exists_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="c1"># PUT CODE HERE: Now write your data into cache_path.abs_path and load it back later</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">exists_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="c1"># PUT CODE HERE: Now write your data into cache_path.url and load it back later</span>
 
         <span class="c1"># Use case #2. Create a sub-directory and pass it to other processes for caching</span>
         <span class="k">def</span> <span class="nf">multi_step_computation</span><span class="p">(</span><span class="n">cache_at</span><span class="p">:</span> <span class="n">imfs</span><span class="o">.</span><span class="n">CacheDirectory</span><span class="p">):</span>
             <span class="n">cache_path</span> <span class="o">=</span> <span class="n">cache_at</span><span class="o">.</span><span class="n">cache_subpath</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;A&#39;</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
                 <span class="n">A</span> <span class="o">=</span> <span class="n">computeA</span><span class="p">()</span>
-                <span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">abs_path</span><span class="p">,</span> <span class="n">A</span><span class="p">)</span>
-            <span class="n">A</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">abs_path</span><span class="p">)</span>
+                <span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">A</span><span class="p">)</span>
+            <span class="n">A</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
 
             <span class="n">cache_path_B</span> <span class="o">=</span> <span class="n">cache_at</span><span class="o">.</span><span class="n">cache_subpath</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;B&#39;</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path_B</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
                 <span class="n">B</span> <span class="o">=</span> <span class="n">computeBFromA</span><span class="p">()</span>
-                <span class="n">save</span><span class="p">(</span><span class="n">cache_path_B</span><span class="o">.</span><span class="n">abs_path</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>
-            <span class="n">B</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path_B</span><span class="o">.</span><span class="n">abs_path</span><span class="p">)</span>
+                <span class="n">save</span><span class="p">(</span><span class="n">cache_path_B</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path_B</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">B</span>
 
         <span class="n">sub_temp_directory</span> <span class="o">=</span> <span class="n">temp_directory</span><span class="o">.</span><span class="n">cache_subdir</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;mult_step_cache&#39;</span><span class="p">)</span>

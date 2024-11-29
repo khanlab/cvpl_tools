@@ -102,8 +102,8 @@ function where the caller does not need to care whether you want a leaf node or 
         result = (im + 1) * 3
         cache_path = cptr.subpath()
         if not cache_path.exists:
-            result.save(cache_path.abs_path)
-        return load(cache_path.abs_path)
+            result.save(cache_path.url)
+        return load(cache_path.url)
 
     # implementation 2 (functionally equivalent but creates two sub-directories)
     def compute(im, cptr):
