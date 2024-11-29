@@ -7,10 +7,12 @@ import dask.array as da
 import numcodecs
 import numpy as np
 import numpy.typing as npt
+import numcodecs.abc
 
-from cvpl_tools.im.ndblock import NDBlock, dumps_numpy, loads_numpy
-from cvpl_tools.im.fs import CacheDirectory, CachePointer
-from cvpl_tools.tools.dask_utils import compute, get_dask_client
+from cvpl_tools.im.ndblock import NDBlock
+from cvpl_tools.tools.dask_utils import get_dask_client
+from cvpl_tools.fsspec import RDirFileSystem, ensure_rdir_filesystem
+import cvpl_tools.tools.fs as tlfs
 from scipy.ndimage import label as scipy_label
 import cvpl_tools.im.algorithms as cvpl_algorithms
 from dask.distributed import print as dprint
@@ -47,16 +49,12 @@ def find_connected_components(edges: set[tuple[int, int]]) -> list[set[int, ...]
     return components
 
 
-async def compute_lower_adj_set(locally_labeled: da.Array,
-                                cptr: CachePointer,
-                                compressor,
-                                viewer_args) -> set[tuple[int, int]]:
+async def compute_lower_adj_set(locally_labeled: da.Array, compressor: numcodecs.abc.Codec) -> set[tuple[int, int]]:
     """From a SQL db of neighboring slices, compute their corresponding lower adjacency matrix as a set
 
     Args:
         locally_labeled: Path to the SQL database on disk
-        compressor:
-        client:
+        compressor: The compressor used to compress chunks during persist() call
 
     Returns:
         The adjacency edge set
@@ -109,23 +107,39 @@ async def compute_lower_adj_set(locally_labeled: da.Array,
 
 
 async def label(im: npt.NDArray | da.Array | NDBlock,
-                cptr: CachePointer,
                 output_dtype: np.dtype = None,
-                viewer_args: dict = None
+                context_args: dict = None
                 ) -> npt.NDArray | da.Array | NDBlock:
-    """Return (lbl_im, nlbl) where lbl_im is a globally labeled image of the same type/chunk size as the input"""
+    """Dask array version of scipy.ndimage.label
 
-    cdir = cptr.subdir()
+    Args:
+        im: The image to be labeled
+        output_dtype: Output label data type; choose one you will be sure to accommodate the max number of contours
+            found in the image
+        context_args: extra contextual arguments
+            - cache_url (str | RDirFileSystem): Points to directory under which cache will be stored
+            - logging (bool, optional): If provided and True, print some debugging info to coiled logger
+
+    Returns:
+        Tuple (lbl_im, nlbl) where lbl_im is a globally labeled image of the same type/chunk size as the input
+    """
+    if isinstance(im, np.ndarray):
+        return scipy_label(im, output=output_dtype)
+
+    if context_args is None:
+        context_args = {}
+    cache_url = context_args.get('cache_url')
+    is_logging = context_args.get('logging', False)
+
+    if cache_url is None:
+        fs = None
+    else:
+        fs = ensure_rdir_filesystem(cache_url)
 
     ndim = im.ndim
-    assert viewer_args is not None, viewer_args
-    is_logging = viewer_args.get('logging', False)
-    dask_client: dask.distributed.Client = get_dask_client()
     compressor = numcodecs.Blosc(cname='lz4', clevel=9, shuffle=numcodecs.Blosc.BITSHUFFLE)
     vargs = dict(compressor=compressor)  # this is for compressing labels of uint8 or int32 types
 
-    if isinstance(im, np.ndarray):
-        return scipy_label(im, output=output_dtype)
     is_dask = isinstance(im, da.Array)
     if not is_dask:
         assert isinstance(im, NDBlock)
@@ -141,10 +155,10 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
     # compute locally labelled chunks and save their bordering slices
     if is_logging:
         print('Locally label the image')
-    locally_labeled = await cdir.cache_im(
+
+    locally_labeled = await tlfs.cache_im(
         lambda: im.map_blocks(map_block, meta=np.zeros(tuple(), dtype=output_dtype)),
-        cid='locally_labeled_without_cumsum',
-        viewer_args=vargs
+        context_args=dict(cache_url=None if fs is None else fs['locally_labeled_without_cumsum'], viewer_args=vargs)
     )
 
     async def compute_nlbl_np_arr():
@@ -160,7 +174,8 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
         nlbl_np_arr = await nlbl_ndblock_arr.as_numpy()
         return nlbl_np_arr
 
-    nlbl_np_arr = await cdir.cache_im(fn=compute_nlbl_np_arr, cid='nlbl_np_arr')
+    nlbl_np_arr = await tlfs.cache_im(fn=compute_nlbl_np_arr, context_args=dict(
+        cache_url=None if fs is None else fs['nlbl_np_arr']))
 
     def compute_cumsum_np_arr():
         if is_logging:
@@ -168,7 +183,9 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
         cumsum_np_arr = np.cumsum(nlbl_np_arr)
         return cumsum_np_arr
 
-    cumsum_np_arr = await cdir.cache_im(fn=compute_cumsum_np_arr, cid='cumsum_np_arr')
+    cumsum_np_arr = await tlfs.cache_im(fn=compute_cumsum_np_arr, context_args=dict(
+        cache_url=None if fs is None else fs['cumsum_np_arr']
+    ))
     assert cumsum_np_arr.ndim == 1
     total_nlbl = cumsum_np_arr[-1].item()
     cumsum_np_arr[1:] = cumsum_np_arr[:-1]
@@ -193,22 +210,17 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
                                         meta=np.zeros(tuple(), dtype=output_dtype))
         return locally_labeled
 
-    locally_labeled = await cdir.cache_im(
+    locally_labeled = await tlfs.cache_im(
         compute_locally_labeled,
-        cid='locally_labeled_with_cumsum',
-        viewer_args=vargs
+        context_args=dict(cache_url=None if fs is None else fs['locally_labeled_with_cumsum'], viewer_args=vargs)
     )
 
     comp_i = 0
 
     async def compute_globally_labeled():
-        nonlocal dask_client
         if is_logging:
             print('Process locally to obtain a lower triangular adjacency matrix')
-        lower_adj = await compute_lower_adj_set(locally_labeled,
-                                                cptr=cdir.cache(cid='local_labeled_with_cumsum_padded'),
-                                                compressor=compressor,
-                                                viewer_args=viewer_args)
+        lower_adj = await compute_lower_adj_set(locally_labeled, compressor=compressor)
         print(f'The set of adjacency edges is of size {len(lower_adj)}')
         connected_components = find_connected_components(lower_adj)
         if is_logging:
@@ -238,12 +250,16 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
         return locally_labeled.map_blocks(func=local_to_global, meta=np.zeros(tuple(), dtype=output_dtype),
                                           ind_map_scatter=ind_map_scatter)
 
-    comp_i = (await cdir.cache_im(lambda: np.array(comp_i, dtype=np.int64)[None], cid='comp_i')).item()
+    comp_i = (await tlfs.cache_im(lambda: np.array(comp_i, dtype=np.int64)[None], context_args=dict(
+        cache_url=None if fs is None else fs['comp_i']
+    ))).item()
 
-    globally_labeled = await cdir.cache_im(
+    globally_labeled = await tlfs.cache_im(
         fn=compute_globally_labeled,
-        cid='globally_labeled',
-        viewer_args=vargs
+        context_args=dict(
+            cache_url=None if fs is None else fs['globally_labeled'],
+            viewer_args=vargs
+        )
     )
     result_arr = globally_labeled
     if not is_dask:
@@ -253,9 +269,9 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
     if is_logging:
         print('Function ends')
 
-    im = await cdir.cache_im(lambda: result_arr,
-                             cid='global_os',
-                             cache_level=1,
-                             viewer_args=viewer_args | dict(is_label=True))
+    im = await tlfs.cache_im(lambda: result_arr, context_args=dict(
+        cache_url=None if fs is None else fs['global_os'],
+        viewer_args=vargs | dict(is_label=True)
+    ))
 
     return result_arr, comp_i

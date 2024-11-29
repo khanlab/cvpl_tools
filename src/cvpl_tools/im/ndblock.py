@@ -11,7 +11,6 @@ import pickle
 from typing import Callable, Sequence, Any, Generic, TypeVar
 import copy
 
-import partd
 from dask.distributed import print as dprint
 import numpy as np
 import numpy.typing as npt
@@ -21,7 +20,7 @@ import functools
 import operator
 
 import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
-from cvpl_tools.fsspec import RDirFileSystem
+from cvpl_tools.fsspec import RDirFileSystem, ensure_rdir_filesystem
 from cvpl_tools.tools.dask_utils import compute, get_dask_client
 
 
@@ -126,8 +125,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
         return self.arr
 
     @staticmethod
-    def save_properties(file: str, properties: dict):
-        with RDirFileSystem(file).open('', mode='w') as outfile:
+    def save_properties(file: str | RDirFileSystem, properties: dict):
+        with ensure_rdir_filesystem(file).open('', mode='w') as outfile:
             # convert repr_format and dtype to appropriate format for serialization
             # reference: https://stackoverflow.com/questions/47641404/serializing-numpy-dtype-objects-human-readable
             properties = copy.copy(properties)
@@ -141,7 +140,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
             json.dump(properties, fp=outfile, indent=2)
 
     @staticmethod
-    async def save(file: str, ndblock: NDBlock, storage_options: dict | None = None):
+    async def save(file: str | RDirFileSystem, ndblock: NDBlock, storage_options: dict | None = None):
         """Save the NDBlock to the given path
 
         Will compute immediately if the ndblock is delayed dask computations
@@ -162,8 +161,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
         compressor = storage_options.get('compressor', None)
 
         fmt = ndblock.get_repr_format()
-        fs = RDirFileSystem(file)
-        fs.makedirs_cur()
+        fs = ensure_rdir_filesystem(file)
+        fs.ensure_dir_exists(remove_if_already_exists=False)
         if fmt == ReprFormat.NUMPY_ARRAY:
             if compressor is None:
                 with fs.open('im.npy', mode='wb') as fd:
@@ -173,14 +172,14 @@ class NDBlock(Generic[ElementType], abc.ABC):
                     binfile.write(dumps_numpy(ndblock.arr, compressor=compressor))
         elif fmt == ReprFormat.DASK_ARRAY:
             MAX_LAYER = storage_options.get('multiscale') or 0
-            await cvpl_ome_zarr_io.write_ome_zarr_image(f'{file}/dask_im', da_arr=ndblock.arr,
+            await cvpl_ome_zarr_io.write_ome_zarr_image(f'{fs.url}/dask_im', da_arr=ndblock.arr,
                                                         make_zip=False, MAX_LAYER=MAX_LAYER,
                                                         storage_options=storage_options, asynchronous=True)
         else:
             assert fmt == ReprFormat.DICT_BLOCK_INDEX_SLICES, fmt
-            raise ValueError(f'NDBlock type to be saved at path {file} is of '
+            raise ValueError(f'NDBlock type to be saved at path {fs.url} is of '
                              f'ReprFormat.DICT_BLOCK_INDEX_SLICES which is unsupported')
-        NDBlock.save_properties(f'{file}/properties.json', ndblock.properties)
+        NDBlock.save_properties(f'{fs.url}/properties.json', ndblock.properties)
 
     def persist(self: NDBlock, compressor=None) -> NDBlock:
         """Using dask client persist() to save and reload the NDBlock object
@@ -213,8 +212,8 @@ class NDBlock(Generic[ElementType], abc.ABC):
             return self
 
     @staticmethod
-    def load_properties(file: str) -> dict:
-        with RDirFileSystem(file).open('', mode='r') as infile:
+    def load_properties(file: str | RDirFileSystem) -> dict:
+        with ensure_rdir_filesystem(file).open('', mode='r') as infile:
             properties = json.load(fp=infile)
 
             properties['repr_format'] = ReprFormat(properties['repr_format'])
@@ -226,17 +225,13 @@ class NDBlock(Generic[ElementType], abc.ABC):
         return properties
 
     @staticmethod
-    def load(file: str, storage_options: dict | None = None) -> NDBlock:
+    def load(file: str | RDirFileSystem, storage_options: dict | None = None) -> NDBlock:
         """Load the NDBlock from the given path.
-
-        Storage Opitons
-            compressor = None
-                The compressor to use to compress array or chunks
 
         Args:
             file: The path to load from, same as used in the save() function
-            storage_options: Specifies options in saving method and saved file format; this includes 'compressor' and
-                'port_protocol'
+            storage_options: Specifies options in saving method and saved file format; this includes 'compressor'
+                - compressor (numcodecs.abc.Codec, optional): The compressor to use to compress array or chunks
 
         Returns:
             The loaded NDBlock. Guaranteed to have the same properties as the saved one, and the content of each
@@ -246,13 +241,13 @@ class NDBlock(Generic[ElementType], abc.ABC):
             storage_options = {}
         compressor = storage_options.get('compressor', None)
 
-        properties = NDBlock.load_properties(f'{file}/properties.json')
+        fs = ensure_rdir_filesystem(file)
+        properties = NDBlock.load_properties(f'{fs.url}/properties.json')
 
         fmt = properties['repr_format']
         ndblock = NDBlock(None)
         ndblock.properties = properties
         if fmt == ReprFormat.NUMPY_ARRAY:
-            fs = RDirFileSystem(file)
             if compressor is None:
                 with fs.open('im.npy', 'rb') as fd:
                     ndblock.arr = np.load(fd)
@@ -261,7 +256,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                     ndblock.arr = loads_numpy(binfile.read(), compressor)
         elif fmt == ReprFormat.DASK_ARRAY:
             ndblock.arr = da.from_zarr(cvpl_ome_zarr_io.load_zarr_group_from_path(
-                f'{file}/dask_im',
+                f'{fs.url}/dask_im',
                 mode='r',
                 level=0
             ))
@@ -555,7 +550,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
                     'chunk-location': (0,) * arr.ndim,
                     'array-location': list((0, s) for s in arr.shape)
                 })
-            return NDBlock(fn(*inputs, block_info, **fn_args))
+            return NDBlock(fn(*inputs, block_info=block_info, **fn_args))
 
         # we can assume the inputs are all dask, now turn them all into block iterator
         block_iterators = []
@@ -569,7 +564,7 @@ class NDBlock(Generic[ElementType], abc.ABC):
         # delayed_fn = dask.delayed(fn)
         @dask.delayed
         def delayed_fn(*blocks, block_info, **kwargs):
-            return fn(*blocks, block_info, **kwargs)
+            return fn(*blocks, block_info=block_info, **kwargs)
 
         result = {}
         for block_index in block_iterators[use_input_index_as_arrloc].arr.keys():

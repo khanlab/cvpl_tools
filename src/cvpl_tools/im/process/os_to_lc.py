@@ -1,136 +1,141 @@
 from typing import Sequence
 
-from cvpl_tools.im.fs import CachePointer
-from cvpl_tools.im.seg_process import SegProcess, lc_interpretable_napari
 from cvpl_tools.tools.dask_utils import compute, get_dask_client
 import numpy as np
 import numpy.typing as npt
 from cvpl_tools.im.ndblock import NDBlock
 import cvpl_tools.im.algorithms as algorithms
+from cvpl_tools.im.process.base import lc_interpretable_napari
+import cvpl_tools.tools.fs as tlfs
+from cvpl_tools.fsspec import ensure_rdir_filesystem
 import dask.array as da
 from scipy.ndimage import find_objects
 import dask
 from dask.distributed import print as dprint
 
 
-class DirectOSToLC(SegProcess):
-    """Convert a 0-N contour mask to a list of N centroids, one for each contour
+def os_to_lc_direct_np_features(block: npt.NDArray[np.int32], full_statistics_map, min_size, block_info=None
+) -> npt.NDArray[np.float64]:
+    if block_info is not None:
+        mat_width = block.ndim + len(full_statistics_map)
+        idx_max = np.array(tuple(d - 1 for d in block.shape), dtype=np.int64)
 
-    The converted list of centroids is in the same order as the original contour order (The contour labeled
-    1 will come first and before contour labeled 2, 3 and so on)
-    """
+        slices = block_info[0]['array-location']
+        _contours_argwhere, _ids = algorithms.npindices_from_os(block, is_sparse=True)
+        contours_argwhere, ids = [], []
+        for i in range(len(_contours_argwhere)):
+            contour = _contours_argwhere[i]
+            assert contour.shape[1] == block.ndim, (f'Contour shape {contour.shape} returned by npindices_from_os '
+                                                    f'does not match block.ndim={block.ndim}')
+            if len(contour) > min_size:
+                contours_argwhere.append(contour)
+                ids.append(_ids[i])
+        ids = np.array(ids, dtype=_ids.dtype)
+        lc = [contour.astype(np.float64).mean(axis=0) for contour in contours_argwhere]
 
-    def __init__(self,
-                 min_size: int = 0,
-                 reduce: bool = False,
-                 is_global: bool = False,
-                 ex_statistics: Sequence[str] = tuple()):
-        super().__init__()
-        self.reduce = reduce
-        self.min_size = min_size
-        self.is_global = is_global
-        self.ex_statistics = ex_statistics
-        self.full_statistics_map = dict(
-            nvoxel=0,
-            edge_contact=1,
-            id=2
-        )  # these columns are appended to feature array; self.ex_statistics selects from these to return
-        self.global_full_statistics_map = dict(
-            nvoxel=0,
-            id=1
-        )
-        self.ret_cols = tuple(self.full_statistics_map[name] for name in self.ex_statistics)
+        is_empty = len(lc) == 0
+        if is_empty:
+            lc = np.zeros((0, mat_width), dtype=np.float64)
+        else:
+            tmp = lc
+            lc = np.zeros((len(lc), mat_width), dtype=np.float64)
+            lc[:, :block.ndim] = tmp
+        if slices is not None and not is_empty:
+            start_pos = np.array([slices[i].start for i in range(len(slices))], dtype=np.float64)
+            assert not np.isnan(start_pos).any(), 'nan should not be present in slice() objects for this!'
+            lc[:, :block.ndim] += start_pos[None, :]
 
-        self._ndblock: NDBlock = None
-        self._reduced_features = None
-        self._reduced_np_features = None
+        # append extra statistics columns
+        for name, j in full_statistics_map.items():
+            if name == 'nvoxel':
+                col = [contour.shape[0] for contour in contours_argwhere]
+            elif name == 'edge_contact':
+                col = []
+                for contour in contours_argwhere:
+                    on_edge = (contour == 0).astype(np.uint8) + (contour == idx_max[None, :]).astype(np.uint8)
+                    col.append(on_edge.sum().item() > 0)
+            elif name == 'id':
+                col = ids
+            else:
+                raise ValueError(f'Unrecognized name at index {j}: {name}')
+            lc[:, block.ndim + j] = col
 
-    @property
-    async def reduced_features(self):
-        if self._reduced_features is None:
-            self._reduced_features = await self._ndblock.reduce(force_numpy=False)
-        return self._reduced_features
+        return lc
+    else:
+        return np.zeros(block.shape, dtype=np.float64)
 
-    @property
-    async def reduced_np_features(self):
-        if self._reduced_np_features is None:
-            rf = await self.reduced_features
+
+async def os_to_lc_direct(os,
+                          min_size: int = 0,
+                          reduce: bool = False,
+                          is_global: bool = False,
+                          ex_statistics: Sequence[str] = tuple(),
+                          context_args: dict = None
+                          ):
+    if context_args is None:
+        context_args = {}
+    curl = context_args.get('cache_url')
+    viewer_args = context_args.get('viewer_args', {})
+    if curl is None:
+        fs = None
+    else:
+        fs = ensure_rdir_filesystem(curl)
+    viewer = viewer_args.get('viewer', None)
+
+    ex_statistics = ex_statistics
+    full_statistics_map = dict(
+        nvoxel=0,
+        edge_contact=1,
+        id=2
+    )  # these columns are appended to feature array; ex_statistics selects from these to return
+    global_full_statistics_map = dict(
+        nvoxel=0,
+        id=1
+    )
+    ret_cols = tuple(full_statistics_map[name] for name in ex_statistics)
+
+    _ndblock: NDBlock = None
+    _reduced_features = None
+    _reduced_np_features = None
+
+    async def reduced_features():
+        nonlocal _reduced_features
+        if _reduced_features is None:
+            _reduced_features = await _ndblock.reduce(force_numpy=False)
+        return _reduced_features
+
+    async def reduced_np_features():
+        nonlocal _reduced_np_features
+        if _reduced_np_features is None:
+            rf = await reduced_features()
             if isinstance(rf, da.Array):
                 rf = await compute(get_dask_client(), rf)
-            self._reduced_np_features = rf
-        return self._reduced_np_features
+            _reduced_np_features = rf
+        return _reduced_np_features
 
-    def np_features(self, block: npt.NDArray[np.int32], block_info=None) \
-            -> npt.NDArray[np.float64]:
-        if block_info is not None:
-            mat_width = block.ndim + len(self.full_statistics_map)
-            idx_max = np.array(tuple(d - 1 for d in block.shape), dtype=np.int64)
+    async def feature_forward(im: npt.NDArray[np.int32] | da.Array) -> NDBlock[np.float64]:
+        return await NDBlock.map_ndblocks([NDBlock(im)], os_to_lc_direct_np_features, out_dtype=np.float64,
+                                          fn_args=dict(full_statistics_map=full_statistics_map, min_size=min_size))
 
-            slices = block_info[0]['array-location']
-            _contours_argwhere, _ids = algorithms.npindices_from_os(block, is_sparse=True)
-            contours_argwhere, ids = [], []
-            for i in range(len(_contours_argwhere)):
-                contour = _contours_argwhere[i]
-                assert contour.shape[1] == block.ndim, (f'Contour shape {contour.shape} returned by npindices_from_os '
-                                                        f'does not match block.ndim={block.ndim}')
-                if len(contour) > self.min_size:
-                    contours_argwhere.append(contour)
-                    ids.append(_ids[i])
-            ids = np.array(ids, dtype=_ids.dtype)
-            lc = [contour.astype(np.float64).mean(axis=0) for contour in contours_argwhere]
+    async def aggregate_by_id():
+        """Aggregate _ndblock by id"""
 
-            is_empty = len(lc) == 0
-            if is_empty:
-                lc = np.zeros((0, mat_width), dtype=np.float64)
-            else:
-                tmp = lc
-                lc = np.zeros((len(lc), mat_width), dtype=np.float64)
-                lc[:, :block.ndim] = tmp
-            if slices is not None and not is_empty:
-                start_pos = np.array([slices[i].start for i in range(len(slices))], dtype=np.float64)
-                assert not np.isnan(start_pos).any(), 'nan should not be present in slice() objects for this!'
-                lc[:, :block.ndim] += start_pos[None, :]
-
-            # append extra statistics columns
-            for name, j in self.full_statistics_map.items():
-                if name == 'nvoxel':
-                    col = [contour.shape[0] for contour in contours_argwhere]
-                elif name == 'edge_contact':
-                    col = []
-                    for contour in contours_argwhere:
-                        on_edge = (contour == 0).astype(np.uint8) + (contour == idx_max[None, :]).astype(np.uint8)
-                        col.append(on_edge.sum().item() > 0)
-                elif name == 'id':
-                    col = ids
-                else:
-                    raise ValueError(f'Unrecognized name at index {j}: {name}')
-                lc[:, block.ndim + j] = col
-
-            return lc
-        else:
-            return np.zeros(block.shape, dtype=np.float64)
-
-    async def feature_forward(self, im: npt.NDArray[np.int32] | da.Array) -> NDBlock[np.float64]:
-        return await NDBlock.map_ndblocks([NDBlock(im)], self.np_features, out_dtype=np.float64)
-
-    async def aggregate_by_id(self):
-        """Aggregate self._ndblock by id"""
-
-        ref_ndblock: NDBlock = self._ndblock
+        nonlocal _ndblock, full_statistics_map, global_full_statistics_map
+        ref_ndblock: NDBlock = _ndblock
         ndim = ref_ndblock.get_ndim()
         block_indices = ref_ndblock.get_block_indices()
         slices_list = ref_ndblock.get_slices_list()
         chunk_shape = np.array(tuple(s.stop - s.start for s in slices_list[0]), dtype=np.float64)
         recons = {ind: [] for ind in block_indices}
 
-        rf = await self.reduced_np_features
+        rf = await reduced_np_features()
         rf = rf[np.argsort(rf[:, -1])]
         if rf.shape[0] == 0:
             cnt_ranges = []
         else:
             cnt_ranges = list(find_objects(rf[:, -1].astype(np.int32)))
 
-        nvoxel_ind = self.full_statistics_map['nvoxel']
+        nvoxel_ind = full_statistics_map['nvoxel']
         for i, rg in enumerate(cnt_ranges):
             if rg is None:
                 continue
@@ -151,58 +156,48 @@ class DirectOSToLC(SegProcess):
             ind = block_indices[i]
             rows = recons[ind]
             if len(rows) == 0:
-                rows = np.zeros((0, ndim + len(self.global_full_statistics_map)), dtype=np.float64)
+                rows = np.zeros((0, ndim + len(global_full_statistics_map)), dtype=np.float64)
             else:
                 rows = np.array(recons[ind], dtype=np.float64)
             recons[ind] = (rows, slices_list[i])
-        self._ndblock = NDBlock.create_from_dict_and_properties(recons,
-                                                                ref_ndblock.get_properties() | dict(is_numpy=True))
+        _ndblock = NDBlock.create_from_dict_and_properties(recons, ref_ndblock.get_properties() | dict(is_numpy=True))
 
-    async def forward(self,
-                      im: npt.NDArray[np.int32] | da.Array,
-                      cptr: CachePointer,
-                      viewer_args: dict = None) -> NDBlock[np.float64] | npt.NDArray[np.float64]:
-        if viewer_args is None:
-            viewer_args = {}
-        viewer = viewer_args.get('viewer', None)
+    async def ndblock_compute():
+        nonlocal _ndblock, _reduced_features, _reduced_np_features
+        _ndblock = await tlfs.cache_im(fn=feature_forward(os), context_args=dict(
+            cache_url=None if fs is None else fs['block_level_lc_ndblock']
+        ))
+        if is_global:
+            # update and aggregate the rows in ndblock that correspond to the same contour
+            await aggregate_by_id()
+            _reduced_features = None
+            _reduced_np_features = None
+        return _ndblock
 
-        cdir = cptr.subdir()
+    _ndblock = await tlfs.cache_im(fn=ndblock_compute, context_args=dict(
+        cache_url=None if fs is None else fs['lc_ndblock']
+    ))
 
-        async def ndblock_compute():
-            self._ndblock = await cdir.cache_im(fn=self.feature_forward(im),
-                                                cache_level=1,
-                                                cid='block_level_lc_ndblock')
-            if self.is_global:
-                # update and aggregate the rows in ndblock that correspond to the same contour
-                await self.aggregate_by_id()
-                self._reduced_features = None
-                self._reduced_np_features = None
-            return self._ndblock
-
-        self._ndblock = await cdir.cache_im(fn=ndblock_compute,
-                                            cache_level=1,
-                                            cid='lc_ndblock')
-
-        if viewer and viewer_args.get('display_points', True):
-            if self.is_global:
-                extras = list(self.global_full_statistics_map.keys())
-            else:
-                extras = list(self.full_statistics_map.keys())
-            lc_interpretable_napari(
-                'os_to_lc_centroids',
-                await self.reduced_np_features,
-                viewer,
-                im.ndim,
-                extras
-            )
-
-        ret_cols = tuple(range(im.ndim)) + tuple(r + im.ndim for r in self.ret_cols)
-        if self.reduce:
-            ret = (await self.reduced_features)[:, ret_cols]
+    if viewer and viewer_args.get('display_points', True):
+        if is_global:
+            extras = list(global_full_statistics_map.keys())
         else:
-            ret = self._ndblock.select_columns(ret_cols)
-        self._ndblock = None
-        self._reduced_features = None
-        self._reduced_np_features = None
+            extras = list(full_statistics_map.keys())
+        lc_interpretable_napari(
+            'os_to_lc_centroids',
+            await reduced_np_features(),
+            viewer,
+            os.ndim,
+            extras
+        )
 
-        return ret
+    ret_cols = tuple(range(os.ndim)) + tuple(r + os.ndim for r in ret_cols)
+    if reduce:
+        ret = (await reduced_features())[:, ret_cols]
+    else:
+        ret = _ndblock.select_columns(ret_cols)
+    _ndblock = None
+    _reduced_features = None
+    _reduced_np_features = None
+
+    return ret

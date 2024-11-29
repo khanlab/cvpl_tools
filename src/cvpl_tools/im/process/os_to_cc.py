@@ -1,14 +1,21 @@
-from cvpl_tools.im.seg_process import SegProcess
 import numpy as np
 import numpy.typing as npt
 from cvpl_tools.im.ndblock import NDBlock
 import cvpl_tools.im.process.os_to_lc as os_to_lc
 import cvpl_tools.im.process.lc_to_cc as lc_to_cc
+from cvpl_tools.fsspec import ensure_rdir_filesystem, RDirFileSystem
 import dask.array as da
-from cvpl_tools.im.fs import CachePointer
 
 
-class CountOSBySize(SegProcess):
+async def os_to_cc_count_os_by_size(
+        os,
+        size_threshold: int | float = 25.,
+        volume_weight: float = 6e-3,
+        border_params: tuple[float, float, float] = (3., -.5, 2.),
+        min_size: int | float = 0,
+        reduce: bool = False,
+        context_args: dict = None,
+):
     """Counting ordinal segmentation contours
 
     Several features:
@@ -23,34 +30,25 @@ class CountOSBySize(SegProcess):
     an artifact
     """
 
-    def __init__(self,
-                 size_threshold: int | float = 25.,
-                 volume_weight: float = 6e-3,
-                 border_params: tuple[float, float, float] = (3., -.5, 2.),
-                 min_size: int | float = 0,
-                 reduce: bool = False,
-                 is_global: bool = False):
-        super().__init__()
-        self.size_threshold = size_threshold
-        self.volume_weight = volume_weight
-        self.border_params = border_params
-        self.min_size = min_size
-        self.reduce = reduce
+    if context_args is None:
+        context_args = {}
+    curl = context_args.get('cache_url')
+    if curl is None:
+        fs = None
+    else:
+        fs = ensure_rdir_filesystem(curl)
+    viewer_args = context_args.get('viewer_args', {})
 
-        self.os_to_lc = os_to_lc.DirectOSToLC(min_size=min_size, reduce=False, is_global=is_global,
-                                              ex_statistics=['nvoxel', 'edge_contact'])
-        self.lc_to_cc = lc_to_cc.CountLCBySize(size_threshold=size_threshold,
-                                               volume_weight=volume_weight,
-                                               border_params=border_params,
-                                               reduce=reduce)
+    lc = await os_to_lc.os_to_lc_direct(os, min_size=min_size, reduce=False, is_global=True,
+                                        ex_statistics=['nvoxel', 'edge_contact'], context_args=dict(
+            cache_url=None if fs is None else fs['os_to_lc'],
+            viewer_args=viewer_args
+        ))
+    cc = await lc_to_cc.lc_to_cc_count_lc_by_size(lc, os.ndim, min_size=min_size,
+                                                  size_threshold=size_threshold, volume_weight=volume_weight,
+                                                  border_params=border_params, reduce=reduce, context_args=dict(
+            cache_url=None if fs is None else fs['lc_to_cc'],
+            viewer_args=viewer_args
+        ))
 
-    async def forward(self,
-                im: npt.NDArray[np.int32] | da.Array,
-                cptr: CachePointer,
-                viewer_args: dict = None
-                ) -> npt.NDArray[np.float64]:
-        cdir = cptr.subdir()
-        lc = await self.os_to_lc.forward(im, cdir.cache(cid='os_to_lc'), viewer_args)
-        cc = await self.lc_to_cc.forward(lc,  im.ndim, cdir.cache(cid='lc_to_cc'), viewer_args)
-
-        return cc
+    return cc

@@ -83,6 +83,11 @@ class RDirFileSystem(DirFileSystem):
             return self.fs.makedirs(self.path)
 
 
+def ensure_rdir_filesystem(url: str | RDirFileSystem) -> RDirFileSystem:
+    """If input is string url, convert it to RDirFileSystem"""
+    return RDirFileSystem(url) if isinstance(url, str) else url
+
+
 def copyfile(src: str | RDirFileSystem, tgt: str | RDirFileSystem, chunksize: int | None = None):
     """Copy a file from src to tgt
 
