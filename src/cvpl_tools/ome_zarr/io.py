@@ -143,6 +143,22 @@ def load_dask_array_from_path(path: str,
     return arr
 
 
+def get_highest_downsample_level(group: zarr.hierarchy.Group) -> int:
+    """Return the highest downsample level found in the given zarr group
+
+    Args:
+        group: the group to query
+
+    Returns:
+        The highest downsample level in the group e.g. if a group has level '0', '1', ..., '4', '4' will be returned
+    """
+    i = 0
+    assert str(i) in group, f'Level 0 not found in the given zarr group!'
+    while str(i + 1) in group:
+        i += 1
+    return i
+
+
 # --------------------------------Part 2: write image-------------------------------------
 
 
