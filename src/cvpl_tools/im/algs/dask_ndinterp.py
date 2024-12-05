@@ -38,6 +38,7 @@ import numpy as np
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 import scipy
+from fontTools.unicodedata import block
 from scipy.ndimage import affine_transform as ndimage_affine_transform
 
 from dask_image.dispatch._dispatch_ndinterp import (
@@ -351,6 +352,7 @@ def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
     ndim = image.ndim
     if isinstance(block_size, int):
         block_size = (block_size,) * ndim
+    print('block_size=', block_size)
 
     def process_block(block, block_info=None):
         eff_block_range = tuple((block.shape[i] // block_size[i]) * block_size[i]

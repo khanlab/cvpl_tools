@@ -1,5 +1,10 @@
+import copy
+
+import napari
+
 import cvpl_tools.ome_zarr.io as ome_zarr_io
 import cvpl_tools.im.algs.dask_ndinterp as dask_ndinterp
+import cvpl_tools.ome_zarr.napari.add as nozadd
 import os
 import numpy as np
 import dask.array as da
@@ -27,7 +32,7 @@ def apply_bias(im, im_ndownsample_level: int | tuple, bias, bias_ndownsample_lev
         upsampling_factor = tuple(2 ** (bias_ndownsample_level[i] - im_ndownsample_level[i])
                                   for i in range(len(im_ndownsample_level)))
         print(f'bias_shape:{bias.shape}, im.shape:{im.shape}, upsampling factor: {upsampling_factor}')
-        bias = dask_ndinterp.scale_nearest(bias,
+        bias = dask_ndinterp.scale_nearest(bias.rechunk((upsampling_factor[0], 4096, 4096)),
                                            scale=upsampling_factor,
                                            output_shape=im.shape, output_chunks=(4, 4096, 4096)).persist()
         im = _apply_bias(im, bias)
@@ -50,21 +55,23 @@ def get_optional_zip_path(path) -> None | str:
     return eff_zip_path
 
 
-def downsample(image_netloc,
+def downsample(im,
                reduce_fn,
-               ba_channel: int | np.index_exp,
                ndownsample_level: int | tuple,
-               write_loc: None | str = None):
+               ba_channel=None,
+               write_loc: None | str = None,
+               viewer_args: dict = None):
     """Downsample network image
 
     If write_loc is None, the downsampled image will not be saved
 
     Args:
-        image_netloc (str): The original image's path, the image should be of shape (C, Z, Y, X)
+        im (str | dask.array.Array): The original image's path, the image should be of shape (C, Z, Y, X)
         reduce_fn (Callable): Function of reduction used in measure_block_reduce
         ba_channel (int): The channel in original to take for down-sampling
         ndownsample_level (int | tuple): The number of downsamples in each axis
         write_loc (None | str): Location to write if provided
+        viewer_args (dict):
     """
     if isinstance(ndownsample_level, int):
         ndownsample_level = (ndownsample_level,) * 3
@@ -72,13 +79,17 @@ def downsample(image_netloc,
 
     # create a downsample of the original image (can be on network)
     if not os.path.exists(write_loc):
-        print(f'ome_io.load_dask_array_from_path from path {image_netloc}')
-        group = ome_zarr_io.load_zarr_group_from_path(image_netloc, mode='r')
-        group_highest_downsample_level = ome_zarr_io.get_highest_downsample_level(group)
-        if str(horizontal_min) not in group:
-            horizontal_min = group_highest_downsample_level
-        im = da.from_array(group[str(horizontal_min)])[ba_channel]
-        further_downsample = tuple(l - horizontal_min for l in ndownsample_level[1:])
+        if isinstance(im, str):
+            print(f'ome_io.load_dask_array_from_path from path {im}')
+            group = ome_zarr_io.load_zarr_group_from_path(im, mode='r')
+            if str(horizontal_min) not in group:
+                horizontal_min = ome_zarr_io.get_highest_downsample_level(group)
+            im = da.from_array(group[str(horizontal_min)])
+            further_downsample = tuple(l - horizontal_min for l in ndownsample_level[1:])
+        else:
+            further_downsample = ndownsample_level[1:]
+        if ba_channel is not None:
+            im = im[ba_channel]
 
         print(f'Initial local image is not found, downsample from the network, network image is of size {im.shape}')
         downsample_factor_vertical = 2 ** ndownsample_level[0]
@@ -93,6 +104,15 @@ def downsample(image_netloc,
         print(f'Downsampled image is of size {im.shape}, writing...')
         asyncio.run(ome_zarr_io.write_ome_zarr_image(write_loc, da_arr=im, MAX_LAYER=2))
     im = ome_zarr_io.load_dask_array_from_path(write_loc, mode='r', level=0)
+
+    if viewer_args is None:
+        viewer_args = {}
+    else:
+        viewer_args = copy.copy(viewer_args)
+    viewer = viewer_args.pop('viewer', None)
+    if viewer is not None:
+        nozadd.group_from_path(viewer, write_loc, kwargs=viewer_args)
+
     return im
 
 

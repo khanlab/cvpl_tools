@@ -73,16 +73,22 @@ def slices_to_volume(im_slices: npt.NDArray[np.uint8] | torch.Tensor,
     return vol
 
 
-def load_volume_pair(im_path: str, seg_path: str, max_threshold: float) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8]]:
+def load_volume_pair(im_path: str, seg_path: str, max_threshold: float) -> tuple[
+    npt.NDArray[np.uint8], npt.NDArray[np.uint8]]:
     print(f'loading volume pairs at im_path={im_path} and seg_path={seg_path}')
     im = cvpl_ome_zarr_io.load_dask_array_from_path(im_path, mode='r', level=0)
     if im.ndim == 4:
-        print(f'Image at im_path={im_path} found 4 dimensions, treat first dimension as channels and take the slice ch=1')
+        print(
+            f'Image at im_path={im_path} found 4 dimensions, treat first dimension as channels and take the slice ch=1')
         im = im[1]
     im = (np.clip(im.compute() / max_threshold, 0., 1.) * 255).astype('uint8')
-    seg = tifffile.imread(seg_path)
-    # seg[im < 255 * .05] = 0
-    seg = (seg > 0).astype("uint8")
+
+    if seg_path is None:
+        seg = None
+    else:
+        seg = tifffile.imread(seg_path)
+        # seg[im < 255 * .05] = 0
+        seg = (seg > 0).astype("uint8")
     return im, seg
 
 
@@ -212,12 +218,13 @@ def create_nnunet_dataset_from_volumes(
                                 folder_path=imagesTrPath,
                                 vol_id=i,
                                 suffix=suffix)  # only images will have corresponding suffix
-            seg_vol = seg_vol.transpose(*axes)
-            write_slices_to_png(volume_to_slices(seg_vol, stack_channels, is_label=True),
-                                stack_channels,
-                                is_label=True,
-                                folder_path=labelsTrPath,
-                                vol_id=i)
+            if seg_vol is not None:
+                seg_vol = seg_vol.transpose(*axes)
+                write_slices_to_png(volume_to_slices(seg_vol, stack_channels, is_label=True),
+                                    stack_channels,
+                                    is_label=True,
+                                    folder_path=labelsTrPath,
+                                    vol_id=i)
         total_ntrain += im_vol.shape[0] - stack_channels * 2
         print(f'created dataset with i={i}, total_ntrain={total_ntrain}')
 
@@ -342,7 +349,8 @@ def train_triplanar(train_args: dict):
         for cur_fold in folds:
             fold_dir = f'{nnunet_dir}/nnUNet_results/Dataset{dataset_id:03}_Lightsheet{dataset_id}/{trainer_name}__nnUNetPlans__2d/fold_{cur_fold}'
             print(f'Testing if folder {fold_dir} exists.')
-            if os.path.exists(f'{nnunet_dir}/nnUNet_results/Dataset{dataset_id:03}_Lightsheet{dataset_id}/{trainer_name}__nnUNetPlans__2d/fold_{cur_fold}'):
+            if os.path.exists(
+                    f'{nnunet_dir}/nnUNet_results/Dataset{dataset_id:03}_Lightsheet{dataset_id}/{trainer_name}__nnUNetPlans__2d/fold_{cur_fold}'):
                 print(f'Folder exists, skip fold {cur_fold}')
                 continue
             else:
@@ -360,11 +368,12 @@ def train_triplanar(train_args: dict):
 def predict_triplanar_volume(model_dir: str, volume: npt.NDArray[np.uint8], stack_channels: int,
                              tmp_pred_path: str, vol_id: int, dataset_id: int,
                              trainer_name: str, fold: str, probabilities: bool) -> npt.NDArray:
-    if not os.path.exists(f'{tmp_pred_path}/pred'):
+    tmp_pred_path_pred = RDirFileSystem(f'{tmp_pred_path}/pred')
+    if not tmp_pred_path_pred.exists('') or len(tmp_pred_path_pred.listdir('')) == 0:
         print(f'predict_triplanar_volume() got input volume of shape {volume.shape}')
         im_slices = volume_to_slices(volume, stack_channels=stack_channels, is_label=False)
         print(f'predict_triplanar_volume() computed im_slices of shape {im_slices.shape}')
-        for path in (tmp_pred_path, f'{tmp_pred_path}/input', f'{tmp_pred_path}/pred'):
+        for path in (tmp_pred_path, f'{tmp_pred_path}/input', tmp_pred_path_pred.url):
             RDirFileSystem(path).ensure_dir_exists(remove_if_already_exists=False)
         write_slices_to_png(im_slices, stack_channels, False, f'{tmp_pred_path}/input', vol_id=vol_id,
                             suffix='_0000')
@@ -373,22 +382,22 @@ def predict_triplanar_volume(model_dir: str, volume: npt.NDArray[np.uint8], stac
         # predict on images in input_dir using model from nnunet_dir
         args = ['nnUNetv2_predict',
                 '-i', f'{tmp_pred_path}/input',
-                '-o', f'{tmp_pred_path}/pred',
+                '-o', tmp_pred_path_pred.url,
                 '-d', str(dataset_id),
                 '-c', '2d']
         if fold != 'all':
             args += ['-f', fold]
         if trainer_name not in ('None', 'nnUNetTrainer'):
-            args += ['-tr', trainer_name]
+            args += ['-tr', trainer_name.strip()]
         if probabilities:
             args += ['--save_probabilities']
         nnunet_cmd.run(args)
     else:
         print(f'Predicted results already exist, directly retrieve...')
 
-    pred_vol = next(recover_volumes(f'{tmp_pred_path}/pred/*.png',
-                                  stack_channels=stack_channels,
-                                  is_label=True))
+    pred_vol = next(recover_volumes(f'{tmp_pred_path_pred}/*.png',
+                                    stack_channels=stack_channels,
+                                    is_label=True))
     return pred_vol
 
 
@@ -405,7 +414,10 @@ def predict_triplanar(predict_args: dict):
     test_im = predict_args.pop('test_im')
     test_im_volume_paths = sorted(glob.glob(test_im))
     test_seg = predict_args.pop('test_seg')
-    test_seg_volume_paths = sorted(glob.glob(test_seg))
+    if test_seg is None or test_seg == '':
+        test_seg_volume_paths = [None] * len(test_im_volume_paths)
+    else:
+        test_seg_volume_paths = sorted(glob.glob(test_seg))
     print('globbing done.')
 
     train_cdir = f'{cache_url}/train'
@@ -416,7 +428,7 @@ def predict_triplanar(predict_args: dict):
     with open(f'{train_cdir}/args.txt', 'r') as infile:
         lines = list(infile.readlines())
         stack_channels = int(lines[0])
-        trainer_name = lines[1]
+        trainer_name = lines[1].strip()
         if trainer_name == 'default_trainer':
             trainer_name = 'nnUNetTrainer'
         max_threshold = float(lines[2])
