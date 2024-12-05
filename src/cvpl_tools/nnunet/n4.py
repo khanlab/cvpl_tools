@@ -40,7 +40,7 @@ def obtain_bias(im: npt.NDArray, write_loc=None) -> npt.NDArray:
     if write_loc is None or not RDirFileSystem(write_loc).exists(''):
         if isinstance(im, da.Array):
             im = im.compute()
-        bias = bias_correct(im, spline_param=(16,) * 3, shrink_factor=8, return_bias_field=True)
+        bias = bias_correct(im, spline_param=(8,) * 3, shrink_factor=4, return_bias_field=True)
         assert isinstance(bias, np.ndarray), f'{bias}'
         if write_loc is not None:
             asyncio.run(ome_io.write_ome_zarr_image(write_loc,

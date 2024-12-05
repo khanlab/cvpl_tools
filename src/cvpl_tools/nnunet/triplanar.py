@@ -395,7 +395,8 @@ def predict_triplanar_volume(model_dir: str, volume: npt.NDArray[np.uint8], stac
     else:
         print(f'Predicted results already exist, directly retrieve...')
 
-    pred_vol = next(recover_volumes(f'{tmp_pred_path_pred}/*.png',
+    print(f'predict_triplanar_volume loading results from {tmp_pred_path_pred.url}/*.png')
+    pred_vol = next(recover_volumes(f'{tmp_pred_path_pred.url}/*.png',
                                     stack_channels=stack_channels,
                                     is_label=True))
     return pred_vol
