@@ -158,7 +158,8 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
 
     locally_labeled = await tlfs.cache_im(
         lambda: im.map_blocks(map_block, meta=np.zeros(tuple(), dtype=output_dtype)),
-        context_args=dict(cache_url=None if fs is None else fs['locally_labeled_without_cumsum'], viewer_args=vargs)
+        context_args=context_args | dict(cache_url=None if fs is None else fs['locally_labeled_without_cumsum'],
+                                         viewer_args=vargs)
     )
 
     async def compute_nlbl_np_arr():
@@ -212,7 +213,8 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
 
     locally_labeled = await tlfs.cache_im(
         compute_locally_labeled,
-        context_args=dict(cache_url=None if fs is None else fs['locally_labeled_with_cumsum'], viewer_args=vargs)
+        context_args=context_args | dict(cache_url=None if fs is None else fs['locally_labeled_with_cumsum'],
+                                         viewer_args=vargs)
     )
 
     comp_i = 0
@@ -256,7 +258,7 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
 
     globally_labeled = await tlfs.cache_im(
         fn=compute_globally_labeled,
-        context_args=dict(
+        context_args=context_args | dict(
             cache_url=None if fs is None else fs['globally_labeled'],
             viewer_args=vargs
         )
@@ -269,7 +271,7 @@ async def label(im: npt.NDArray | da.Array | NDBlock,
     if is_logging:
         print('Function ends')
 
-    im = await tlfs.cache_im(lambda: result_arr, context_args=dict(
+    im = await tlfs.cache_im(lambda: result_arr, context_args=context_args | dict(
         cache_url=None if fs is None else fs['global_os'],
         viewer_args=vargs | dict(is_label=True)
     ))

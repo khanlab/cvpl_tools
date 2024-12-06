@@ -35,6 +35,10 @@ def main(run_nnunet: bool = True, run_coiled_process: bool = True):
     if SUBJECT_ID == 'F4A1Te3Blaze':
         OME_ZARR_PATH = 'gcs://khanlab-lightsheet/data/mouse_appmaptapoe/bids/sub-F4A1Te3/micr/sub-F4A1Te3_sample-brain_acq-blaze4x_SPIM.ome.zarr'
 
+    RUN_ON_FULL_IM = False
+    if not RUN_ON_FULL_IM:
+        BA_CHANNEL = np.s_[0, 512:768, :, :]
+
     TARGET_PATH = f'C:/Users/than83/Documents/progtools/datasets/lightsheet_downsample/sub-{SUBJECT_ID}.ome.zarr'  # first downsample
     TARGET_FOLDER = f'C:/Users/than83/Documents/progtools/datasets/annotated/canvas_{SUBJECT_ID}'  # second and third downsample; other images
 
@@ -105,6 +109,8 @@ def main(run_nnunet: bool = True, run_coiled_process: bool = True):
         f'{TARGET_FOLDER}/.temp',
         GCS_BIAS_PATH
     )
+
+    bias_to_im_upscale = (4, 8, 8)
     async def fn(dask_worker):
         return await cvpl_nnunet_api.mousebrain_forward(
             dask_worker=dask_worker,
@@ -113,12 +119,10 @@ def main(run_nnunet: bool = True, run_coiled_process: bool = True):
             NEG_MASK_PATH=GCS_NEG_MASK_TGT,
             GCS_BIAS_PATH=GCS_BIAS_PATH,
             BA_CHANNEL=BA_CHANNEL,
-            MAX_THRESHOLD=MAX_THRESHOLD
+            MAX_THRESHOLD=MAX_THRESHOLD,
+            bias_to_im_upscale=bias_to_im_upscale
         )
     cvpl_nnunet_api.coiled_run(fn=fn, nworkers=10, local_testing=False)
-
-
-
 
 
 if __name__ == '__main__':
