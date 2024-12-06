@@ -15,26 +15,16 @@ output shape of that block, use :code:`BlockToBlockProcess`.
 
 .. rubric:: APIs
 
-.. autoclass:: cvpl_tools.im.seg_process.SegProcess
-    :members:
-.. autoclass:: cvpl_tools.im.seg_process.BlockToBlockProcess
-    :members:
-.. autofunction:: cvpl_tools.im.seg_process.lc_interpretable_napari
+.. autofunction:: cvpl_tools.im.process.base.block_to_block_forward
+.. autofunction:: cvpl_tools.im.process.base.lc_interpretable_napari
 
-.. rubric:: Built-in Subclasses for SegProcess
+.. rubric:: Built-in function processes
 
-.. autoclass:: cvpl_tools.im.seg_process.GaussianBlur
-    :members:
-.. autoclass:: cvpl_tools.im.seg_process.BSPredictor
-    :members:
-.. autoclass:: cvpl_tools.im.seg_process.SimpleThreshold
-    :members:
-.. autoclass:: cvpl_tools.im.seg_process.BlobDog
-    :members:
-.. autoclass:: cvpl_tools.im.seg_process.SumScaledIntensity
-    :members:
-.. autoclass:: cvpl_tools.im.seg_process.BinaryAndCentroidListToInstance
-    :members:
+.. autofunction:: cvpl_tools.im.process.base.in_to_bs_custom
+.. autofunction:: cvpl_tools.im.process.base.in_to_bs_simple_threshold
+.. autofunction:: cvpl_tools.im.process.base.in_to_lc_blobdog_forward
+.. autofunction:: cvpl_tools.im.process.base.in_to_cc_sum_scaled_intensity
+.. autofunction:: cvpl_tools.im.process.base.bs_lc_to_os_forward
 
 bs_to_os
 ********
@@ -43,10 +33,7 @@ binary segmentation to ordinal segmentation
 This section contains algorithms whose input is binary (0-1) segmentation mask, and output is instance segmentation
 (0-N) integer mask where the output ndarray is of the same shape as input.
 
-.. autoclass:: cvpl_tools.im.process.bs_to_os.DirectBSToOS
-    :members:
-.. autoclass:: cvpl_tools.im.process.bs_to_os.Watershed3SizesBSToOS
-    :members:
+.. autofunction:: cvpl_tools.im.process.bs_to_os.bs_to_os_watershed3sizes
 
 lc_to_cc
 ********
@@ -56,10 +43,8 @@ This section contains algorithms whose input is a 2d array or a 2d array of each
 locations and meta information about the objects associated with the centroids in each block. The output is a single
 number summarizing statistics for each block.
 
-.. autoclass:: cvpl_tools.im.process.lc_to_cc.CountLCBySize
-    :members:
-.. autoclass:: cvpl_tools.im.process.lc_to_cc.CountLCEdgePenalized
-    :members:
+.. autofunction:: cvpl_tools.im.process.lc_to_cc.lc_to_cc_count_lc_by_size
+.. autofunction:: cvpl_tools.im.process.lc_to_cc.lc_to_cc_count_lc_edge_penalized
 
 os_to_cc
 ********
@@ -68,8 +53,7 @@ oridnal segmentation to cell counts
 This section contains algorithms whose input is instance segmentation (0-N) integer mask where the output is a single
 number summarizing statistics for each block.
 
-.. autoclass:: cvpl_tools.im.process.os_to_cc.CountOSBySize
-    :members:
+.. autofunction:: cvpl_tools.im.process.os_to_cc.os_to_cc_count_os_by_size
 
 os_to_lc
 ********
@@ -78,8 +62,7 @@ ordinal segmentation to list of centroids
 This section contains algorithms whose input is instance segmentation (0-N) integer mask where the output is a list
 of centroids with meta information.
 
-.. autoclass:: cvpl_tools.im.process.os_to_lc.DirectOSToLC
-    :members:
+.. autofunction:: cvpl_tools.im.process.os_to_lc.os_to_lc_direct
 
 any_to_any
 **********
@@ -88,8 +71,4 @@ other
 This sections contain image processing steps whose inputs and outputs may adapt to different types of data or are not
 adequately described by the current classifications.
 
-.. autoclass:: cvpl_tools.im.process.any_to_any.DownsamplingByIntFactor
-    :members:
-.. autoclass:: cvpl_tools.im.process.any_to_any.UpsamplingByIntFactor
-    :members:
 

@@ -55,9 +55,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="API/napari_zarr.html">cvpl_tools.ome_zarr.napari.add.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="API/imfs.html">cvpl_tools.im.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="API/tlfs.html">cvpl_tools.tools.fs.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="API/seg_process.html">cvpl_tools.im.seg_process.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="API/seg_process.html">cvpl_tools.im.process</a></li>
 <li class="toctree-l1"><a class="reference internal" href="API/algs.html">cvpl_tools.im.algs</a></li>
 </ul>
 
@@ -122,17 +122,15 @@ or on cloud.</p>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html">Defining Segmentation Pipeline</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html#motivation-microscope-cell-counting-atlas-map-and-object-segmentation">Motivation: Microscope, Cell Counting, Atlas map and Object Segmentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html#the-segprocess-class">The SegProcess Class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html#segprocess">SegProcess</a></li>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html#extending-the-pipeline">Extending the Pipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/segmentation_pipeline.html#running-the-pipeline">Running the Pipeline</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/result_caching.html">Result Caching</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/result_caching.html#overview">Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="GettingStarted/result_caching.html#cacherootdirectory">CacheRootDirectory</a></li>
-<li class="toctree-l2"><a class="reference internal" href="GettingStarted/result_caching.html#cachedirectory">CacheDirectory</a></li>
-<li class="toctree-l2"><a class="reference internal" href="GettingStarted/result_caching.html#cachepointer">CachePointer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="GettingStarted/result_caching.html#finding-cached-files">Finding Cached Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/result_caching.html#cache-root-directory">cache root directory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/result_caching.html#cache-directory">cache directory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/result_caching.html#tips">Tips</a></li>
 </ul>
 </li>
@@ -148,13 +146,28 @@ or on cloud.</p>
 <li class="toctree-l2"><a class="reference internal" href="API/ome_zarr_io.html#cvpl_tools.ome_zarr.io.write_ome_zarr_image"><code class="docutils literal notranslate"><span class="pre">write_ome_zarr_image()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="API/imfs.html">cvpl_tools.im.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="API/tlfs.html">cvpl_tools.tools.fs.py</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API/tlfs.html#cvpl_tools.tools.fs.cdir_init"><code class="docutils literal notranslate"><span class="pre">cdir_init()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/tlfs.html#cvpl_tools.tools.fs.cdir_commit"><code class="docutils literal notranslate"><span class="pre">cdir_commit()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/tlfs.html#cvpl_tools.tools.fs.cdir_query"><code class="docutils literal notranslate"><span class="pre">cdir_query()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/tlfs.html#cvpl_tools.tools.fs.save"><code class="docutils literal notranslate"><span class="pre">save()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/tlfs.html#cvpl_tools.tools.fs.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/tlfs.html#cvpl_tools.tools.fs.display"><code class="docutils literal notranslate"><span class="pre">display()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="API/ndblock.html">cvpl_tools.im.ndblock.py</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="API/ndblock.html#cvpl_tools.im.ndblock.NDBlock"><code class="docutils literal notranslate"><span class="pre">NDBlock</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="API/ndblock.html#cvpl_tools.im.ndblock.ReprFormat"><code class="docutils literal notranslate"><span class="pre">ReprFormat</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="API/seg_process.html">cvpl_tools.im.seg_process.py</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="API/seg_process.html">cvpl_tools.im.process</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.process.base.block_to_block_forward"><code class="docutils literal notranslate"><span class="pre">block_to_block_forward()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.process.base.lc_interpretable_napari"><code class="docutils literal notranslate"><span class="pre">lc_interpretable_napari()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.process.base.in_to_bs_custom"><code class="docutils literal notranslate"><span class="pre">in_to_bs_custom()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.process.base.in_to_bs_simple_threshold"><code class="docutils literal notranslate"><span class="pre">in_to_bs_simple_threshold()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.process.base.in_to_lc_blobdog_forward"><code class="docutils literal notranslate"><span class="pre">in_to_lc_blobdog_forward()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.process.base.in_to_cc_sum_scaled_intensity"><code class="docutils literal notranslate"><span class="pre">in_to_cc_sum_scaled_intensity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#cvpl_tools.im.process.base.bs_lc_to_os_forward"><code class="docutils literal notranslate"><span class="pre">bs_lc_to_os_forward()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#bs-to-os">bs_to_os</a></li>
 <li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#lc-to-cc">lc_to_cc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="API/seg_process.html#os-to-cc">os_to_cc</a></li>

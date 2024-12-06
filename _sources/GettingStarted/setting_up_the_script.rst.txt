@@ -5,11 +5,12 @@ Setting Up the Script
 
 Writing code using cvpl_tools requires some setup code that configures the dask library and other
 utilities we need for our image processing pipeline. Below gives a brief description for the setup of these
-utilities and how they can be used when we are writing our image processing pipelines with
-:code:`cvpl_tools.im.seg_process.SegProcess` class.
+utilities.
 
 Dask Cluster and temporary directory
 ************************************
+
+cvpl_tools depends on Dask.
 
 Dask is a multithreaded and distributed computing library, in which temporary results may not fit in
 memory. In such cases, they are written in the temporary directory set in
@@ -91,14 +92,14 @@ accidentally close the command window. Below is an example:
 .. code-block:: Python
 
     if __name__ == '__main__':
-        import cvpl_tools.im.fs as imfs
+        import cvpl_tools.tools.fs as tlfs
         import numpy as np
         from dask.distributed import print as dprint
 
         logfile_stdout = open('log_stdout.txt', mode='w')
         logfile_stderr = open('log_stderr.txt', mode='w')
-        sys.stdout = imfs.MultiOutputStream(sys.stdout, logfile_stdout)
-        sys.stderr = imfs.MultiOutputStream(sys.stderr, logfile_stderr)
+        sys.stdout = tlfs.MultiOutputStream(sys.stdout, logfile_stdout)
+        sys.stderr = tlfs.MultiOutputStream(sys.stderr, logfile_stderr)
 
         import dask
         import dask.config
@@ -124,51 +125,46 @@ log_stderr.txt files under your working directory.
 CacheDirectory
 **************
 
-Different from Dask's temporary directory, cvpl_tool's CacheDirectory class provides intermediate result
+Different from Dask's temporary directory, cvpl_tool.tools.fs provides intermediate result
 caching APIs. A multi-step segmentation pipeline may produce many intermediate results, for some of them we
 may discard once computed, and for the others (like the final output) we may want to cache them on the disk
 for access later without having to redo the computation. In order to cache the result, we need a fixed path
-that do not change across program executions. The :code:`CacheDirectory` class is one that manages and
-assigns paths for these intermediate results, based on their cache ID (cid) and the parent CacheDirectory
-they belongs to. :code:`CacheRootDirectory` is a subclass of :code:`CacheDirectory` that acts as the root
-of the cache directory structure.
+that do not change across program executions. The :code:`cvpl_tool.tools.fs.cdir_init` and
+:code:`cvpl_tool.tools.fs.cdir_commit` and ones used to commit and check if the result exist or needs to be
+computed from scratch.
 
-In cvpl_tool's model of caching, there is a root cache directory that is created or loaded when the program
-starts to run, and every cache directory may contain many sub-cache-directory or data directories in
-which there are intermediate files. To create a cache directory, we write
+In a program, we may cache hierarchically, where there is a root cache directory that is created or loaded
+when the program starts to run, and every cache directory contains subdirectories and step-specific caches.
 
 .. code-block:: Python
 
     if __name__ == '__main__':
-        import cvpl_tools.im.fs as imfs
-        with imfs.CacheRootDirectory(
-              f'{TMP_PATH}/CacheDirectory',
-              remove_when_done=False,
-              read_if_exists=True) as temp_directory):
+        import cvpl_tools.tools.fs as tlfs
 
-            # Use case #1. Create a data directory for caching computation results
-            cache_path = temp_directory.cache_subpath(cid='some_cache_path')
-            if not cache_path.exists:
-                os.makedirs(cache_path.url, exists_ok=True)
-                # PUT CODE HERE: Now write your data into cache_path.url and load it back later
+        # Use case #1. Create a data directory for caching computation results
+        cache_path = f'{TMP_PATH}/CacheDirectory/some_cache_path'
+        is_commit = tlfs.cdir_init(cache_path).commit
+        if not is_commit:
+            pass  # PUT CODE HERE: Now write your data into cache_path.url and load it back later
 
-            # Use case #2. Create a sub-directory and pass it to other processes for caching
-            def multi_step_computation(cache_at: imfs.CacheDirectory):
-                cache_path = cache_at.cache_subpath(cid='A')
-                if not cache_path.exists:
-                    A = computeA()
-                    save(cache_path.url, A)
-                A = load(cache_path.url)
+        # Use case #2. Create a sub-directory and pass it to other processes for caching
+        def multi_step_computation(cache_at: str):
+            cache_path1 = f'{cache_path}/A'
+            is_commit1 = tlfs.cdir_init(cache_path1).commit
+            if not is_commit1:
+                A = computeA()
+                save(cache_path1, A)  # note here cache_path1 is a existing directory, not a file
+            A = load(cache_path1)
 
-                cache_path_B = cache_at.cache_subpath(cid='B')
-                if not cache_path_B.exists:
-                    B = computeBFromA()
-                    save(cache_path_B.url, B)
-                B = load(cache_path_B.url)
-                return B
+            cache_path2 = f'{cache_path}/B'
+            is_commit2 = tlfs.cdir_init(cache_path2).commit
+            if not is_commit2:
+                B = computeBFromA()
+                save(cache_path2, B)  # note here cache_path1 is a existing directory, not a file
+            B = load(cache_path2)
+            return B
 
-            sub_temp_directory = temp_directory.cache_subdir(cid='mult_step_cache')
-            result = multi_step_computation(cache_at=sub_temp_directory)
+        result = multi_step_computation(cache_at=f'{cache_path}/multi_step_cache')
 
 After running the above code once, caching files will be created. The second time the code is run, the computation
 steps will be skipped. This sort of hierarchical caching is convenient for working with complex processes that
@@ -177,8 +173,7 @@ can be hierarchically broken down to smaller and simpler compute steps.
 A Quicker Setup
 ***************
 
-If the amount of code used to setup and tear down the dask client, napari viewer and cache directory is bothering you,
-you can use the following code to get a quick start locally. This is currently pretty bare-boned, but should allow you
+You can use the following code to get a quick start locally. This is currently pretty bare-boned, but should allow you
 to run any dask-computation defined in the cvpl_tools library and your custom :code:`SegProcess` functions. The
 qsetup.py code automatically creates two log files in your current directory, containing the program's stdout and
 stderr, since those capture Dask's distributed print function's text output.
@@ -187,14 +182,16 @@ stderr, since those capture Dask's distributed print function's text output.
 
     if __name__ == '__main__':
         import cvpl_tools.im.process.qsetup as qsetup
+        import napari
         # IMPORT YOUR LIBRARIES HERE
 
         TMP_PATH = "C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp"
-        with qsetup.PLComponents(TMP_PATH, 'CacheDirectory',
-                                 client_args=dict(threads_per_worker=12, n_workers=1),
-                                 viewer_args=dict(use_viewer=True)) as plc:
-            # DO DASK COMPUTATION, AND SHOW RESULTS IN plc.viewer
+        plc = qsetup.PLComponents(TMP_PATH,
+                                  'CacheDirectory',
+                                  get_client=lambda: Client(threads_per_worker=12, n_workers=1))
+        viewer = napari.Viewer(ndisplay=2)
+        # DO DASK COMPUTATION, AND SHOW RESULTS IN viewer
+        plc.close()
+        viewer.show(block=True)
 
-            plc.viewer.show(block=True)
-
-If anyone would like more features witht this setup, please let me know.
+If anyone would like more features with this setup, please let me know.

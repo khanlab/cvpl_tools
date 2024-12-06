@@ -41,9 +41,9 @@ or on cloud.
 
    cvpl_tools.ome_zarr.napari.add.py <API/napari_zarr>
    cvpl_tools.ome_zarr.io.py <API/ome_zarr_io>
-   cvpl_tools.im.fs.py <API/imfs>
+   cvpl_tools.tools.fs.py <API/tlfs>
    cvpl_tools.im.ndblock.py <API/ndblock>
-   cvpl_tools.im.seg_process.py <API/seg_process>
+   cvpl_tools.im.process <API/seg_process>
    cvpl_tools.im.algs <API/algs>
 
 

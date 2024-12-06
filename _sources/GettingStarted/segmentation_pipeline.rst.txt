@@ -24,11 +24,11 @@ array with small dataset size. On larger datasets, we need to do long-running di
 that are hard to debug and requires tens of minutes or hours if we need to rerun the computation
 (often just to display the results again).
 
-The SegProcess Class
-********************
+SegProcess
+**********
 
-The :code:`SegProcess` class in module :code:`cvpl_tools.im.seg_process` provides a convenient way for us
-to define a step in multi-step image processing pipeline for distributed, interpretable and cached image
+Below we use examples from :code:`cvpl_tools.im.process` to talk about a convenient way
+to define a function in multi-step image processing pipeline for distributed, interpretable and cached image
 data analysis.
 
 Consider a function that counts the number of cells in a 3d-block of brightness map:
@@ -43,7 +43,7 @@ Consider a function that counts the number of cells in a 3d-block of brightness 
         cell_cnt = count_inst(inst)  # count each contour as a cell
         return cell_cnt
 
-There are a few issues:
+This code may seem complete, but it has a few issues:
 
 1. Lack of interpretability. Often when we first run this function some bug will show up, for example
 when the output cell count is unexpectedly large. Debugging this becomes a problem since we don't know
@@ -57,25 +57,23 @@ not the result may need to be used in different places (visualization, analysis 
 results makes sure computation is done only once, which is necessary when we work with costly algorithms
 on hundreds of GBs of data.
 
-SegProcess is designed to address these issues, with the basic idea to integrate visualization as
-part of the cell_count function, and cache the result of each step into a file in a :code:`CacheDirectory`.
-
-The class supports the following use cases:
+The basic idea to address 1) is to put visualization as part of the cell_count function, and to address
+2) is to cache the result of each step into a file in a :code:`CacheDirectory`. It will provide:
 
 1. dask-support. Inputs are expected to be either numpy array, dask array, or
 :code:`cvpl.im.ndblock.NDBlock` objects. In particular, dask.Array and NDBlock are suitable for
-parallel or distributed image processing workflows.
+parallel or distributed image processing workflows
 
-2. integration of Napari. :code:`forward()` function of a SegProcess object has a viewer attribute that
-defaults to None. By passing a Napari viewer to this parameter, the forward process will add intermediate
-images or centroids to the Napari viewer for easier debugging. Then after forward process finishes, we
-call :code:`viewer.show()` to display all added images
+2. integration of Napari. The function has an attribute :code:`context_args` that has a keyed item
+:code:`viewer_args` defaults to None. By passing a Napari viewer as :code:`viewer_args["viewer"]`,
+the function will add intermediate images or centroids to the Napari viewer for easier debugging.
+After the function returns, we can call :code:`viewer.show()` to display all added images
 
-3. intermediate result caching. :code:`CacheDirectory` class provides a hierarchical caching directory,
-where each :code:`forward()` call will either create a new directory or load from existing cache directory
-based on the :code:`cid` parameter passed to the function.
+3. intermediate result caching. It provides a hierarchical caching directory,
+where in a call to the function it will either create a new directory, or load from existing
+cache directory based on the :code:`cache_url` parameter in :code:`context_args` parameter
 
-Now we discuss how to define such a pipeline.
+Now we discuss how to define a process function
 
 Extending the Pipeline
 **********************
@@ -106,30 +104,38 @@ We can then plan the processing steps we need to define as follows:
 4. watershed_inst_segmentation (BS -> OS)
 5. cell_cnt_from_inst (OS -> CC)
 
-How do we go from this plan to actually code these steps? Subclassing :code:`SegProcess` is the recommended way
-(although one may argue we don't need OOP here).
-This means to create a subclass that defines the :code:`forward()` method, which takes arbitrary inputs
-and two optional parameters: cid and viewer_args.
+How do we go from this plan to actually code these steps? For each step, we define a function :code:`process()`,
+which takes arbitrary inputs and one parameter: :code:`context_args`, which will contain keyed items as follows:
 
-- cid specifies the subdirectory under the cache directory (set by the :code:`set_tmpdir` method of the base
-  class) to save intermediate files. If not provided (:code:`cid=None`),
-  then the cache will be saved in a temporary directory that will be removed when the CacheRootDirectory is
-  closed. If provided, this cache file will persist. Within the :code:`forward()` method, you should use
-  :code:`self.tmpdir.cache()` and :code:`self.tmpdir.cache_im()` to create cache files:
+- cache_url (str | RDirFileSystem, optional): Pointing to a directory to store the cached image; if not
+  provided, then the image will be cached via dask's persist() and its loaded copy will be returned
+
+- storage_option (dict, optional): If provided, specifies the compression method to use for image chunks
+  - preferred_chunksize (tuple, optional): Re-chunk before save; this rechunking will be undone in load
+  - multiscale (int, optional): Specifies the number of downsampling levels on OME ZARR
+  - compressor (numcodecs.abc.Codec, optional): Compressor used to compress the chunks
+
+- viewer_args (dict, optional): If provided, an image will be displayed as a new layer in Napari viewer
+  - viewer (napari.Viewer, optional): Only display if a viewer is provided
+  - is_label (bool, optional): defaults to False; if True, use viewer's add_labels() instead of
+  add_image() to display the array
+
+- layer_args (dict, optional): If provided, used along with viewer_args to specify add_image() kwargs
+
+- As a convention, :code:`context_args` contains :code:`cache_url` which is required only if the function
+  needs some place to store intermediate results:
 
   .. code-block:: Python
 
-      class ExampleSegProcess(SegProcess):
-          async def forward(self, im, cptr: CachePointer, viewer: napari.Viewer = None):
-              cache_path = cptr.subpath()
-
-              # in the case cache does not exists, cache_path.url is an empty path we can create a folder in:
-              if not cache_path.exists:
-                  os.makedirs(cache_path.url)
-                  result = compute_result(im)
-                  save(cache_path.url, result)
-              result = load(cache_path.url)
-              return result
+      async def process(im, context_args: dict):
+          cache_url = context_args['cache_url']
+          query = tlfs.cdir_commit(cache_url)
+          # in the case cache does not exists, cache_path.url is an empty path we can create a folder in:
+          if not query.commit:
+              result = compute_result(im)
+              save(cache_url, result)
+          result = load(cache_url)
+          return result
 
 - The :code:`viewer_args` parameter specifies the napari viewer to display the intermediate results. If not provided
   (:code:`viewer_args=None`), then no computation will be done to visualize the image. Within the forward() method, you
@@ -138,36 +144,39 @@ and two optional parameters: cid and viewer_args.
 
   .. code-block:: Python
 
-      class ExampleSegProcess(SegProcess):
-          async def forward(self, im, cptr: CachePointer, viewer_args: dict = None):
-              if viewer_args is None:
-                  viewer_args = {}
-              result = compute_result(im)
-              result = await cptr.im(lambda: result, viewer_args=viewer_args)  # caching result at location pointed by cptr
-              return result
+      async def process(im, context_args):
+          result = compute_result(im)
+          result = await tlfs.cache_im(lambda: result, context_args=dict(
+            cache_url=context_args.get('cache_url'),
+            viewer_args=context_args.get('viewer_args')))
+          return result
       # ...
       viewer = napari.Viewer(ndisplay=2)
       viewer_args = dict(
           viewer=viewer,  # The napari viewer, visualization will be skipped if viewer is None
           is_label=True,  # If True, viewer.add_labels() will be called; if False, viewer.add_image() will be called
           preferred_chunksize=(1, 4096, 4096),  # image will be converted to this chunksize when saved, and converted back when loaded
-          multiscale=4 if viewer else 0,  # maximum downsampling level of ome zarr files, necessary for very large images
+          multiscale=4,  # maximum downsampling level of ome zarr files, necessary for very large images
       )
-      process = ExampleSegProcess()
-      await process.forward(im, cptr = root_dir.cache(cid='compute'), viewer_args=viewer_args)
+      context_args = dict(
+          cache_url='gcs://example/cloud/path',
+          viewer_args=viewer_args
+      )
+      await process(im, context_args=context_args)
 
   :code:`viewer_args` is a parameter that allows us to visualize the saved results as part of the caching
   function. The reason we need this is that displaying the saved result often requires a different (flatter)
-  chunk size for fast loading of cross-sectional image, and also requires downsampling for zooming in/out of
-  larger images.
+  chunk size for fast loading of cross-sectional image, in the above example it is converted from the original
+  chunk size e.g. (256, 256, 256) to (1, 4096, 4096) and also requires downsampling for zooming in/out of
+  larger images, which the built-in persist() function of dask library does not provide good support of.
 
 Running the Pipeline
 ********************
 
-See `Setting Up the Script <GettingStarted/setting_up_the_script>`_ to understand boilerplate code used below.
-It's required to understand the following example.
+See `Setting Up the Script <GettingStarted/setting_up_the_script>`_ to understand boilerplate code used below,
+which is required to understand the following example.
 
-Now we have defined a :code:`ExampleSegProcess` class, the next step is to write our script that uses the pipeline
+Now we have defined a :code:`process` function, the next step is to write our script that uses the pipeline
 to segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
 :code:`forward()` method.
 
@@ -178,34 +187,31 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
         import dask
         from dask.distributed import Client
         import napari
-        with (dask.config.set({'temporary_directory': TMP_PATH}),
-              imfs.CacheRootDirectory(
-                  f'{TMP_PATH}/CacheDirectory',
-                  remove_when_done=False,
-                  read_if_exists=True) as temp_directory):
-
-            client = Client(threads_per_worker=12, n_workers=1)
+        with dask.config.set({'temporary_directory': TMP_PATH}:
+            temp_directory = f'{TMP_PATH}/CacheDirectory'
 
             im = load_im(path)  # this is our input dask.Array object to be segmented
-            process = ExampleSegProcess()
-            process.set_tmpdir(temp_directory)
             viewer = napari.Viewer()
             viewer_args = dict(viewer=viewer)
-            await process.forward(im, cid='cell_count_cache', viewer_args=viewer_args)
+            context_args = dict(
+                cache_url=f'{temp_directory}/example_seg_process',
+                viewer_args=viewer_args
+            )
+            await example_seg_process(im, context_args=context_args)
 
             client.close()
             viewer.show(block=True)
 
-At this point you may have a better understanding of how these pipeline steps work. When you pass in
-:code:`viewer_args=None` the :code:`forward()` function does nothing but processes the image and cache
-it.
+If instead :code:`viewer_args=None` is passed the :code:`example_seg_process()` function will display
+nothing, process the image and cache it.
 
-- For parameters that changes how the images are processed, cvpl_tools' preference is to pass them
-  through the :code:`__init__` method of the :code:`SegProcess` subclass.
-- For parameters that changes how the viewer displays the image, or how the image is cached (caching is
-  often related to display e.g. storing chunks as flat images will allow faster cross section display in
-  Napari), these parameters are provided through the :code:`viewer_args` argument of the :code:`forward()`
-  function.
+- A process function has signature :code:`process(arg1, ..., argn, context_args)`, where
+  arg1 to n are arbitrary arguments and :code:`context_args` is a dictionary
+- For parameters that changes how the viewer displays the image, these parameters are provided through
+  the :code:`viewer_args` argument of the :code:`context_args` dictionary.
+- For parameters that specifies how the image is cached and stored locally (storing is often required
+  for display), these parameters are provided through the :code:`storage_options` argument of the
+  :code:`context_args` dictionary.
 
-To learn more, see the API pages for :code:`cvpl_tools.im.seg_process`, :code:`cvpl_tools.im.fs` and
+To learn more, see the API pages for :code:`cvpl_tools.im.process`, :code:`cvpl_tools.tools.fs` and
 :code:`cvpl_tools.im.ndblock` modules.

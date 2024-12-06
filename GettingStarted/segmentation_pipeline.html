@@ -51,7 +51,7 @@
 <li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Defining Segmentation Pipeline</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#motivation-microscope-cell-counting-atlas-map-and-object-segmentation">Motivation: Microscope, Cell Counting, Atlas map and Object Segmentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#the-segprocess-class">The SegProcess Class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#segprocess">SegProcess</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#extending-the-pipeline">Extending the Pipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#running-the-pipeline">Running the Pipeline</a></li>
 </ul>
@@ -62,9 +62,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.ome_zarr.napari.add.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/tlfs.html">cvpl_tools.tools.fs.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.process</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/algs.html">cvpl_tools.im.algs</a></li>
 </ul>
 
@@ -112,10 +112,10 @@ array with small dataset size. On larger datasets, we need to do long-running di
 that are hard to debug and requires tens of minutes or hours if we need to rerun the computation
 (often just to display the results again).</p>
 </section>
-<section id="the-segprocess-class">
-<h2>The SegProcess Class<a class="headerlink" href="#the-segprocess-class" title="Permalink to this heading"></a></h2>
-<p>The <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> class in module <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.seg_process</span></code> provides a convenient way for us
-to define a step in multi-step image processing pipeline for distributed, interpretable and cached image
+<section id="segprocess">
+<h2>SegProcess<a class="headerlink" href="#segprocess" title="Permalink to this heading"></a></h2>
+<p>Below we use examples from <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.process</span></code> to talk about a convenient way
+to define a function in multi-step image processing pipeline for distributed, interpretable and cached image
 data analysis.</p>
 <p>Consider a function that counts the number of cells in a 3d-block of brightness map:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
@@ -127,7 +127,7 @@ data analysis.</p>
     <span class="k">return</span> <span class="n">cell_cnt</span>
 </pre></div>
 </div>
-<p>There are a few issues:</p>
+<p>This code may seem complete, but it has a few issues:</p>
 <p>1. Lack of interpretability. Often when we first run this function some bug will show up, for example
 when the output cell count is unexpectedly large. Debugging this becomes a problem since we don’t know
 if one of the three steps in the cell_count function did not work as expected, or if the algorithm does
@@ -138,20 +138,19 @@ to see if they match with our expectations.</p>
 not the result may need to be used in different places (visualization, analysis etc.). Caching these
 results makes sure computation is done only once, which is necessary when we work with costly algorithms
 on hundreds of GBs of data.</p>
-<p>SegProcess is designed to address these issues, with the basic idea to integrate visualization as
-part of the cell_count function, and cache the result of each step into a file in a <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code>.</p>
-<p>The class supports the following use cases:</p>
+<p>The basic idea to address 1) is to put visualization as part of the cell_count function, and to address
+2) is to cache the result of each step into a file in a <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code>. It will provide:</p>
 <p>1. dask-support. Inputs are expected to be either numpy array, dask array, or
 <code class="code docutils literal notranslate"><span class="pre">cvpl.im.ndblock.NDBlock</span></code> objects. In particular, dask.Array and NDBlock are suitable for
-parallel or distributed image processing workflows.</p>
-<p>2. integration of Napari. <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> function of a SegProcess object has a viewer attribute that
-defaults to None. By passing a Napari viewer to this parameter, the forward process will add intermediate
-images or centroids to the Napari viewer for easier debugging. Then after forward process finishes, we
-call <code class="code docutils literal notranslate"><span class="pre">viewer.show()</span></code> to display all added images</p>
-<p>3. intermediate result caching. <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code> class provides a hierarchical caching directory,
-where each <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> call will either create a new directory or load from existing cache directory
-based on the <code class="code docutils literal notranslate"><span class="pre">cid</span></code> parameter passed to the function.</p>
-<p>Now we discuss how to define such a pipeline.</p>
+parallel or distributed image processing workflows</p>
+<p>2. integration of Napari. The function has an attribute <code class="code docutils literal notranslate"><span class="pre">context_args</span></code> that has a keyed item
+<code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> defaults to None. By passing a Napari viewer as <code class="code docutils literal notranslate"><span class="pre">viewer_args[&quot;viewer&quot;]</span></code>,
+the function will add intermediate images or centroids to the Napari viewer for easier debugging.
+After the function returns, we can call <code class="code docutils literal notranslate"><span class="pre">viewer.show()</span></code> to display all added images</p>
+<p>3. intermediate result caching. It provides a hierarchical caching directory,
+where in a call to the function it will either create a new directory, or load from existing
+cache directory based on the <code class="code docutils literal notranslate"><span class="pre">cache_url</span></code> parameter in <code class="code docutils literal notranslate"><span class="pre">context_args</span></code> parameter</p>
+<p>Now we discuss how to define a process function</p>
 </section>
 <section id="extending-the-pipeline">
 <h2>Extending the Pipeline<a class="headerlink" href="#extending-the-pipeline" title="Permalink to this heading"></a></h2>
@@ -179,27 +178,31 @@ be reused and which part may have variations in the algorithm used.</p>
 <li><p>watershed_inst_segmentation (BS -&gt; OS)</p></li>
 <li><p>cell_cnt_from_inst (OS -&gt; CC)</p></li>
 </ol>
-<p>How do we go from this plan to actually code these steps? Subclassing <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> is the recommended way
-(although one may argue we don’t need OOP here).
-This means to create a subclass that defines the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> method, which takes arbitrary inputs
-and two optional parameters: cid and viewer_args.</p>
+<p>How do we go from this plan to actually code these steps? For each step, we define a function <code class="code docutils literal notranslate"><span class="pre">process()</span></code>,
+which takes arbitrary inputs and one parameter: <code class="code docutils literal notranslate"><span class="pre">context_args</span></code>, which will contain keyed items as follows:</p>
 <ul>
-<li><p>cid specifies the subdirectory under the cache directory (set by the <code class="code docutils literal notranslate"><span class="pre">set_tmpdir</span></code> method of the base
-class) to save intermediate files. If not provided (<code class="code docutils literal notranslate"><span class="pre">cid=None</span></code>),
-then the cache will be saved in a temporary directory that will be removed when the CacheRootDirectory is
-closed. If provided, this cache file will persist. Within the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> method, you should use
-<code class="code docutils literal notranslate"><span class="pre">self.tmpdir.cache()</span></code> and <code class="code docutils literal notranslate"><span class="pre">self.tmpdir.cache_im()</span></code> to create cache files:</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ExampleSegProcess</span><span class="p">(</span><span class="n">SegProcess</span><span class="p">):</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cptr</span><span class="p">:</span> <span class="n">CachePointer</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-        <span class="n">cache_path</span> <span class="o">=</span> <span class="n">cptr</span><span class="o">.</span><span class="n">subpath</span><span class="p">()</span>
-
-        <span class="c1"># in the case cache does not exists, cache_path.url is an empty path we can create a folder in:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
-            <span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">result</span>
+<li><p>cache_url (str | RDirFileSystem, optional): Pointing to a directory to store the cached image; if not
+provided, then the image will be cached via dask’s persist() and its loaded copy will be returned</p></li>
+<li><p>storage_option (dict, optional): If provided, specifies the compression method to use for image chunks
+- preferred_chunksize (tuple, optional): Re-chunk before save; this rechunking will be undone in load
+- multiscale (int, optional): Specifies the number of downsampling levels on OME ZARR
+- compressor (numcodecs.abc.Codec, optional): Compressor used to compress the chunks</p></li>
+<li><p>viewer_args (dict, optional): If provided, an image will be displayed as a new layer in Napari viewer
+- viewer (napari.Viewer, optional): Only display if a viewer is provided
+- is_label (bool, optional): defaults to False; if True, use viewer’s add_labels() instead of
+add_image() to display the array</p></li>
+<li><p>layer_args (dict, optional): If provided, used along with viewer_args to specify add_image() kwargs</p></li>
+<li><p>As a convention, <code class="code docutils literal notranslate"><span class="pre">context_args</span></code> contains <code class="code docutils literal notranslate"><span class="pre">cache_url</span></code> which is required only if the function
+needs some place to store intermediate results:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">context_args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="n">cache_url</span> <span class="o">=</span> <span class="n">context_args</span><span class="p">[</span><span class="s1">&#39;cache_url&#39;</span><span class="p">]</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">tlfs</span><span class="o">.</span><span class="n">cdir_commit</span><span class="p">(</span><span class="n">cache_url</span><span class="p">)</span>
+    <span class="c1"># in the case cache does not exists, cache_path.url is an empty path we can create a folder in:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">query</span><span class="o">.</span><span class="n">commit</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+        <span class="n">save</span><span class="p">(</span><span class="n">cache_url</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_url</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
 </pre></div>
 </div>
 </li>
@@ -207,37 +210,40 @@ closed. If provided, this cache file will persist. Within the <code class="code 
 (<code class="code docutils literal notranslate"><span class="pre">viewer_args=None</span></code>), then no computation will be done to visualize the image. Within the forward() method, you
 should use <code class="code docutils literal notranslate"><span class="pre">viewer.add_labels()</span></code>, <code class="code docutils literal notranslate"><span class="pre">lc_interpretable_napari()</span></code> or <code class="code docutils literal notranslate"><span class="pre">temp_directory.cache_im()</span></code>
 while passing in <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> argument to display your results:</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ExampleSegProcess</span><span class="p">(</span><span class="n">SegProcess</span><span class="p">):</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">cptr</span><span class="p">:</span> <span class="n">CachePointer</span><span class="p">,</span> <span class="n">viewer_args</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">viewer_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">viewer_args</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cptr</span><span class="o">.</span><span class="n">im</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>  <span class="c1"># caching result at location pointed by cptr</span>
-        <span class="k">return</span> <span class="n">result</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">context_args</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">tlfs</span><span class="o">.</span><span class="n">cache_im</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="n">context_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+      <span class="n">cache_url</span><span class="o">=</span><span class="n">context_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache_url&#39;</span><span class="p">),</span>
+      <span class="n">viewer_args</span><span class="o">=</span><span class="n">context_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;viewer_args&#39;</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">result</span>
 <span class="c1"># ...</span>
 <span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">(</span><span class="n">ndisplay</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">viewer_args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
     <span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">,</span>  <span class="c1"># The napari viewer, visualization will be skipped if viewer is None</span>
     <span class="n">is_label</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># If True, viewer.add_labels() will be called; if False, viewer.add_image() will be called</span>
     <span class="n">preferred_chunksize</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">),</span>  <span class="c1"># image will be converted to this chunksize when saved, and converted back when loaded</span>
-    <span class="n">multiscale</span><span class="o">=</span><span class="mi">4</span> <span class="k">if</span> <span class="n">viewer</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># maximum downsampling level of ome zarr files, necessary for very large images</span>
+    <span class="n">multiscale</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>  <span class="c1"># maximum downsampling level of ome zarr files, necessary for very large images</span>
 <span class="p">)</span>
-<span class="n">process</span> <span class="o">=</span> <span class="n">ExampleSegProcess</span><span class="p">()</span>
-<span class="k">await</span> <span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cptr</span> <span class="o">=</span> <span class="n">root_dir</span><span class="o">.</span><span class="n">cache</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;compute&#39;</span><span class="p">),</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>
+<span class="n">context_args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">cache_url</span><span class="o">=</span><span class="s1">&#39;gcs://example/cloud/path&#39;</span><span class="p">,</span>
+    <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span>
+<span class="p">)</span>
+<span class="k">await</span> <span class="n">process</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">context_args</span><span class="o">=</span><span class="n">context_args</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> is a parameter that allows us to visualize the saved results as part of the caching
 function. The reason we need this is that displaying the saved result often requires a different (flatter)
-chunk size for fast loading of cross-sectional image, and also requires downsampling for zooming in/out of
-larger images.</p>
+chunk size for fast loading of cross-sectional image, in the above example it is converted from the original
+chunk size e.g. (256, 256, 256) to (1, 4096, 4096) and also requires downsampling for zooming in/out of
+larger images, which the built-in persist() function of dask library does not provide good support of.</p>
 </li>
 </ul>
 </section>
 <section id="running-the-pipeline">
 <h2>Running the Pipeline<a class="headerlink" href="#running-the-pipeline" title="Permalink to this heading"></a></h2>
-<p>See <a class="reference external" href="GettingStarted/setting_up_the_script">Setting Up the Script</a> to understand boilerplate code used below.
-It’s required to understand the following example.</p>
-<p>Now we have defined a <code class="code docutils literal notranslate"><span class="pre">ExampleSegProcess</span></code> class, the next step is to write our script that uses the pipeline
+<p>See <a class="reference external" href="GettingStarted/setting_up_the_script">Setting Up the Script</a> to understand boilerplate code used below,
+which is required to understand the following example.</p>
+<p>Now we have defined a <code class="code docutils literal notranslate"><span class="pre">process</span></code> function, the next step is to write our script that uses the pipeline
 to segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
 <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> method.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>  <span class="c1"># Only for main thread, worker threads will not run this</span>
@@ -245,37 +251,34 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
     <span class="kn">import</span> <span class="nn">dask</span>
     <span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
     <span class="kn">import</span> <span class="nn">napari</span>
-    <span class="k">with</span> <span class="p">(</span><span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}),</span>
-          <span class="n">imfs</span><span class="o">.</span><span class="n">CacheRootDirectory</span><span class="p">(</span>
-              <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">TMP_PATH</span><span class="si">}</span><span class="s1">/CacheDirectory&#39;</span><span class="p">,</span>
-              <span class="n">remove_when_done</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-              <span class="n">read_if_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_directory</span><span class="p">):</span>
-
-        <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}:</span>
+        <span class="n">temp_directory</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">TMP_PATH</span><span class="si">}</span><span class="s1">/CacheDirectory&#39;</span>
 
         <span class="n">im</span> <span class="o">=</span> <span class="n">load_im</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>  <span class="c1"># this is our input dask.Array object to be segmented</span>
-        <span class="n">process</span> <span class="o">=</span> <span class="n">ExampleSegProcess</span><span class="p">()</span>
-        <span class="n">process</span><span class="o">.</span><span class="n">set_tmpdir</span><span class="p">(</span><span class="n">temp_directory</span><span class="p">)</span>
         <span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">()</span>
         <span class="n">viewer_args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">viewer</span><span class="o">=</span><span class="n">viewer</span><span class="p">)</span>
-        <span class="k">await</span> <span class="n">process</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="s1">&#39;cell_count_cache&#39;</span><span class="p">,</span> <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span><span class="p">)</span>
+        <span class="n">context_args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">cache_url</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">temp_directory</span><span class="si">}</span><span class="s1">/example_seg_process&#39;</span><span class="p">,</span>
+            <span class="n">viewer_args</span><span class="o">=</span><span class="n">viewer_args</span>
+        <span class="p">)</span>
+        <span class="k">await</span> <span class="n">example_seg_process</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">context_args</span><span class="o">=</span><span class="n">context_args</span><span class="p">)</span>
 
         <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>At this point you may have a better understanding of how these pipeline steps work. When you pass in
-<code class="code docutils literal notranslate"><span class="pre">viewer_args=None</span></code> the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> function does nothing but processes the image and cache
-it.</p>
+<p>If instead <code class="code docutils literal notranslate"><span class="pre">viewer_args=None</span></code> is passed the <code class="code docutils literal notranslate"><span class="pre">example_seg_process()</span></code> function will display
+nothing, process the image and cache it.</p>
 <ul class="simple">
-<li><p>For parameters that changes how the images are processed, cvpl_tools’ preference is to pass them
-through the <code class="code docutils literal notranslate"><span class="pre">__init__</span></code> method of the <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> subclass.</p></li>
-<li><p>For parameters that changes how the viewer displays the image, or how the image is cached (caching is
-often related to display e.g. storing chunks as flat images will allow faster cross section display in
-Napari), these parameters are provided through the <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> argument of the <code class="code docutils literal notranslate"><span class="pre">forward()</span></code>
-function.</p></li>
+<li><p>A process function has signature <code class="code docutils literal notranslate"><span class="pre">process(arg1,</span> <span class="pre">...,</span> <span class="pre">argn,</span> <span class="pre">context_args)</span></code>, where
+arg1 to n are arbitrary arguments and <code class="code docutils literal notranslate"><span class="pre">context_args</span></code> is a dictionary</p></li>
+<li><p>For parameters that changes how the viewer displays the image, these parameters are provided through
+the <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> argument of the <code class="code docutils literal notranslate"><span class="pre">context_args</span></code> dictionary.</p></li>
+<li><p>For parameters that specifies how the image is cached and stored locally (storing is often required
+for display), these parameters are provided through the <code class="code docutils literal notranslate"><span class="pre">storage_options</span></code> argument of the
+<code class="code docutils literal notranslate"><span class="pre">context_args</span></code> dictionary.</p></li>
 </ul>
-<p>To learn more, see the API pages for <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.seg_process</span></code>, <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.fs</span></code> and
+<p>To learn more, see the API pages for <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.process</span></code>, <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.tools.fs</span></code> and
 <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.ndblock</span></code> modules.</p>
 </section>
 </section>

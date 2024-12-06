@@ -62,9 +62,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.ome_zarr.napari.add.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/imfs.html">cvpl_tools.im.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/tlfs.html">cvpl_tools.tools.fs.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.seg_process.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.process</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../API/algs.html">cvpl_tools.im.algs</a></li>
 </ul>
 
@@ -96,10 +96,10 @@
 <span id="id1"></span><h1>Setting Up the Script<a class="headerlink" href="#setting-up-the-script" title="Permalink to this heading"></a></h1>
 <p>Writing code using cvpl_tools requires some setup code that configures the dask library and other
 utilities we need for our image processing pipeline. Below gives a brief description for the setup of these
-utilities and how they can be used when we are writing our image processing pipelines with
-<code class="code docutils literal notranslate"><span class="pre">cvpl_tools.im.seg_process.SegProcess</span></code> class.</p>
+utilities.</p>
 <section id="dask-cluster-and-temporary-directory">
 <h2>Dask Cluster and temporary directory<a class="headerlink" href="#dask-cluster-and-temporary-directory" title="Permalink to this heading"></a></h2>
+<p>cvpl_tools depends on Dask.</p>
 <p>Dask is a multithreaded and distributed computing library, in which temporary results may not fit in
 memory. In such cases, they are written in the temporary directory set in
 the dask config’s <code class="code docutils literal notranslate"><span class="pre">temporary_directory</span></code> variable. When working on HPC system on Compute Canada,
@@ -167,14 +167,14 @@ the main threads, and use dask.distributed.print to print debugging messages if 
 convenience I also echo the stdout and stderr outputs into separate logfiles so they will persist even if you
 accidentally close the command window. Below is an example:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">cvpl_tools.im.fs</span> <span class="k">as</span> <span class="nn">imfs</span>
+    <span class="kn">import</span> <span class="nn">cvpl_tools.tools.fs</span> <span class="k">as</span> <span class="nn">tlfs</span>
     <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
     <span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="nb">print</span> <span class="k">as</span> <span class="n">dprint</span>
 
     <span class="n">logfile_stdout</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;log_stdout.txt&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
     <span class="n">logfile_stderr</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;log_stderr.txt&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
-    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">imfs</span><span class="o">.</span><span class="n">MultiOutputStream</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">logfile_stdout</span><span class="p">)</span>
-    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">imfs</span><span class="o">.</span><span class="n">MultiOutputStream</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="n">logfile_stderr</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">tlfs</span><span class="o">.</span><span class="n">MultiOutputStream</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">logfile_stdout</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">tlfs</span><span class="o">.</span><span class="n">MultiOutputStream</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="n">logfile_stderr</span><span class="p">)</span>
 
     <span class="kn">import</span> <span class="nn">dask</span>
     <span class="kn">import</span> <span class="nn">dask.config</span>
@@ -200,47 +200,42 @@ log_stderr.txt files under your working directory.</p>
 </section>
 <section id="cachedirectory">
 <h2>CacheDirectory<a class="headerlink" href="#cachedirectory" title="Permalink to this heading"></a></h2>
-<p>Different from Dask’s temporary directory, cvpl_tool’s CacheDirectory class provides intermediate result
+<p>Different from Dask’s temporary directory, cvpl_tool.tools.fs provides intermediate result
 caching APIs. A multi-step segmentation pipeline may produce many intermediate results, for some of them we
 may discard once computed, and for the others (like the final output) we may want to cache them on the disk
 for access later without having to redo the computation. In order to cache the result, we need a fixed path
-that do not change across program executions. The <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code> class is one that manages and
-assigns paths for these intermediate results, based on their cache ID (cid) and the parent CacheDirectory
-they belongs to. <code class="code docutils literal notranslate"><span class="pre">CacheRootDirectory</span></code> is a subclass of <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code> that acts as the root
-of the cache directory structure.</p>
-<p>In cvpl_tool’s model of caching, there is a root cache directory that is created or loaded when the program
-starts to run, and every cache directory may contain many sub-cache-directory or data directories in
-which there are intermediate files. To create a cache directory, we write</p>
+that do not change across program executions. The <code class="code docutils literal notranslate"><span class="pre">cvpl_tool.tools.fs.cdir_init</span></code> and
+<code class="code docutils literal notranslate"><span class="pre">cvpl_tool.tools.fs.cdir_commit</span></code> and ones used to commit and check if the result exist or needs to be
+computed from scratch.</p>
+<p>In a program, we may cache hierarchically, where there is a root cache directory that is created or loaded
+when the program starts to run, and every cache directory contains subdirectories and step-specific caches.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">cvpl_tools.im.fs</span> <span class="k">as</span> <span class="nn">imfs</span>
-    <span class="k">with</span> <span class="n">imfs</span><span class="o">.</span><span class="n">CacheRootDirectory</span><span class="p">(</span>
-          <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">TMP_PATH</span><span class="si">}</span><span class="s1">/CacheDirectory&#39;</span><span class="p">,</span>
-          <span class="n">remove_when_done</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-          <span class="n">read_if_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_directory</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">cvpl_tools.tools.fs</span> <span class="k">as</span> <span class="nn">tlfs</span>
 
-        <span class="c1"># Use case #1. Create a data directory for caching computation results</span>
-        <span class="n">cache_path</span> <span class="o">=</span> <span class="n">temp_directory</span><span class="o">.</span><span class="n">cache_subpath</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;some_cache_path&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">exists_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="c1"># PUT CODE HERE: Now write your data into cache_path.url and load it back later</span>
+    <span class="c1"># Use case #1. Create a data directory for caching computation results</span>
+    <span class="n">cache_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">TMP_PATH</span><span class="si">}</span><span class="s1">/CacheDirectory/some_cache_path&#39;</span>
+    <span class="n">is_commit</span> <span class="o">=</span> <span class="n">tlfs</span><span class="o">.</span><span class="n">cdir_init</span><span class="p">(</span><span class="n">cache_path</span><span class="p">)</span><span class="o">.</span><span class="n">commit</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_commit</span><span class="p">:</span>
+        <span class="k">pass</span>  <span class="c1"># PUT CODE HERE: Now write your data into cache_path.url and load it back later</span>
 
-        <span class="c1"># Use case #2. Create a sub-directory and pass it to other processes for caching</span>
-        <span class="k">def</span> <span class="nf">multi_step_computation</span><span class="p">(</span><span class="n">cache_at</span><span class="p">:</span> <span class="n">imfs</span><span class="o">.</span><span class="n">CacheDirectory</span><span class="p">):</span>
-            <span class="n">cache_path</span> <span class="o">=</span> <span class="n">cache_at</span><span class="o">.</span><span class="n">cache_subpath</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;A&#39;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
-                <span class="n">A</span> <span class="o">=</span> <span class="n">computeA</span><span class="p">()</span>
-                <span class="n">save</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">A</span><span class="p">)</span>
-            <span class="n">A</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+    <span class="c1"># Use case #2. Create a sub-directory and pass it to other processes for caching</span>
+    <span class="k">def</span> <span class="nf">multi_step_computation</span><span class="p">(</span><span class="n">cache_at</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">cache_path1</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cache_path</span><span class="si">}</span><span class="s1">/A&#39;</span>
+        <span class="n">is_commit1</span> <span class="o">=</span> <span class="n">tlfs</span><span class="o">.</span><span class="n">cdir_init</span><span class="p">(</span><span class="n">cache_path1</span><span class="p">)</span><span class="o">.</span><span class="n">commit</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_commit1</span><span class="p">:</span>
+            <span class="n">A</span> <span class="o">=</span> <span class="n">computeA</span><span class="p">()</span>
+            <span class="n">save</span><span class="p">(</span><span class="n">cache_path1</span><span class="p">,</span> <span class="n">A</span><span class="p">)</span>  <span class="c1"># note here cache_path1 is a existing directory, not a file</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path1</span><span class="p">)</span>
 
-            <span class="n">cache_path_B</span> <span class="o">=</span> <span class="n">cache_at</span><span class="o">.</span><span class="n">cache_subpath</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;B&#39;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_path_B</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
-                <span class="n">B</span> <span class="o">=</span> <span class="n">computeBFromA</span><span class="p">()</span>
-                <span class="n">save</span><span class="p">(</span><span class="n">cache_path_B</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>
-            <span class="n">B</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path_B</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">B</span>
+        <span class="n">cache_path2</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cache_path</span><span class="si">}</span><span class="s1">/B&#39;</span>
+        <span class="n">is_commit2</span> <span class="o">=</span> <span class="n">tlfs</span><span class="o">.</span><span class="n">cdir_init</span><span class="p">(</span><span class="n">cache_path2</span><span class="p">)</span><span class="o">.</span><span class="n">commit</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_commit2</span><span class="p">:</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">computeBFromA</span><span class="p">()</span>
+            <span class="n">save</span><span class="p">(</span><span class="n">cache_path2</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>  <span class="c1"># note here cache_path1 is a existing directory, not a file</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">cache_path2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">B</span>
 
-        <span class="n">sub_temp_directory</span> <span class="o">=</span> <span class="n">temp_directory</span><span class="o">.</span><span class="n">cache_subdir</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="s1">&#39;mult_step_cache&#39;</span><span class="p">)</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">multi_step_computation</span><span class="p">(</span><span class="n">cache_at</span><span class="o">=</span><span class="n">sub_temp_directory</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">multi_step_computation</span><span class="p">(</span><span class="n">cache_at</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cache_path</span><span class="si">}</span><span class="s1">/multi_step_cache&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>After running the above code once, caching files will be created. The second time the code is run, the computation
@@ -249,25 +244,26 @@ can be hierarchically broken down to smaller and simpler compute steps.</p>
 </section>
 <section id="a-quicker-setup">
 <h2>A Quicker Setup<a class="headerlink" href="#a-quicker-setup" title="Permalink to this heading"></a></h2>
-<p>If the amount of code used to setup and tear down the dask client, napari viewer and cache directory is bothering you,
-you can use the following code to get a quick start locally. This is currently pretty bare-boned, but should allow you
+<p>You can use the following code to get a quick start locally. This is currently pretty bare-boned, but should allow you
 to run any dask-computation defined in the cvpl_tools library and your custom <code class="code docutils literal notranslate"><span class="pre">SegProcess</span></code> functions. The
 qsetup.py code automatically creates two log files in your current directory, containing the program’s stdout and
 stderr, since those capture Dask’s distributed print function’s text output.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">cvpl_tools.im.process.qsetup</span> <span class="k">as</span> <span class="nn">qsetup</span>
+    <span class="kn">import</span> <span class="nn">napari</span>
     <span class="c1"># IMPORT YOUR LIBRARIES HERE</span>
 
     <span class="n">TMP_PATH</span> <span class="o">=</span> <span class="s2">&quot;C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp&quot;</span>
-    <span class="k">with</span> <span class="n">qsetup</span><span class="o">.</span><span class="n">PLComponents</span><span class="p">(</span><span class="n">TMP_PATH</span><span class="p">,</span> <span class="s1">&#39;CacheDirectory&#39;</span><span class="p">,</span>
-                             <span class="n">client_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-                             <span class="n">viewer_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">use_viewer</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span> <span class="k">as</span> <span class="n">plc</span><span class="p">:</span>
-        <span class="c1"># DO DASK COMPUTATION, AND SHOW RESULTS IN plc.viewer</span>
-
-        <span class="n">plc</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">plc</span> <span class="o">=</span> <span class="n">qsetup</span><span class="o">.</span><span class="n">PLComponents</span><span class="p">(</span><span class="n">TMP_PATH</span><span class="p">,</span>
+                              <span class="s1">&#39;CacheDirectory&#39;</span><span class="p">,</span>
+                              <span class="n">get_client</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">(</span><span class="n">ndisplay</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="c1"># DO DASK COMPUTATION, AND SHOW RESULTS IN viewer</span>
+    <span class="n">plc</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>If anyone would like more features witht this setup, please let me know.</p>
+<p>If anyone would like more features with this setup, please let me know.</p>
 </section>
 </section>
 
