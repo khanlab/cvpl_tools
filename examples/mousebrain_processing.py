@@ -106,7 +106,7 @@ def main(run_nnunet: bool = True, run_coiled_process: bool = True):
         GCS_BIAS_PATH
     )
     async def fn(dask_worker):
-        await cvpl_nnunet_api.mousebrain_forward(
+        return await cvpl_nnunet_api.mousebrain_forward(
             dask_worker=dask_worker,
             CACHE_DIR_PATH=f'gcs://khanlab-scratch/tmp/CacheDirectory_{SUBJECT_ID}',
             ORIG_IM_PATH=OME_ZARR_PATH,

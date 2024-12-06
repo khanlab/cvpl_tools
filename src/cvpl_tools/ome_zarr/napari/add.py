@@ -36,7 +36,7 @@ def preprocess_path_and_array_slices(path: str, kwargs: dict | None) -> tuple[st
 
 def group_from_path(viewer: napari.Viewer, path: str, use_zip: bool | None = None,
                     merge_channels=True, kwargs=None, lbl_kwargs=None
-                    ) -> Layer | list[Layer, ...]:
+                    ) -> Layer:
     """Add an ome zarr group to napari viewer from given group path.
 
     This is a combination of load_zarr_group_from_path() and add_ome_zarr_group() functions.
@@ -54,7 +54,7 @@ def group_from_path(viewer: napari.Viewer, path: str, use_zip: bool | None = Non
 
 def subarray_from_path(viewer: napari.Viewer, path: str, use_zip: bool | None = None,
                        merge_channels=True, kwargs=None
-                       ) -> Layer | list[Layer, ...]:
+                       ) -> Layer:
     """Add an ome zarr array to napari viewer from given array path.
 
     This is a combination of load_zarr_array_from_path() and add_ome_zarr_group() functions.
@@ -74,7 +74,7 @@ def group(viewer: napari.Viewer,
           merge_channels=True,
           kwargs: dict = None,
           lbl_kwargs: dict = None
-          ) -> Layer | list[Layer, ...]:
+          ) -> Layer:
     """Add an ome zarr image (if exists) along with its labels (if exist) to viewer.
 
     Args:
@@ -141,7 +141,7 @@ def subarray(viewer: napari.Viewer,
              start_level: int = 0,
              is_label=False,
              **kwargs
-             ) -> Layer | list[Layer, ...]:
+             ) -> Layer:
     """Add a multiscale ome zarr image or label to viewer.
 
     The first channel is assumed to be the channel dimension. This is relevant only if merge_channels=False

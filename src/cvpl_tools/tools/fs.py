@@ -133,11 +133,11 @@ async def save(file: str | RDirFileSystem,
     Args:
         file: The full/relative path to the directory to be saved to
         im: Object to be saved
-        storage_options: Specifies options in saving method and saved file format
-            -preferred_chunksize (tuple[int, ...]): chunk sizes to save as; will rechunk if different from current
-                size; only applies to dask arrays.
-            -multiscale (int): The number of downsample layers for save ome-zarr; only applies if the image is a dask
-                image
+        storage_options: Specifies options in saving method and saved file format \
+            -preferred_chunksize (tuple[int, ...]): chunk sizes to save as; will rechunk if different from current \
+                size; only applies to dask arrays. \
+            -multiscale (int): The number of downsample layers for save ome-zarr; only applies if the image is a dask \
+                image \
             -compressor: The compressor to use to compress array or chunks
     """
     if DEBUG:
@@ -188,7 +188,7 @@ def load(file: str | RDirFileSystem, storage_options: dict = None):
 
     Args:
         file: Full path to the directory to be read from
-        storage_options: Specifies options in saving method and saved file format
+        storage_options: Specifies options in saving method and saved file format \
             - compressor (numcodecs.abc.Codec, optional): Compressor used to compress the chunks
 
     Returns:
@@ -223,10 +223,10 @@ def display(file: str | RDirFileSystem, context_args: dict):
 
     Args:
         file: Full path to the directory to be read from
-        context_args: contains viewer and arguments passed to the viewer's add image functions
-            - viewer (napari.Viewer, optional): Only display if a viewer is provided
-            - is_label (bool, optional): defaults to False; if True, use viewer's add_labels() instead of
-                add_image() to display the array
+        context_args: contains viewer and arguments passed to the viewer's add image functions \
+            - viewer (napari.Viewer, optional): Only display if a viewer is provided \
+            - is_label (bool, optional): defaults to False; if True, use viewer's add_labels() instead of \
+                add_image() to display the array \
             - layer_args (dict, optional)
     """
     import napari

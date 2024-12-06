@@ -287,7 +287,7 @@ async def mousebrain_forward(dask_worker,
     sys.stdout = tlfs.MultiOutputStream(sys.stdout, logfile_stdout)
     sys.stderr = tlfs.MultiOutputStream(sys.stderr, logfile_stderr)
 
-    if False and RDirFileSystem(CACHE_DIR_PATH).exists(''):
+    if True and RDirFileSystem(CACHE_DIR_PATH).exists(''):
         RDirFileSystem(CACHE_DIR_PATH).rm('', recursive=True)
 
     cache_dir_fs = RDirFileSystem(CACHE_DIR_PATH)

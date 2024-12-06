@@ -24,6 +24,7 @@ def main():
     #                        'C:/Users/than83/Documents/progtools/datasets/annotated/canvas_F4A1Te3Blaze/im_mini.ome.zarr',
     #                        kwargs=dict(name='im2'))
     # nozadd.group_from_path(viewer, 'C:/Users/than83/Documents/progtools/datasets/annotated/canvas_F4A1Te3Blaze/im_corrected.ome.zarr', kwargs=dict(name='im_corr'))
+
     viewer.show(block=True)
 
 

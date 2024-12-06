@@ -81,7 +81,6 @@ except OSError:
 
 import skimage
 from scipy.ndimage import (
-    gaussian_filter as gaussian_filter,
     label as instance_label,
     find_objects as find_objects
 )
@@ -336,9 +335,9 @@ async def in_to_cc_sum_scaled_intensity(im,
         min_thres: Intensity below this threshold is excluded (set to 0 before summing)
         spatial_box_width: If not None, will use this as the box width for adding points to Napari
         reduce: If True, reduce the result to a single number in numpynumpy array
-        context_args: Contextual arguments
-            - viewer_args (dict, optional): specifies the viewer arguments related to napari display of intermediate
-                and end results
+        context_args: Contextual arguments \
+            - viewer_args (dict, optional): specifies the viewer arguments related to napari display of intermediate \
+                and end results \
             - cache_url (str | RDirFileSystem, optional): Points to the directory under which cache will be saved
 
     Returns:

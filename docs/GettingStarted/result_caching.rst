@@ -11,12 +11,12 @@ workflow:
 
 1. The cell density for each region in the scan is computed but the number does not match up with what's expected,
 so you want to display a heatmap in a graphical viewer showing cell density. The final results you got is text
-output in the console, requiring redo the computation to display.
+output in the console, requiring redoing the computation to display.
 
 2. Some error occurs and you need to find out why a step in the computation causes the issue, but it's rather
 difficult to understand what went wrong without displaying some intermediate results to aid debugging.
 
-3. Graphically showing the the algorithm works step-by-step will be very help in identifying causes of
+3. Graphically showing how the algorithm works step-by-step will be very help in identifying causes of
 issues, but requires saving all the results onto disk and chunked in a viewer-friendly format.
 
 In all cases above, caching all the intermediate results help reduce headaches and risks of unknown errors coming
@@ -30,113 +30,46 @@ Here, the outputs of a processing step (function) may contain intermediate image
 
 We describe the CacheDirectory interface in details below.
 
-CacheRootDirectory
-******************
+cache root directory
+********************
 Every cache directory tree starts with a CacheRootDirectory node at its root, which is the only node of that class in
-the tree. In order to create a cache directory tree you need to create a CacheRootDirectory node, as follows:
+the tree. In order to create a cache directory tree you need a url to the root directory location, as follows:
 
 .. code-block:: Python
 
-    with imfs.CacheRootDirectory(
-            f'path/to/root',
-            remove_when_done=False,
-            read_if_exists=True) as temp_directory:
-        cache_dir = temp_directory.cache_subdir(cid='test')
+    import cvpl_tools.tools.fs as tlfs
+    loc = f'path/to/root'  # a remote url will work as well
+    query = tlfs.cdir_init(loc)
+    # Now a directory is created at the given path, so you can start writing cache files to it
 
-This creates two directories 'path/to/root' and 'path/to/root/dir_cache_test' on the first run,
+This creates two directories 'path/to/root' on the first run,
 the naming of the subfolder indicates that it is :code:`dir` a directory and :code:`cache` a
 persistent cache instead of a temporary folder in that location.
-The next time the program is run, it will not create new folders but directly read from existing ones.
+The next time the program is run, it will not create new folders but return a query object with
+:code:`query.commit=True`
 
-When :code:`remove_when_done=True` and :code:`read_if_exists=False`, we get a pure temporary cache directory that
-will be deleted when the program finishes. The next time the program is run we always create a new one.
-
-CacheDirectory
-**************
-A CacheDirectory makes up a node in the cache directory tree that can contain zero or
-more CacheDirectory and CachePath instances as its children. CacheRootDirectory is a
-subclass of CacheDirectory.
-
-When we create a CacheDirectory object, the directory is created if not exists, otherwise the
-cache is read from file on disk. To know whether the directory is created anew,
-use the attribute :code:`cache_dir.exists`. To create sub-directory,
-use the following format:
+cache directory
+***************
+A cache directory can be a child directory of a cache root directory or other cache directories.
 
 .. code-block:: Python
 
-    sub_cache_path = cache_dir.cache_subpath(cid='subpath1')  # leaf node
-    sub_cache_dir = cache_dir.cache_subdir(cid='subdir1')  # non-leaf node
-
-Similarly, use :code:`sub_cache_path.exists` to determine if the path exists or not. Note even
-though CachePath class is named path instead of directory, it is a location representing a leaf node,
-that most often points to a directory instead of a file in the file system.
-
-CachePointer
-************
-CachePointer is a struct containing two attributes: A parent directory and a cid indicating where
-under this directory the pointer points to. Both CachePath and CachePointer references a location
-where file or directory may or may not exist, but CachePointer is designed to be flexible that
-you can decide whether to create a CacheDirectory node or a non-CacheDirectory (leaf) node. Below
-shows equivalent ways to create cache files and folders:
-
-.. code-block:: Python
-
-    sub_cache_path = cache_dir.cache_subpath(cid='subpath2')
-    # Equivalently
-    cptr = cache_dir.cache(cid='subpath2')
-    sub_cache_path = cptr.subpath()
-
-    sub_cache_dir = cache_dir.cache_subdir(cid='subdir2')
-    # Equivalently
-    cptr = cache_dir.cache(cid='subdir2')
-    sub_cache_path = cptr.subdir()
-
-It may seem unnecessary to create a CachePointer instance just to defer the decision of whether to create
-a CachePath or a CacheDirectory child, but it comes in handy when you want to design the interface for a
-function where the caller does not need to care whether you want a leaf node or a non-leaf node.
-
-.. code-block:: Python
-
-    # implementation 1
-    def compute(im, cptr):
-        result = (im + 1) * 3
-        cache_path = cptr.subpath()
-        if not cache_path.exists:
-            result.save(cache_path.url)
-        return load(cache_path.url)
-
-    # implementation 2 (functionally equivalent but creates two sub-directories)
-    def compute(im, cptr):
-        cache_dir = cptr.subdir()
-        im2 = plus_one(im=im, cptr=cache_dir.cache('plus_one'))
-        im3 = times_three(im=im2, cptr=cache_dir.cache('times_three'))
-        return im3
-
-    result = compute(im=input_im, temp_directory.cache(cid='compute'))
-
-    # DISPLAY RESULT...
-
-Finding Cached Files
-********************
-The second time the program is run, it looks into the directory specified by the
-CacheRootDirecotry instance and recursively takes every folder of the format "{is_dir}_{is_tmp}_{cid}" as
-its children. There is nothing fancy about what's happening in a cache directory tree, as the mechanism
-is quite simple: Each function looks in the same place as the last time they were run, and if a file
-exists, it is read; otherwise a new file is created.
-
-This makes it simple to manually remove files from the directory during re-computation: Only the
-results that come after the changed parts need to be removed and then running the program again will
-recompute them automatically.
+    import cvpl_tools.tools.fs as tlfs
+    loc = f'path/to/root'  # a remote url will work as well
+    query = tlfs.cdir_init(loc)
+    if not query.commit:  # if this is first time, compute the result instead of read from saved result
+        sub_query = tlfs.cdir_init(f'{loc}/subdir')
+        if query.commit:
+            print('subdirectory is already created')
+        else:
+            print('subdirectory created successfully')
 
 Tips
 ****
-- when writing a compute function that cache to a single location, receive a CachePointer object instead of
-  a CachePath or CacheDirectory object. This brings flexibility as it's up to the callee to decide whether
-  a sub-path or a sub-directory will be created and you may even decide
-  to not create the directory at all if no cache is needed, separating the function's implementation
-  from its interface.
+- when writing a process function that cache to a single location, receive a cache_url object as a keyed
+  item :code:`context_args["cache_url"]` which can be None if we don't want to write to disk
 - Dask duplicates some computation twice because it does not support on-disk caching directly, using cache
   files in each step can avoid this issue and help speedup computation.
 - cache the images in a viewer-readable format. For OME-ZARR a flat image chunking scheme is
-  suitable for 2D viewers like Napari. Rechunking when loading back to memory may be slower but is usually
+  suitable for 2D viewers like Napari. Re-chunking when loading back to memory may be slower but is usually
   not a big issue.
