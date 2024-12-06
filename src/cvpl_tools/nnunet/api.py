@@ -324,7 +324,10 @@ async def mousebrain_forward(dask_worker,
     async def compute_per_pixel_multiplier():
         with RDirFileSystem(NEG_MASK_PATH).open('', mode='rb') as infile:
             neg_mask = tifffile.imread(infile)
-        neg_mask = da.from_array(neg_mask, chunks=(64, 64, 64))
+        neg_mask = dask_ndinterp.scale_nearest(da.from_array(neg_mask, chunks=(16, 16, 16)),
+                                               scale=(2, 2, 2),
+                                               output_shape=neg_mask.shape,
+                                               output_chunks=(32, 32, 32)).persist()
         with RDirFileSystem(GCS_BIAS_PATH).open('', mode='rb') as infile:
             bias = tifffile.imread(infile)
         bias = da.from_array(bias, chunks=(32, 32, 32))
