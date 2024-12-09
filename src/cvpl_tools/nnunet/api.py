@@ -73,7 +73,7 @@ async def mousebrain_forward(dask_worker,
                              GCS_BIAS_PATH: str,
                              BA_CHANNEL: int,
                              MAX_THRESHOLD: float,
-                             bias_to_im_upscale: tuple,
+                             ppm_to_im_upscale: tuple,
                              ):
     # passing of dask_worker is credit to fjetter at https://github.com/dask/distributed/issues/8152
     from dask.distributed import Worker
@@ -327,13 +327,10 @@ async def mousebrain_forward(dask_worker,
             neg_mask = tifffile.imread(infile)
         with RDirFileSystem(GCS_BIAS_PATH).open('', mode='rb') as infile:
             bias = tifffile.imread(infile)
-        neg_mask = dask_ndinterp.scale_nearest(da.from_array(neg_mask, chunks=(16, 16, 16)),
-                                               scale=(2, 2, 2),
-                                               output_shape=bias.shape,
-                                               output_chunks=(32, 32, 32)).persist()
+        neg_mask = da.from_array(neg_mask, chunks=(64, 64, 64))
         bias = da.from_array(bias, chunks=(32, 32, 32))
-        bias = dask_ndinterp.scale_nearest(bias,
-                                           scale=(2, 2, 2), output_shape=neg_mask.shape, output_chunks=(64, 64, 64))
+        bias = dask_ndinterp.scale_nearest(bias, scale=(2, 2, 2),
+                                           output_shape=neg_mask.shape, output_chunks=(64, 64, 64))
         return (1 - neg_mask) / bias
 
     ppm_layer_args = dict(name='ppm', colormap='bop blue')
@@ -344,7 +341,7 @@ async def mousebrain_forward(dask_worker,
                                )))
 
     async def compute_masking():
-        im = cur_im * dask_ndinterp.scale_nearest(ppm, scale=bias_to_im_upscale,
+        im = cur_im * dask_ndinterp.scale_nearest(ppm, scale=ppm_to_im_upscale,
                                                   output_shape=cur_im.shape, output_chunks=(256, 512, 512))
         im = (im / MAX_THRESHOLD).clip(0., 1.)
         return im.astype(np.float16)

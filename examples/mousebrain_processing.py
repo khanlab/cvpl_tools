@@ -59,23 +59,26 @@ def main(run_nnunet: bool = True, run_coiled_process: bool = True):
     )
     print(f'second and third downsample done. second_downsample.shape={second_downsample.shape}, third_downsample.shape={third_downsample.shape}')
 
+    third_downsample_bias_path = f'C:/Users/than83/Documents/progtools/datasets/annotated/canvas_{SUBJECT_ID}/bias.ome.zarr'
     third_downsample_bias = n4.obtain_bias(third_downsample,
-                                           write_loc=f'C:/Users/than83/Documents/progtools/datasets/annotated/canvas_{SUBJECT_ID}/bias.ome.zarr')
+                                           write_loc=third_downsample_bias_path)
     print('third downsample bias done.')
 
     print(f'im.shape={second_downsample.shape}, bias.shape={third_downsample_bias.shape}; applying bias over image to obtain corrected image...')
     second_downsample_bias = dask_ndinterp.scale_nearest(third_downsample_bias, scale=(2, 2, 2),
                                                          output_shape=second_downsample.shape, output_chunks=(4, 4096, 4096)).persist()
+
+    second_downsample_corr_path = f'{TARGET_FOLDER}/im_corrected.ome.zarr'
     second_downsample_corr = current_im_py.apply_bias(second_downsample, (1,) * 3, second_downsample_bias, (1,) * 3)
-    asyncio.run(ome_io.write_ome_zarr_image(f'{TARGET_FOLDER}/im_corrected.ome.zarr', da_arr=second_downsample_corr, MAX_LAYER=1))
+    asyncio.run(ome_io.write_ome_zarr_image(second_downsample_corr_path, da_arr=second_downsample_corr, MAX_LAYER=1))
     print('second downsample corrected image done')
 
-    first_downsample_correct_path = f'C:/Users/than83/Documents/progtools/datasets/lightsheet_downsample/sub-{SUBJECT_ID}_corrected.ome.zarr'
-    first_downsample_bias = dask_ndinterp.scale_nearest(third_downsample_bias, scale=(4, 4, 4),
-                                                        output_shape=first_downsample.shape,
-                                                        output_chunks=(4, 4096, 4096)).persist()
-    first_downsample_corr = current_im_py.apply_bias(first_downsample, (1,) * 3, first_downsample_bias, (1,) * 3)
-    asyncio.run(ome_io.write_ome_zarr_image(first_downsample_correct_path, da_arr=first_downsample_corr, MAX_LAYER=2))
+    # first_downsample_correct_path = f'C:/Users/than83/Documents/progtools/datasets/lightsheet_downsample/sub-{SUBJECT_ID}_corrected.ome.zarr'
+    # first_downsample_bias = dask_ndinterp.scale_nearest(third_downsample_bias, scale=(4, 4, 4),
+    #                                                     output_shape=first_downsample.shape,
+    #                                                     output_chunks=(4, 4096, 4096)).persist()
+    # first_downsample_corr = current_im_py.apply_bias(first_downsample, (1,) * 3, first_downsample_bias, (1,) * 3)
+    # asyncio.run(ome_io.write_ome_zarr_image(first_downsample_correct_path, da_arr=first_downsample_corr, MAX_LAYER=2))
 
     if run_nnunet is False:
         return
@@ -83,7 +86,7 @@ def main(run_nnunet: bool = True, run_coiled_process: bool = True):
     NNUNET_OUTPUT_DIR = f'{CACHE_DIR}/predict/0_{SUBJECT_ID}.tiff'
     pred_args = {
         "cache_url": CACHE_DIR,
-        "test_im": TARGET_PATH,
+        "test_im": second_downsample_corr_path,
         "test_seg": None,
         "output": NNUNET_OUTPUT_DIR,
         "dataset_id": 1,
@@ -101,16 +104,16 @@ def main(run_nnunet: bool = True, run_coiled_process: bool = True):
 
     # COILED PROCESSING
     GCS_NEG_MASK_TGT = f'gcs://khanlab-scratch/tmp/0_{SUBJECT_ID}.tiff'
-    GCS_BIAS_PATH = f'gcs://khanlab-scratch/tmp/0_{SUBJECT_ID}_bias.tiff'
+    GCS_BIAS_PATH = f'gcs://khanlab-scratch/tmp/0_{SUBJECT_ID}_corr.tiff'
     cvpl_nnunet_api.upload_negmask(
         NNUNET_OUTPUT_DIR,
         GCS_NEG_MASK_TGT,
-        current_im_py.get_optional_zip_path(first_downsample_correct_path),
+        third_downsample_bias_path,
         f'{TARGET_FOLDER}/.temp',
         GCS_BIAS_PATH
     )
 
-    bias_to_im_upscale = (4, 8, 8)
+    ppm_to_im_upscale = (4, 8, 8)
     async def fn(dask_worker):
         return await cvpl_nnunet_api.mousebrain_forward(
             dask_worker=dask_worker,
@@ -120,7 +123,7 @@ def main(run_nnunet: bool = True, run_coiled_process: bool = True):
             GCS_BIAS_PATH=GCS_BIAS_PATH,
             BA_CHANNEL=BA_CHANNEL,
             MAX_THRESHOLD=MAX_THRESHOLD,
-            bias_to_im_upscale=bias_to_im_upscale
+            ppm_to_im_upscale=ppm_to_im_upscale
         )
     cvpl_nnunet_api.coiled_run(fn=fn, nworkers=10, local_testing=False)
 
