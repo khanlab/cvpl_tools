@@ -369,5 +369,3 @@ async def mousebrain_forward(dask_worker,
     print(f'ending  elapsed: {time.time() - midtime}')
     cnt = ncell_list.sum().item()
     print(f'{item.name}:', cnt)
-
-    return lc

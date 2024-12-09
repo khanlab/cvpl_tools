@@ -35,6 +35,7 @@ def parse_args():
     predict_parser.add_argument("--triplanar", action="store_true")
     predict_parser.add_argument("--penalize_edge", action="store_true")
     predict_parser.add_argument('--weights', nargs='+', type=float, default=None)
+    predict_parser.add_argument("--use_cache", action="store_true")
 
     # Compute dice on volume
     dice_parser = subparsers.add_parser("dice", help="Compute dice between volumes")
@@ -75,6 +76,7 @@ if __name__ == "__main__":
             "triplanar": args.triplanar,
             "penalize_edge": args.penalize_edge,
             "weights": args.weights,
+            "use_cache": args.use_cache,
         }
         triplanar.predict_triplanar(pred_args)
 

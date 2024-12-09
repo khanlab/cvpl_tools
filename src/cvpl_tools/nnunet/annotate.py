@@ -1,18 +1,17 @@
 import os.path
 
-import monai_wrapper.tools.global_vars as global_vars
-import monai_wrapper.tools.current_im as current_im
+import cvpl_tools.nnunet.current_im as current_im
 import napari
 import numpy as np
 import tifffile
 import dask.array as da
-from monai_wrapper.nnunet.triplanar import dice_on_volume_pair
+from cvpl_tools.nnunet.triplanar import dice_on_volume_pair
 
 
 def get_canvas(canvas_path, canvas_ref_path, canvas_shape):
     if os.path.exists(canvas_path):
         READ_PATH = canvas_path
-    elif os.path.exists(canvas_ref_path):
+    elif canvas_ref_path is not None and os.path.exists(canvas_ref_path):
         READ_PATH = canvas_ref_path
     else:
         READ_PATH = None
@@ -25,10 +24,10 @@ def get_canvas(canvas_path, canvas_ref_path, canvas_shape):
     return canvas
 
 
-def annotate(viewer, im_annotate, annotation_folder):
+def annotate(viewer, im_annotate, annotation_folder, canvas_path, SUBJECT_ID: str):
     """
     usage:
-    import monai_wrapper.tools.annotate as ann
+    import cvpl_tools.nnunet.annotate as ann
     ann.annotate()
     """
     import magicgui
@@ -36,9 +35,7 @@ def annotate(viewer, im_annotate, annotation_folder):
 
     im_layer = viewer.add_image(im_annotate, name='im', **current_im_py.calc_tr_sc_args(voxel_scale=(1,) * 3, display_shape=im_annotate.shape))
 
-    CANVAS_PATH = f'{annotation_folder}/canvas_{global_vars.SUBJECT_ID}.tiff'
-    CANVAS_REF_PATH = f'{annotation_folder}/canvas_{global_vars.SUBJECT_ID}_ref.tiff'
-    canvas = get_canvas(CANVAS_PATH, CANVAS_REF_PATH, im_annotate.shape)
+    canvas = get_canvas(canvas_path, None, im_annotate.shape)
     canvas_layer = viewer.add_labels(canvas, name='canvas', **current_im.calc_tr_sc_args(voxel_scale=(2,) * 3, display_shape=im_annotate.shape))
 
     for path in tuple(
@@ -73,7 +70,7 @@ def annotate(viewer, im_annotate, annotation_folder):
     def save_canvas(_: napari.Viewer):
         nonlocal canvas
         canvas = canvas_layer.data
-        tifffile.imwrite(CANVAS_PATH, canvas)
+        tifffile.imwrite(canvas_path, canvas)
 
     @magicgui.magicgui(value={'max': 100000})
     def image_arithmetic(
@@ -84,9 +81,8 @@ def annotate(viewer, im_annotate, annotation_folder):
         if layerA is not None:
             arr = np.zeros(layerA.shape, dtype=np.uint8)
             arr[:] = layerA > value
-            viewer.add_labels(arr, name='result',
-                              **current_im.calc_tr_sc_args())
-            # return layerA > value
-        return None
+            viewer.add_labels(arr,
+                              name='result',
+                              **current_im.calc_tr_sc_args(voxel_scale=(1,) * 3, display_shape=im_annotate.shape))
 
     viewer.window.add_dock_widget(image_arithmetic)

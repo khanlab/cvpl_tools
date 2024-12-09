@@ -86,13 +86,29 @@ def downsample(im,
             if str(horizontal_min) not in group:
                 horizontal_min = ome_zarr_io.get_highest_downsample_level(group)
             im = da.from_array(group[str(horizontal_min)])
+            print(f'Initial local image is not found, downsample from the network, network image at level {horizontal_min} is of size {im.shape}')
+            if ba_channel is not None and not isinstance(ba_channel, int):
+                # ba_channel is a tuple of slice objects on each dimension
+                # ba_channel is a region in the original image, therefore would be smaller after downsample in horizontal directions (x and y)
+                current_downsample = 2 ** horizontal_min
+                new_ba_channel = [ba_channel[0], ba_channel[1]]
+                if len(ba_channel) > 2:
+                    for i in range(2, len(ba_channel)):
+                        sli = ba_channel[i]
+                        start = sli.start // current_downsample if isinstance(sli.start, int) else sli.start
+                        stop = sli.stop // current_downsample if isinstance(sli.stop, int) else sli.stop
+                        assert sli.step == 1 or sli.step is None, f'{sli}'
+                        new_sli = slice(start, stop)
+                        new_ba_channel.append(new_sli)
+                print(f'Recalculating ba_channel for efficient downsampling: {ba_channel} -> {new_ba_channel}')
+                ba_channel = tuple(new_ba_channel)
             further_downsample = tuple(l - horizontal_min for l in ndownsample_level[1:])
         else:
+            print(f'Initial local image is not found, downsample from the network, network image is of size {im.shape}')
             further_downsample = ndownsample_level[1:]
         if ba_channel is not None:
             im = im[ba_channel]
 
-        print(f'Initial local image is not found, downsample from the network, network image is of size {im.shape}')
         downsample_factor_vertical = 2 ** ndownsample_level[0]
         im = dask_ndinterp.measure_block_reduce(im,
                                                 block_size=(downsample_factor_vertical,

@@ -410,6 +410,7 @@ def predict_triplanar(predict_args: dict):
     dataset_id = predict_args["dataset_id"]
     fold = predict_args["fold"]
     output_path = predict_args["output"]
+    use_cache = predict_args["use_cache"]
 
     print('globbing OME ZARR images')
     test_im = predict_args.pop('test_im')
@@ -423,6 +424,9 @@ def predict_triplanar(predict_args: dict):
 
     train_cdir = f'{cache_url}/train'
     predict_cdir = f'{cache_url}/predict'
+    predict_cdir_fs = RDirFileSystem(predict_cdir)
+    if not use_cache and predict_cdir_fs.exists(''):
+        predict_cdir_fs.rm('', recursive=True)
     input_cdir = f'{predict_cdir}/input'  # input images in nnunet format
     prediction_cdir = f'{predict_cdir}/prediction'  # model outputs from unet
 
