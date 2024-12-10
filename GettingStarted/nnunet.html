@@ -162,10 +162,22 @@ voxel location (z, y, x); then, we apply threshold on M’ and take connected co
 plaque objects; their centroid locations and sizes (in number of voxels) are summarized in a numpy table and
 reported</p></li>
 </ol>
-<p>In this next part, we discuss the annotation part 2, training part 3 and prediction part 4.</p>
+<p>In this next part, we discuss the annotation (part 2), training (part 3) and prediction (part 4).</p>
 </section>
-<section id="todo">
-<h2>TODO<a class="headerlink" href="#todo" title="Permalink to this heading"></a></h2>
+<section id="annotation">
+<h2>Annotation<a class="headerlink" href="#annotation" title="Permalink to this heading"></a></h2>
+<p>Data quality is the most crucial to accurate predictions, in which case this is relevant to us in terms of how
+well we can annotate the 3d image volume at hand. Our annotation is the negative masking of edge areas of the
+brain to remove edges before applying simple thresholding. We model how good an annotation of negative mask by
+looking at:</p>
+<ol class="arabic simple">
+<li><p>For the simple threshold of choice t, how many voxels are above the threshold across the entire image,
+say V</p></li>
+<li><p>The number of voxels covered by plaques areas above threshold t, and how many of them are correctly annotated
+as 0, and how many of them are incorrectly annotated as 1</p></li>
+<li><p>The number of voxels covered by brain edge areas above threshold t, and how many of them are correctly annotated
+as 1, and how many of them are incorrectly annotated as 0</p></li>
+</ol>
 </section>
 </section>
 
