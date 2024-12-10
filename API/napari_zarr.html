@@ -56,7 +56,13 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.ome_zarr.napari.add.py</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.ome_zarr.napari.add.py</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.ome_zarr.napari.add.group"><code class="docutils literal notranslate"><span class="pre">group()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.ome_zarr.napari.add.subarray"><code class="docutils literal notranslate"><span class="pre">subarray()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.ome_zarr.napari.add.group_from_path"><code class="docutils literal notranslate"><span class="pre">group_from_path()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.ome_zarr.napari.add.subarray_from_path"><code class="docutils literal notranslate"><span class="pre">subarray_from_path()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tlfs.html">cvpl_tools.tools.fs.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ndblock.html">cvpl_tools.im.ndblock.py</a></li>
@@ -95,6 +101,57 @@
 associated label OME_ZARR file(s) in the “[image_ome_zarr]/labels/label_name” path, then the
 image and label(s) can be opened together with a single <code class="code docutils literal notranslate"><span class="pre">group_from_path</span></code> call.</p>
 <p class="rubric">APIs</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.ome_zarr.napari.add.group">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.ome_zarr.napari.add.</span></span><span class="sig-name descname"><span class="pre">group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zarr_group</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Group</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lbl_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">napari.layers.Layer</span></span></span><a class="headerlink" href="#cvpl_tools.ome_zarr.napari.add.group" title="Permalink to this definition"></a></dt>
+<dd><p>Add an ome zarr image (if exists) along with its labels (if exist) to viewer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>viewer</strong> – Napari viewer object to attach image to</p></li>
+<li><p><strong>zarr_group</strong> – The zarr group that contains the ome zarr file</p></li>
+<li><p><strong>merge_channels</strong> – If True, display the image as one layers instead of a layer per channel</p></li>
+<li><p><strong>kwargs</strong> – dictionary, keyword arguments to be passed to viewer.add_image for root image</p></li>
+<li><p><strong>lbl_kwargs</strong> – dictionary, keyword arguments to be passed to viewer.add_image for label images</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.ome_zarr.napari.add.subarray">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.ome_zarr.napari.add.</span></span><span class="sig-name descname"><span class="pre">subarray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zarr_group</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Group</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">napari.layers.Layer</span></span></span><a class="headerlink" href="#cvpl_tools.ome_zarr.napari.add.subarray" title="Permalink to this definition"></a></dt>
+<dd><p>Add a multiscale ome zarr image or label to viewer.</p>
+<p>The first channel is assumed to be the channel dimension. This is relevant only if merge_channels=False</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>viewer</strong> (<em>napari.Viewer</em>) – Napari viewer object to attach image to.</p></li>
+<li><p><strong>zarr_group</strong> (<em>zarr.hierarchy.Group</em>) – The zarr group that contains the ome zarr file.</p></li>
+<li><p><strong>merge_channels</strong> – If True, display the image as one layers instead of a layer per channel</p></li>
+<li><p><strong>start_level</strong> (<em>int</em>) – The lowest level (highest resolution) to be added, default to 0</p></li>
+<li><p><strong>is_label</strong> (<em>bool</em>) – If True, display the image as label; this is suitable for instance segmentation
+masks where the results need a distinct color for each number</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments to be passed to viewer.add_image for root image.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.ome_zarr.napari.add.group_from_path">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.ome_zarr.napari.add.</span></span><span class="sig-name descname"><span class="pre">group_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_zip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lbl_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">napari.layers.Layer</span></span></span><a class="headerlink" href="#cvpl_tools.ome_zarr.napari.add.group_from_path" title="Permalink to this definition"></a></dt>
+<dd><p>Add an ome zarr group to napari viewer from given group path.</p>
+<p>This is a combination of load_zarr_group_from_path() and add_ome_zarr_group() functions.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.ome_zarr.napari.add.subarray_from_path">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.ome_zarr.napari.add.</span></span><span class="sig-name descname"><span class="pre">subarray_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_zip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">napari.layers.Layer</span></span></span><a class="headerlink" href="#cvpl_tools.ome_zarr.napari.add.subarray_from_path" title="Permalink to this definition"></a></dt>
+<dd><p>Add an ome zarr array to napari viewer from given array path.</p>
+<p>This is a combination of load_zarr_array_from_path() and add_ome_zarr_group() functions.</p>
+</dd></dl>
+
 </section>
 
 
