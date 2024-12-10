@@ -113,3 +113,20 @@ looking at:
 
 3. The number of voxels covered by brain edge areas above threshold t, and how many of them are correctly annotated
    as 1, and how many of them are incorrectly annotated as 0
+
+these metrics are best summarized as IOU or DICE scores. We look at an example segmentation below.
+
+.. figure:: cvpl_tools/docs/assets/mb_unmasked.png
+    :alt: Slice of mouse brain, unsegmented
+
+    Slice of the mouse brain, not annotated (without negative masking)
+
+.. figure:: cvpl_tools/docs/assets/mb_masked.png
+    :alt: Slice of mouse brain, negative masked
+
+    Slice of the mouse brain, annotated (with negative masking)
+
+Here the algorithm, as intended, marks not only the outer edges of the brain but also some of the brighter inner
+structures as edge areas to be removed, since they can't be plaques. The bright spots on the upper left of the images
+are left as is, for they are all plaques. Overall, the annotation requires quite a bit of labour and it is preferred
+to obtain a high quality annotated volume over many low quality ones.
