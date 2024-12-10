@@ -200,12 +200,12 @@ log_stderr.txt files under your working directory.</p>
 </section>
 <section id="cachedirectory">
 <h2>CacheDirectory<a class="headerlink" href="#cachedirectory" title="Permalink to this heading"></a></h2>
-<p>Different from Dask’s temporary directory, cvpl_tool.tools.fs provides intermediate result
+<p>Different from Dask’s temporary directory, cvpl_tools.tools.fs provides intermediate result
 caching APIs. A multi-step segmentation pipeline may produce many intermediate results, for some of them we
 may discard once computed, and for the others (like the final output) we may want to cache them on the disk
 for access later without having to redo the computation. In order to cache the result, we need a fixed path
-that do not change across program executions. The <code class="code docutils literal notranslate"><span class="pre">cvpl_tool.tools.fs.cdir_init</span></code> and
-<code class="code docutils literal notranslate"><span class="pre">cvpl_tool.tools.fs.cdir_commit</span></code> and ones used to commit and check if the result exist or needs to be
+that do not change across program executions. The <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.tools.fs.cdir_init</span></code> and
+<code class="code docutils literal notranslate"><span class="pre">cvpl_tools.tools.fs.cdir_commit</span></code> and ones used to commit and check if the result exist or needs to be
 computed from scratch.</p>
 <p>In a program, we may cache hierarchically, where there is a root cache directory that is created or loaded
 when the program starts to run, and every cache directory contains subdirectories and step-specific caches.</p>

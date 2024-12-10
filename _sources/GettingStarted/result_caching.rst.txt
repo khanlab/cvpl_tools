@@ -66,10 +66,8 @@ A cache directory can be a child directory of a cache root directory or other ca
 
 Tips
 ****
-- when writing a process function that cache to a single location, receive a cache_url object as a keyed
-  item :code:`context_args["cache_url"]` which can be None if we don't want to write to disk
-- Dask duplicates some computation twice because it does not support on-disk caching directly, using cache
-  files in each step can avoid this issue and help speedup computation.
+- when writing a process function that cache to a single location, pass a cache_url object via
+  :code:`context_args["cache_url"]`, or pass None if we don't want to write to disk
 - cache the images in a viewer-readable format. For OME-ZARR a flat image chunking scheme is
   suitable for 2D viewers like Napari. Re-chunking when loading back to memory may be slower but is usually
   not a big issue.

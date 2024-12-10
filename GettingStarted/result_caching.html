@@ -149,10 +149,8 @@ The next time the program is run, it will not create new folders but return a qu
 <section id="tips">
 <h2>Tips<a class="headerlink" href="#tips" title="Permalink to this heading"></a></h2>
 <ul class="simple">
-<li><p>when writing a process function that cache to a single location, receive a cache_url object as a keyed
-item <code class="code docutils literal notranslate"><span class="pre">context_args[&quot;cache_url&quot;]</span></code> which can be None if we don’t want to write to disk</p></li>
-<li><p>Dask duplicates some computation twice because it does not support on-disk caching directly, using cache
-files in each step can avoid this issue and help speedup computation.</p></li>
+<li><p>when writing a process function that cache to a single location, pass a cache_url object via
+<code class="code docutils literal notranslate"><span class="pre">context_args[&quot;cache_url&quot;]</span></code>, or pass None if we don’t want to write to disk</p></li>
 <li><p>cache the images in a viewer-readable format. For OME-ZARR a flat image chunking scheme is
 suitable for 2D viewers like Napari. Re-chunking when loading back to memory may be slower but is usually
 not a big issue.</p></li>

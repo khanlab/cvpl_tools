@@ -125,12 +125,12 @@ log_stderr.txt files under your working directory.
 CacheDirectory
 **************
 
-Different from Dask's temporary directory, cvpl_tool.tools.fs provides intermediate result
+Different from Dask's temporary directory, cvpl_tools.tools.fs provides intermediate result
 caching APIs. A multi-step segmentation pipeline may produce many intermediate results, for some of them we
 may discard once computed, and for the others (like the final output) we may want to cache them on the disk
 for access later without having to redo the computation. In order to cache the result, we need a fixed path
-that do not change across program executions. The :code:`cvpl_tool.tools.fs.cdir_init` and
-:code:`cvpl_tool.tools.fs.cdir_commit` and ones used to commit and check if the result exist or needs to be
+that do not change across program executions. The :code:`cvpl_tools.tools.fs.cdir_init` and
+:code:`cvpl_tools.tools.fs.cdir_commit` and ones used to commit and check if the result exist or needs to be
 computed from scratch.
 
 In a program, we may cache hierarchically, where there is a root cache directory that is created or loaded

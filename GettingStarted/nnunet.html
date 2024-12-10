@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nn-UNet &mdash; cvpl_tools 0.7.3 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ebffa592"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cvpl_tools
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="result_caching.html">Result Caching</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.ome_zarr.napari.add.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/tlfs.html">cvpl_tools.tools.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/algs.html">cvpl_tools.im.algs</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cvpl_tools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">nn-UNet</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/GettingStarted/nnunet.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="nn-unet">
+<span id="nnunet"></span><h1>nn-UNet<a class="headerlink" href="#nn-unet" title="Permalink to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
+<p>nn-UNet is a UNet based library designed to segment medical images, refer to
+<a class="reference external" href="https://github.com/MIC-DKFZ/nnUNet">github</a> and the following citation:</p>
+<ul class="simple">
+<li><p>Isensee, F., Jaeger, P. F., Kohl, S. A., Petersen, J., &amp; Maier-Hein, K. H. (2021). nnU-Net: a self-configuring
+method for deep learning-based biomedical image segmentation. Nature methods, 18(2), 203-211.</p></li>
+</ul>
+<p>nn-UNet is easiest to use with their command line interface with three commands <code class="code docutils literal notranslate"><span class="pre">nnUNetv2_plan_and_preprocess</span></code>,
+<code class="code docutils literal notranslate"><span class="pre">nnUNetv2_train</span></code> and <code class="code docutils literal notranslate"><span class="pre">nnUNetv2_predict</span></code>.</p>
+<p>For <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code>, <code class="code docutils literal notranslate"><span class="pre">cvpl_tools/nnunet/cli.py</span></code> provides two
+wrapper command line interface commands <code class="code docutils literal notranslate"><span class="pre">train</span></code> and <code class="code docutils literal notranslate"><span class="pre">predict</span></code> that simplify the three commands into
+two and hides unused parameters for SPIMquant workflow.</p>
+<p><code class="code docutils literal notranslate"><span class="pre">cvpl_tools/nnunet</span></code> needs torch library and <code class="code docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">nnunetv2</span></code>. GPU is automatically used when
+<code class="code docutils literal notranslate"><span class="pre">nnUNetv2_train</span></code> and <code class="code docutils literal notranslate"><span class="pre">nnUNetv2_predict</span></code> are called directly or indirectly through <code class="code docutils literal notranslate"><span class="pre">train</span></code> and
+<code class="code docutils literal notranslate"><span class="pre">predict</span></code> and when you have a GPU available on the computer.</p>
+<p>For those unfamiliar, nn-UNet has the following quirks:</p>
+<ul class="simple">
+<li><p>Residual encoder is available for nnunetv2 but we prefer without it since it costs more to train</p></li>
+<li><p>Due to limited training data, 2d instead of 3d_fullres mode is used in <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code></p></li>
+<li><p>It trains on images pairs of input size (C, Y, X) and output size (Y, X) where C is number of color channels
+(1 in our case), and Y, X are spatial coordinates; specifically, N pairs of images will be provided as training
+set and a 80%-20% split will be done for train-validation split which is automatically done by nnUNet. It should
+be noted in our case we draw Z images from a single scan volume (C, Z, Y, X), so a random split will have
+training set distribution correlated with validation set generated by nnUNet, but such thing is hard to avoid</p></li>
+<li><p>The algorithm is not scale-invariant, meaning during prediction, if we zoom the input image by a factor of 2x or
+0.5x we get much worse output results. For best results, use the same input/output image sizes as the training
+phase. In our mousebrain lightsheet dataset, we downsample the original &gt;200GB dataset by a factor of (4, 8, 8)
+before running the nnUNet for training or prediction.</p></li>
+<li><p>The algorithm supports the following epochs, useful for small-scale training in our case:
+<a class="reference external" href="https://github.com/MIC-DKFZ/nnUNet/blob/master/nnunetv2/training/nnUNetTrainer/variants/training_length/nnUNetTrainer_Xepochs.py">link</a>
+if you input number of epochs not listed in this page to the <code class="code docutils literal notranslate"><span class="pre">predict</span></code> command, an error will occur</p></li>
+<li><p>nn-UNet supports 5-fold ensemble, which is to run <code class="code docutils literal notranslate"><span class="pre">nnUNetv2_train</span></code> command 5 times each on a different
+80%-20% split to obtain 5 models to ensemble the prediction. This does not require rerun <code class="code docutils literal notranslate"><span class="pre">nnUNetv2_plan_and_preprocess</span></code>
+and is supported by the <code class="code docutils literal notranslate"><span class="pre">--fold</span></code> argument of <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code>’ <code class="code docutils literal notranslate"><span class="pre">train</span></code> command so
+you don’t need to run it 5 times. If you finish training all folds, you may use the <code class="code docutils literal notranslate"><span class="pre">--fold</span></code> argument of
+<code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code>’ <code class="code docutils literal notranslate"><span class="pre">predict</span></code> command to specify <code class="code docutils literal notranslate"><span class="pre">all</span></code> for better accuracy after ensemble or
+<code class="code docutils literal notranslate"><span class="pre">0</span></code> to specify using the first fold trained for comparison.</p></li>
+<li><p>Running the nn-UNet’s command <code class="code docutils literal notranslate"><span class="pre">nnUNetv2_train</span></code> or <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code>’ <code class="code docutils literal notranslate"><span class="pre">train</span></code> generates one
+<code class="code docutils literal notranslate"><span class="pre">nnUNet_results</span></code> folder, which contains a model (of size a few hundred MBs) and a folder of results
+including a loss/DICE graph and a log file containing training losses per epoch and per class. The
+same model file is used later for prediction.</p></li>
+</ul>
+</section>
+<section id="negative-masking-for-mouse-brain-lightsheet">
+<h2>Negative Masking for Mouse-brain Lightsheet<a class="headerlink" href="#negative-masking-for-mouse-brain-lightsheet" title="Permalink to this heading"></a></h2>
+<p>In this section, we focus primarily on the usage of nn-UNet within <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code>. This part of the
+library is designed with handling mouse-brain lightsheet scans in mind. These scans are large (&gt;200GB)
+volumes of scans in the format of 4d arrays of data type np.uint16 which is of shape (C, Z, Y, X). An
+example is in the google storage bucket
+“gcs://khanlab-lightsheet/data/mouse_appmaptapoe/bids/sub-F4A1Te3/micr/sub-F4A1Te3_sample-brain_acq-blaze4x_SPIM.ome.zarr”
+with an image shape of (3, 1610, 9653, 9634).</p>
+<p>The objective of our algorithm is to quantify the locations and sizes of beta-amyloid plaques in a volume
+of lightsheet scan like the above, which appear as small-sized round-shaped bright spots in the image
+volume, and can be detected using a simple thresholding method.</p>
+<p>Problem comes, however, since the scanned mouse brain edges areas are as bright as the plaques, they
+will be marked as false positives. These edges are relatively easier to detect by a UNet algorithm, which
+results in the following segmentation workflow we use:</p>
+<ol class="arabic simple">
+<li><p>For N mousebrain scans M1, …, MN we have at hand, apply bias correction to smooth out within image brightness
+difference caused by imaging artifacts</p></li>
+<li><p>Then select one of N scans, say M1</p></li>
+</ol>
+<ol class="arabic simple" start="2">
+<li><p>Downsample M1 and use a GUI to paint a binary mask, which contains 1 on regions of edges and 0 on plaques and
+elsewhere</p></li>
+<li><p>Split the M1 volume and its binary mask annotation vertically to Z slices, and train an nnUNet model on these slices</p></li>
+<li><p>Above produces a model that can predict negative masks on any mousebrain scans of the same format; for the rest N-1
+mouse brains, they are down-sampled and we use this model to predict on them to obtain their corresponding negative
+masks</p></li>
+<li><p>These masks are used to remove edge areas of the image before we apply thresholding to find plaque objects.
+Algorithmically, we compute M’ where <code class="code docutils literal notranslate"><span class="pre">M'[z,</span> <span class="pre">y,</span> <span class="pre">x]</span> <span class="pre">=</span> <span class="pre">M[z,</span> <span class="pre">y,</span> <span class="pre">x]</span> <span class="pre">*</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">NEG_MASK[z,</span> <span class="pre">y,</span> <span class="pre">x]</span></code>) for each
+voxel location (z, y, x); then, we apply threshold on M’ and take connected component of value of 1 as individual
+plaque objects; their centroid locations and sizes (in number of voxels) are summarized in a numpy table and
+reported</p></li>
+</ol>
+<p>In this next part, we discuss the annotation part 2, training part 3 and prediction part 4.</p>
+</section>
+<section id="todo">
+<h2>TODO<a class="headerlink" href="#todo" title="Permalink to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, KarlHanUW.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
