@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>cvpl_tools/ome_zarr/napari/add.py &mdash; cvpl_tools 0.7.3 documentation</title>
+  <title>Beta-Amyloid Plaque Detection &mdash; cvpl_tools 0.7.3 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -21,8 +21,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="cvpl_tools/ome_zarr/io.py" href="ome_zarr_io.html" />
-    <link rel="prev" title="Beta-Amyloid Plaque Detection" href="../GettingStarted/beta_amyloid_plaque_detection.html" /> 
+    <link rel="next" title="cvpl_tools/ome_zarr/napari/add.py" href="../API/napari_zarr.html" />
+    <link rel="prev" title="nn-UNet" href="nnunet.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -45,23 +45,23 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/ome_zarr.html">Viewing and IO of OME Zarr</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/setting_up_the_script.html">Setting Up the Script</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/result_caching.html">Result Caching</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/nnunet.html">nn-UNet</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../GettingStarted/beta_amyloid_plaque_detection.html">Beta-Amyloid Plaque Detection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="result_caching.html">Result Caching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nnunet.html">nn-UNet</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Beta-Amyloid Plaque Detection</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.ome_zarr.napari.add.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tlfs.html">cvpl_tools.tools.fs.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ndblock.html">cvpl_tools.im.ndblock.py</a></li>
-<li class="toctree-l1"><a class="reference internal" href="seg_process.html">cvpl_tools.im.process</a></li>
-<li class="toctree-l1"><a class="reference internal" href="algs.html">cvpl_tools.im.algs</a></li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.ome_zarr.napari.add.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/tlfs.html">cvpl_tools.tools.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/algs.html">cvpl_tools.im.algs</a></li>
 </ul>
 
         </div>
@@ -78,9 +78,9 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">cvpl_tools/ome_zarr/napari/add.py</li>
+      <li class="breadcrumb-item active">Beta-Amyloid Plaque Detection</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/API/napari_zarr.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/GettingStarted/beta_amyloid_plaque_detection.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -88,21 +88,23 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="cvpl-tools-ome-zarr-napari-add-py">
-<span id="napari-zarr"></span><h1>cvpl_tools/ome_zarr/napari/add.py<a class="headerlink" href="#cvpl-tools-ome-zarr-napari-add-py" title="Permalink to this heading"></a></h1>
-<p>View source at <a class="reference external" href="https://github.com/khanlab/cvpl_tools/blob/main/src/cvpl_tools/napari/zarr.py">zarr.py</a>.</p>
-<p>For ome zarr images, <code class="code docutils literal notranslate"><span class="pre">subarray_from_path</span></code> can be used generally. If an image has an
-associated label OME_ZARR file(s) in the “[image_ome_zarr]/labels/label_name” path, then the
-image and label(s) can be opened together with a single <code class="code docutils literal notranslate"><span class="pre">group_from_path</span></code> call.</p>
-<p class="rubric">APIs</p>
+  <section id="beta-amyloid-plaque-detection">
+<span id="id1"></span><h1>Beta-Amyloid Plaque Detection<a class="headerlink" href="#beta-amyloid-plaque-detection" title="Permalink to this heading"></a></h1>
+<p>Below is a figure illustrating an overview of the pipeline processing the image volume to a list of centroids:</p>
+<figure class="align-default" id="id2">
+<img alt="Slice of mouse brain, unsegmented" src="GettingStarted/cvpl_tools/docs/assets/image_to_list_of_centroids.png" />
+<figcaption>
+<p><span class="caption-text">pipeline overview</span><a class="headerlink" href="#id2" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../GettingStarted/beta_amyloid_plaque_detection.html" class="btn btn-neutral float-left" title="Beta-Amyloid Plaque Detection" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="ome_zarr_io.html" class="btn btn-neutral float-right" title="cvpl_tools/ome_zarr/io.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="nnunet.html" class="btn btn-neutral float-left" title="nn-UNet" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../API/napari_zarr.html" class="btn btn-neutral float-right" title="cvpl_tools/ome_zarr/napari/add.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -34,6 +34,8 @@ or on cloud.
    Setting Up the Script <GettingStarted/setting_up_the_script>
    Defining Segmentation Pipeline <GettingStarted/segmentation_pipeline>
    Result Caching <GettingStarted/result_caching>
+   nn-UNet <GettingStarted/nnunet>
+   Beta-Amyloid Plaque Detection <GettingStarted/beta_amyloid_plaque_detection>
 
 .. toctree::
    :maxdepth: 2

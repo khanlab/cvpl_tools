@@ -20,7 +20,9 @@
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Beta-Amyloid Plaque Detection" href="beta_amyloid_plaque_detection.html" />
+    <link rel="prev" title="Result Caching" href="result_caching.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -43,12 +45,19 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
 <li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="result_caching.html">Result Caching</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">nn-UNet</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#negative-masking-for-mouse-brain-lightsheet">Negative Masking for Mouse-brain Lightsheet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#annotation">Annotation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="beta_amyloid_plaque_detection.html">Beta-Amyloid Plaque Detection</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -178,13 +187,33 @@ as 0, and how many of them are incorrectly annotated as 1</p></li>
 <li><p>The number of voxels covered by brain edge areas above threshold t, and how many of them are correctly annotated
 as 1, and how many of them are incorrectly annotated as 0</p></li>
 </ol>
+<p>these metrics are best summarized as IOU or DICE scores. We look at an example segmentation below.</p>
+<figure class="align-default" id="id1">
+<img alt="Slice of mouse brain, unsegmented" src="GettingStarted/cvpl_tools/docs/assets/mb_unmasked.png" />
+<figcaption>
+<p><span class="caption-text">Slice of the mouse brain, not annotated (without negative masking)</span><a class="headerlink" href="#id1" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+<figure class="align-default" id="id2">
+<img alt="Slice of mouse brain, negative masked" src="GettingStarted/cvpl_tools/docs/assets/mb_masked.png" />
+<figcaption>
+<p><span class="caption-text">Slice of the mouse brain, annotated (with negative masking)</span><a class="headerlink" href="#id2" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+<p>Here the algorithm, as intended, marks not only the outer edges of the brain but also some of the brighter inner
+structures as edge areas to be removed, since they can’t be plaques. The bright spots on the upper left of the images
+are left as is, for they are all plaques. Overall, the annotation requires quite a bit of labour and it is preferred
+to obtain a high quality annotated volume over many low quality ones.</p>
 </section>
 </section>
 
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="result_caching.html" class="btn btn-neutral float-left" title="Result Caching" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="beta_amyloid_plaque_detection.html" class="btn btn-neutral float-right" title="Beta-Amyloid Plaque Detection" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 
