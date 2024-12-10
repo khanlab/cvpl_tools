@@ -116,12 +116,12 @@ looking at:
 
 these metrics are best summarized as IOU or DICE scores. We look at an example segmentation below.
 
-.. figure:: cvpl_tools/docs/assets/mb_unmasked.png
+.. figure:: ../assets/mb_unmasked.png
     :alt: Slice of mouse brain, unsegmented
 
     Slice of the mouse brain, not annotated (without negative masking)
 
-.. figure:: cvpl_tools/docs/assets/mb_masked.png
+.. figure:: ../assets/mb_masked.png
     :alt: Slice of mouse brain, negative masked
 
     Slice of the mouse brain, annotated (with negative masking)
