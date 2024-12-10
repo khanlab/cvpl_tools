@@ -105,5 +105,7 @@ def annotate_neg_mask(SUBJECT_ID):
 
 if __name__ == '__main__':
     inspect_corrected('M4A2Te3Blaze')
+    annotate_neg_mask('M4A2Te3Blaze')
+    inspect_os('M4A2Te3Blaze')
 
 

@@ -188,11 +188,13 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
 
 
 if __name__ == '__main__':
-    ID = 'M4A2Te3Blaze'
-    print(f'Starting prediction on subject {ID}')
-    subject = get_subject(ID)
+    for ID in ALL_SUBJECTS:
+        if ID == 'M4A2Te3Blaze':
+            continue
+        print(f'Starting prediction on subject {ID}')
+        subject = get_subject(ID)
 
-    main(subject=subject, run_nnunet=True, run_coiled_process=True)
-    print(f'Finished predicting on subject {ID}')
+        main(subject=subject, run_nnunet=True, run_coiled_process=True)
+        print(f'Finished predicting on subject {ID}')
 
 
