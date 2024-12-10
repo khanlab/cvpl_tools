@@ -98,19 +98,20 @@ def main(run_nnunet: bool = True, run_coiled_process: bool = True):
     if run_nnunet is False:
         return
 
-    pred_args = {
-        "cache_url": NNUNET_CACHE_DIR,
-        "test_im": SECOND_DOWNSAMPLE_CORR_PATH,
-        "test_seg": None,
-        "output": NNUNET_OUTPUT_TIFF_PATH,
-        "dataset_id": 1,
-        "fold": '0',
-        "triplanar": False,
-        "penalize_edge": False,
-        "weights": None,
-        "use_cache": False,
-    }
-    triplanar.predict_triplanar(pred_args)
+    if not RDirFileSystem(NNUNET_OUTPUT_TIFF_PATH).exists(''):
+        pred_args = {
+            "cache_url": NNUNET_CACHE_DIR,
+            "test_im": SECOND_DOWNSAMPLE_CORR_PATH,
+            "test_seg": None,
+            "output": NNUNET_OUTPUT_TIFF_PATH,
+            "dataset_id": 1,
+            "fold": '0',
+            "triplanar": False,
+            "penalize_edge": False,
+            "weights": None,
+            "use_cache": False,
+        }
+        triplanar.predict_triplanar(pred_args)
 
     if run_coiled_process is False:
         return
