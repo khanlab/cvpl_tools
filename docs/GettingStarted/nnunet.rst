@@ -95,7 +95,21 @@ results in the following segmentation workflow we use:
    plaque objects; their centroid locations and sizes (in number of voxels) are summarized in a numpy table and
    reported
 
-In this next part, we discuss the annotation part 2, training part 3 and prediction part 4.
+In this next part, we discuss the annotation (part 2), training (part 3) and prediction (part 4).
 
-TODO
-****
+Annotation
+**********
+
+Data quality is the most crucial to accurate predictions, in which case this is relevant to us in terms of how
+well we can annotate the 3d image volume at hand. Our annotation is the negative masking of edge areas of the
+brain to remove edges before applying simple thresholding. We model how good an annotation of negative mask by
+looking at:
+
+1. For the simple threshold of choice t, how many voxels are above the threshold across the entire image,
+   say V
+
+2. The number of voxels covered by plaques areas above threshold t, and how many of them are correctly annotated
+   as 0, and how many of them are incorrectly annotated as 1
+
+3. The number of voxels covered by brain edge areas above threshold t, and how many of them are correctly annotated
+   as 1, and how many of them are incorrectly annotated as 0
