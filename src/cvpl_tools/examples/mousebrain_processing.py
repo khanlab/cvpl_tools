@@ -22,6 +22,7 @@ class Subject:
 
     THIRD_DOWNSAMPLE_BIAS_PATH = None
     SECOND_DOWNSAMPLE_CORR_PATH = None
+    FIRST_DOWNSAMPLE_CORR_PATH = None
 
     NNUNET_OUTPUT_TIFF_PATH = None
     GCS_NEG_MASK_TGT = None
@@ -29,7 +30,7 @@ class Subject:
     COILED_CACHE_DIR_PATH = None
 
 
-subjects4x = ('F4A1Te3Blaze', 'F6A2Te3Blaze', 'M1A1Te3Blaze', 'M1A2Te3Blaze', 'M7A1Te4')
+subjects4x = ('F4A1Te3Blaze', 'F6A2Te3Blaze', 'M1A1Te3Blaze', 'M1A2Te3Blaze', 'M7A1Te4Blaze')
 THRESHOLD_TABLE = {
     'o22': (400., 1000.),  # 1
     'o23': (400., 1000.),  # 2
@@ -86,6 +87,7 @@ def get_subject(SUBJECT_ID):
 
     subject.THIRD_DOWNSAMPLE_BIAS_PATH = f'{subject.SUBJECT_FOLDER}/third_downsample_bias.ome.zarr'
     subject.SECOND_DOWNSAMPLE_CORR_PATH = f'{subject.SUBJECT_FOLDER}/second_downsample_corr.ome.zarr'
+    subject.FIRST_DOWNSAMPLE_CORR_PATH = f'{subject.SUBJECT_FOLDER}/first_downsample_corr.ome.zarr'
 
     subject.NNUNET_OUTPUT_TIFF_PATH = f'{subject.SUBJECT_FOLDER}/second_downsample_nnunet.tiff'
     subject.GCS_NEG_MASK_TGT = f'gcs://khanlab-scratch/tmp/{SUBJECT_ID}_second_downsample_nnunet.tiff'
@@ -97,7 +99,7 @@ def get_subject(SUBJECT_ID):
 
 def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = True):
     import numpy as np
-    import cvpl_tools.nnunet.current_im as current_im_py
+    import cvpl_tools.nnunet.lightsheet_preprocess as current_im_py
     import cvpl_tools.nnunet.n4 as n4
     import cvpl_tools.ome_zarr.io as ome_io
     import cvpl_tools.im.algs.dask_ndinterp as dask_ndinterp
@@ -188,8 +190,8 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
 
 
 if __name__ == '__main__':
-    for ID in ALL_SUBJECTS:
-        if ID == 'M4A2Te3Blaze':
+    for ID in ('M7A1Te4Blaze',):
+        if ID in ('M4A2Te3Blaze', 'o22', 'o23'):
             continue
         print(f'Starting prediction on subject {ID}')
         subject = get_subject(ID)

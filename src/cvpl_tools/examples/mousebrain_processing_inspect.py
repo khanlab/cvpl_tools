@@ -4,6 +4,8 @@ import tifffile
 import cvpl_tools.ome_zarr.io as ome_io
 import numpy as np
 
+from cvpl_tools.fsspec import RDirFileSystem
+
 
 def inspect_negmask(SUBJECT_ID):
     # second downsample negmask vs. second downsample original image; inspect local image
@@ -56,7 +58,7 @@ def inspect_corrected(SUBJECT_ID):
 
 def inspect_os(SUBJECT_ID):
     import cvpl_tools.ome_zarr.napari.add as nozadd
-    import cvpl_tools.nnunet.current_im as ci
+    import cvpl_tools.nnunet.lightsheet_preprocess as ci
 
     subject = mp.get_subject(SUBJECT_ID)
 
@@ -90,13 +92,27 @@ def inspect_os(SUBJECT_ID):
 
 def annotate_neg_mask(SUBJECT_ID):
     import cvpl_tools.nnunet.annotate as annotate
+    import cvpl_tools.im.algs.dask_ndinterp as dask_ndinterp
+    import cvpl_tools.nnunet.lightsheet_preprocess as lightsheet_preprocess
+    import asyncio
 
     subject = mp.get_subject(SUBJECT_ID)
 
-    im_annotate = ome_io.load_dask_array_from_path(subject.FIRST_DOWNSAMPLE_PATH, mode='r', level=0).compute()
+    if not RDirFileSystem(subject.FIRST_DOWNSAMPLE_CORR_PATH).exists(''):
+        first_downsample = ome_io.load_dask_array_from_path(subject.FIRST_DOWNSAMPLE_PATH, mode='r', level=0)
+        third_downsample_bias = ome_io.load_dask_array_from_path(subject.THIRD_DOWNSAMPLE_BIAS_PATH, mode='r', level=0)
+        first_downsample_bias = dask_ndinterp.scale_nearest(third_downsample_bias, scale=(4, 4, 4),
+                                                             output_shape=first_downsample.shape,
+                                                             output_chunks=(4, 4096, 4096)).persist()
+
+        first_downsample_corr = lightsheet_preprocess.apply_bias(first_downsample, (1,) * 3, first_downsample_bias, (1,) * 3)
+        asyncio.run(ome_io.write_ome_zarr_image(subject.FIRST_DOWNSAMPLE_CORR_PATH, da_arr=first_downsample_corr, MAX_LAYER=2))
+    first_downsample_corr = ome_io.load_dask_array_from_path(subject.FIRST_DOWNSAMPLE_CORR_PATH, mode='r', level=0).compute()
+    print('second downsample corrected image done')
+
     viewer = napari.Viewer(ndisplay=2)
     annotate.annotate(viewer,
-                      im_annotate,
+                      first_downsample_corr,
                       annotation_folder=subject.SUBJECT_FOLDER,
                       canvas_path=subject.NNUNET_OUTPUT_TIFF_PATH,
                       SUBJECT_ID=subject.SUBJECT_ID)
@@ -104,8 +120,13 @@ def annotate_neg_mask(SUBJECT_ID):
 
 
 if __name__ == '__main__':
-    inspect_corrected('M4A2Te3Blaze')
-    annotate_neg_mask('M4A2Te3Blaze')
-    inspect_os('M4A2Te3Blaze')
+    for ID in mp.ALL_SUBJECTS:
+        if ID in ('M4A2Te3Blaze', 'o22', 'o23'):
+            continue
+        print(f'Starting inspection on subject {ID}')
+
+        inspect_corrected(ID)
+        annotate_neg_mask(ID)
+        inspect_os(ID)
 
 

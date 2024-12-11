@@ -1,6 +1,6 @@
 import os.path
 
-import cvpl_tools.nnunet.current_im as current_im
+import cvpl_tools.nnunet.lightsheet_preprocess as lightsheet_preprocess
 import napari
 import numpy as np
 import tifffile
@@ -31,12 +31,12 @@ def annotate(viewer, im_annotate, annotation_folder, canvas_path, SUBJECT_ID: st
     ann.annotate()
     """
     import magicgui
-    import cvpl_tools.nnunet.current_im as current_im_py
+    import cvpl_tools.nnunet.lightsheet_preprocess as lightsheet_preprocess
 
-    im_layer = viewer.add_image(im_annotate, name='im', **current_im_py.calc_tr_sc_args(voxel_scale=(1,) * 3, display_shape=im_annotate.shape))
+    im_layer = viewer.add_image(im_annotate, name='im', **lightsheet_preprocess.calc_tr_sc_args(voxel_scale=(1,) * 3, display_shape=im_annotate.shape))
 
     canvas = get_canvas(canvas_path, None, im_annotate.shape)
-    canvas_layer = viewer.add_labels(canvas, name='canvas', **current_im.calc_tr_sc_args(voxel_scale=(2,) * 3, display_shape=im_annotate.shape))
+    canvas_layer = viewer.add_labels(canvas, name='canvas', **lightsheet_preprocess.calc_tr_sc_args(voxel_scale=(2,) * 3, display_shape=im_annotate.shape))
 
     for path in tuple(
             # 'C:/Users/than83/Documents/progtools/datasets/annotated/canvas_o22_ref.tiff',
@@ -64,7 +64,7 @@ def annotate(viewer, im_annotate, annotation_folder, canvas_path, SUBJECT_ID: st
         print(pred.shape, canvas.shape)
         print(f'dice for {path}:', dice_on_volume_pair(canvas, pred))
         pred = da.from_array(pred)
-        viewer.add_labels(pred, name=path, **current_im.calc_tr_sc_args(voxel_scale=current_im.CANVAS_VOXEL_SCALE, display_shape=im_annotate.shape))
+        viewer.add_labels(pred, name=path, **lightsheet_preprocess.calc_tr_sc_args(voxel_scale=lightsheet_preprocess.CANVAS_VOXEL_SCALE, display_shape=im_annotate.shape))
 
     @viewer.bind_key('ctrl+shift+s')
     def save_canvas(_: napari.Viewer):
@@ -83,6 +83,6 @@ def annotate(viewer, im_annotate, annotation_folder, canvas_path, SUBJECT_ID: st
             arr[:] = layerA > value
             viewer.add_labels(arr,
                               name='result',
-                              **current_im.calc_tr_sc_args(voxel_scale=(1,) * 3, display_shape=im_annotate.shape))
+                              **lightsheet_preprocess.calc_tr_sc_args(voxel_scale=(1,) * 3, display_shape=im_annotate.shape))
 
     viewer.window.add_dock_widget(image_arithmetic)
