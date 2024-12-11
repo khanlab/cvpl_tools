@@ -37,8 +37,8 @@ def inspect_corrected(SUBJECT_ID):
                                                      level=0).compute()
     corr = ome_io.load_dask_array_from_path(subject.SECOND_DOWNSAMPLE_CORR_PATH, mode='r',
                                                      level=0).compute()
-    viewer.add_image(corr, name='corr')
-    viewer.add_image(im, name='im', visible=False)
+    viewer.add_image(corr, name='corr', contrast_limits=[0., subject.MAX_THRESHOLD])
+    viewer.add_image(im, name='im', visible=False, contrast_limits=[0., subject.MAX_THRESHOLD])
 
     @magicgui.magicgui(value={'max': 100000})
     def image_arithmetic(
@@ -69,7 +69,8 @@ def inspect_os(SUBJECT_ID):
                            kwargs=dict(
                                name='im',
                                visible=False,
-                               **ci.calc_tr_sc_args(voxel_scale=(1,) * 3, display_shape=display_shape)
+                               **ci.calc_tr_sc_args(voxel_scale=(1,) * 3, display_shape=display_shape),
+                               contrast_limits=[0, 1],
                            ))
     nozadd.group_from_path(viewer,
                            f'{subject.COILED_CACHE_DIR_PATH}/per_pixel_multiplier/dask_im',
