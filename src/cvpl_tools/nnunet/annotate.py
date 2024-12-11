@@ -24,19 +24,32 @@ def get_canvas(canvas_path, canvas_ref_path, canvas_shape):
     return canvas
 
 
-def annotate(viewer, im_annotate, annotation_folder, canvas_path, SUBJECT_ID: str):
+def annotate(viewer, im_annotate, canvas_path, ndownsample_level: int | tuple = None):
+    """Produce a new annotation mask, or fix an existing one if one already exists under canvas_path
+
+    canvas refers to the annotated binary mask, which is painted manually using 2d/3d brushes in Napari viewer.
+
+    Args:
+        viewer: napari.Viewer object that will be responsible for GUI display, and annotation using paint brush
+        im_annotate: Single channel 3d image volume to be annotated
+        canvas_path: Path to which the annotated tiff file will be or has been saved to
+        ndownsample_level: Downsample level from im_annotate to the canvas; integer or tuple of 3 integers
     """
-    usage:
-    import cvpl_tools.nnunet.annotate as ann
-    ann.annotate()
-    """
+
     import magicgui
     import cvpl_tools.nnunet.lightsheet_preprocess as lightsheet_preprocess
 
     im_layer = viewer.add_image(im_annotate, name='im', **lightsheet_preprocess.calc_tr_sc_args(voxel_scale=(1,) * 3, display_shape=im_annotate.shape))
 
-    canvas = get_canvas(canvas_path, None, im_annotate.shape)
-    canvas_layer = viewer.add_labels(canvas, name='canvas', **lightsheet_preprocess.calc_tr_sc_args(voxel_scale=(2,) * 3, display_shape=im_annotate.shape))
+    if ndownsample_level is not None:
+        if isinstance(ndownsample_level, int):
+            ndownsample_level = (ndownsample_level,) * 3
+        canvas_shape = tuple(im_annotate.shape[i] // (2 ** ndownsample_level[i]) for i in range(3))
+    else:
+        canvas_shape = im_annotate.shape
+    canvas = get_canvas(canvas_path, None, canvas_shape)
+    canvas_layer = viewer.add_labels(canvas, name='canvas', **lightsheet_preprocess.calc_tr_sc_args(
+        voxel_scale=(2,) * 3, display_shape=im_annotate.shape))
 
     for path in tuple(
             # 'C:/Users/than83/Documents/progtools/datasets/annotated/canvas_o22_ref.tiff',

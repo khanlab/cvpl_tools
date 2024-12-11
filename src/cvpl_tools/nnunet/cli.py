@@ -63,7 +63,7 @@ if __name__ == "__main__":
             "fold": args.fold,
             "max_threshold": args.max_threshold,
         }
-        model = triplanar.train_triplanar(train_args)
+        triplanar.train_triplanar(train_args)
 
     elif args.command == "predict":
         pred_args = {

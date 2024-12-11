@@ -99,7 +99,7 @@ def get_subject(SUBJECT_ID):
 
 def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = True):
     import numpy as np
-    import cvpl_tools.nnunet.lightsheet_preprocess as current_im_py
+    import cvpl_tools.nnunet.lightsheet_preprocess as lightsheet_preprocess
     import cvpl_tools.nnunet.n4 as n4
     import cvpl_tools.ome_zarr.io as ome_io
     import cvpl_tools.im.algs.dask_ndinterp as dask_ndinterp
@@ -107,17 +107,17 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
     import cvpl_tools.nnunet.triplanar as triplanar
 
     print(f'first downsample: from path {subject.OME_ZARR_PATH}')
-    first_downsample = current_im_py.downsample(
+    first_downsample = lightsheet_preprocess.downsample(
         subject.OME_ZARR_PATH, reduce_fn=np.max, ndownsample_level=(1, 2, 2), ba_channel=subject.BA_CHANNEL,
         write_loc=subject.FIRST_DOWNSAMPLE_PATH
     )
     print(f'first downsample done. result is of shape {first_downsample.shape}')
 
-    second_downsample = current_im_py.downsample(
+    second_downsample = lightsheet_preprocess.downsample(
         first_downsample, reduce_fn=np.max, ndownsample_level=(1,) * 3,
         write_loc=subject.SECOND_DOWNSAMPLE_PATH
     )
-    third_downsample = current_im_py.downsample(
+    third_downsample = lightsheet_preprocess.downsample(
         second_downsample, reduce_fn=np.max, ndownsample_level=(1,) * 3,
         write_loc=subject.THIRD_DOWNSAMPLE_PATH
     )
@@ -131,7 +131,7 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
     second_downsample_bias = dask_ndinterp.scale_nearest(third_downsample_bias, scale=(2, 2, 2),
                                                          output_shape=second_downsample.shape, output_chunks=(4, 4096, 4096)).persist()
 
-    second_downsample_corr = current_im_py.apply_bias(second_downsample, (1,) * 3, second_downsample_bias, (1,) * 3)
+    second_downsample_corr = lightsheet_preprocess.apply_bias(second_downsample, (1,) * 3, second_downsample_bias, (1,) * 3)
     asyncio.run(ome_io.write_ome_zarr_image(subject.SECOND_DOWNSAMPLE_CORR_PATH, da_arr=second_downsample_corr, MAX_LAYER=1))
     print('second downsample corrected image done')
 
@@ -139,7 +139,7 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
     # first_downsample_bias = dask_ndinterp.scale_nearest(third_downsample_bias, scale=(4, 4, 4),
     #                                                     output_shape=first_downsample.shape,
     #                                                     output_chunks=(4, 4096, 4096)).persist()
-    # first_downsample_corr = current_im_py.apply_bias(first_downsample, (1,) * 3, first_downsample_bias, (1,) * 3)
+    # first_downsample_corr = lightsheet_preprocess.apply_bias(first_downsample, (1,) * 3, first_downsample_bias, (1,) * 3)
     # asyncio.run(ome_io.write_ome_zarr_image(first_downsample_correct_path, da_arr=first_downsample_corr, MAX_LAYER=2))
 
     if run_nnunet is False:

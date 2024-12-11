@@ -112,11 +112,11 @@ def annotate_neg_mask(SUBJECT_ID):
     print('second downsample corrected image done')
 
     viewer = napari.Viewer(ndisplay=2)
+    canvas_shape = ome_io.load_dask_array_from_path(subject.SECOND_DOWNSAMPLE_PATH, mode='r', level=0).shape
     annotate.annotate(viewer,
                       first_downsample_corr,
-                      annotation_folder=subject.SUBJECT_FOLDER,
                       canvas_path=subject.NNUNET_OUTPUT_TIFF_PATH,
-                      SUBJECT_ID=subject.SUBJECT_ID)
+                      canvas_shape=canvas_shape)
     viewer.show(block=True)
 
 
