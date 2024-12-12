@@ -51,7 +51,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Setting Up the Script</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#dask-cluster-and-temporary-directory">Dask Cluster and temporary directory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#dask-logging-setup">Dask Logging Setup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#cachedirectory">CacheDirectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cache-directory">cache directory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#a-quicker-setup">A Quicker Setup</a></li>
 </ul>
 </li>
@@ -200,8 +200,8 @@ accidentally close the command window. Below is an example:</p>
 <p>After running this program, you should see outputs in both the command window and the log_stdout.txt and
 log_stderr.txt files under your working directory.</p>
 </section>
-<section id="cachedirectory">
-<h2>CacheDirectory<a class="headerlink" href="#cachedirectory" title="Permalink to this heading"></a></h2>
+<section id="cache-directory">
+<h2>cache directory<a class="headerlink" href="#cache-directory" title="Permalink to this heading"></a></h2>
 <p>Different from Dask’s temporary directory, cvpl_tools.tools.fs provides intermediate result
 caching APIs. A multi-step segmentation pipeline may produce many intermediate results, for some of them we
 may discard once computed, and for the others (like the final output) we may want to cache them on the disk

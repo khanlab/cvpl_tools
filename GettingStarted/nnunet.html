@@ -295,10 +295,51 @@ computer.</p>
 <span class="n">triplanar</span><span class="o">.</span><span class="n">train_triplanar</span><span class="p">(</span><span class="n">train_args</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>250 epochs takes less than half a day to run on a consumer GPU.</p>
 </section>
 <section id="prediction">
 <h2>Prediction<a class="headerlink" href="#prediction" title="Permalink to this heading"></a></h2>
-<p>TODO</p>
+<p>In the training phase we trained our model in the <code class="code docutils literal notranslate"><span class="pre">'nnunet_trained'</span></code> folder. In this folder not everything
+is required for prediction, but only the model file in the path
+<code class="code docutils literal notranslate"><span class="pre">nnunet_trained/train/yx/nnUNet_results/Dataset001_Lightsheet1/nnUNetTrainer_250epochs__nnUNetPlans__2d/fold_0/checkpoint_final.pth</span></code>
+is required. Therefore to reduce file size when you copy this file to other machines for inference, you can
+remove the raw and preprocessed folder as well as the <code class="code docutils literal notranslate"><span class="pre">checkpoint_best.pth</span></code> model. Pack the <code class="code docutils literal notranslate"><span class="pre">nnunet_trained</span></code>
+folder for prediction, as you will need to specify the this path during prediction.</p>
+<p>nn-UNet prediction takes 3 main arguments:</p>
+<ol class="arabic simple">
+<li><p>Path to your nn-UNet trained folder</p></li>
+<li><p>is the tiff file to predict</p></li>
+<li><p>output tiff path</p></li>
+</ol>
+<p>Below gives an example snippet carrying out the prediction on tiff images:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.nnunet.triplanar</span> <span class="k">as</span> <span class="nn">triplanar</span>
+
+<span class="n">pred_args</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;cache_url&quot;</span><span class="p">:</span> <span class="s1">&#39;nnunet_trained&#39;</span><span class="p">,</span>
+    <span class="s2">&quot;test_im&quot;</span><span class="p">:</span> <span class="n">SECOND_DOWNSAMPLE_CORR_PATH</span><span class="p">,</span>
+    <span class="s2">&quot;test_seg&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="s1">&#39;output.tiff&#39;</span><span class="p">,</span>
+    <span class="s2">&quot;dataset_id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;fold&quot;</span><span class="p">:</span> <span class="s1">&#39;0&#39;</span><span class="p">,</span>
+    <span class="s2">&quot;triplanar&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s2">&quot;penalize_edge&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s2">&quot;weights&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="s2">&quot;use_cache&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">triplanar</span><span class="o">.</span><span class="n">predict_triplanar</span><span class="p">(</span><span class="n">pred_args</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Here we are predicting on the training set at SECOND_DOWNSAMPLE_CORR_PATH. In practice we replace this with
+other downsampled and corrected mousebrain lightsheet scan volumes. The prediction will automatically use
+CPU if GPU is not available; or use GPU if one is. Output tiff can be found at ‘output.tiff’, which should
+be the same size as input volume.</p>
+<p>Tips on prediction quality:</p>
+<p>1. Five fold training or prediction can be specified by setting “fold” to “all”. This will improve accuracy
+slightly but takes 5 times the computation resource to train or predict.</p>
+<p>2. The tri-planar option will predict the volume in z/y/x three ways and merge the results, which takes 3 times
+the computation to train or predict. This significantly increases accuracy, but the result mask is often not
+desirable. This is because the ensembed mask often flickers in local areas and can affect contour counting in
+our application, and is harder to interpret when looking through yx cross-sectional plane.</p>
 </section>
 </section>
 

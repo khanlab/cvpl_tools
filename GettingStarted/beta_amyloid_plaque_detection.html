@@ -52,7 +52,11 @@
 <li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="result_caching.html">Result Caching</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nnunet.html">nn-UNet</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Beta-Amyloid Plaque Detection</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Beta-Amyloid Plaque Detection</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#workflow-overview">Workflow Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#python-implementation">Python Implementation</a></li>
+</ul>
+</li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -90,13 +94,143 @@
              
   <section id="beta-amyloid-plaque-detection">
 <span id="id1"></span><h1>Beta-Amyloid Plaque Detection<a class="headerlink" href="#beta-amyloid-plaque-detection" title="Permalink to this heading"></a></h1>
-<p>Below is a figure illustrating an overview of the pipeline processing the image volume to a list of centroids:</p>
+<section id="workflow-overview">
+<h2>Workflow Overview<a class="headerlink" href="#workflow-overview" title="Permalink to this heading"></a></h2>
+<p>This section pertains to mouse brain lightsheet data, in effort to quantify the locations and sizes of plaques
+in a mouse brain lightsheet scan image.</p>
+<p>Below are figures illustrating an overview of the training and prediction stages of the pipeline, ultimately
+processing image volumes each to a list of centroids:</p>
 <figure class="align-default" id="id2">
-<img alt="Slice of mouse brain, unsegmented" src="../_images/image_to_list_of_centroids.png" />
+<img alt="../_images/image_to_nnunet_training.png" src="../_images/image_to_nnunet_training.png" />
 <figcaption>
-<p><span class="caption-text">pipeline overview</span><a class="headerlink" href="#id2" title="Permalink to this image"></a></p>
+<p><span class="caption-text">training workflow, overview</span><a class="headerlink" href="#id2" title="Permalink to this image"></a></p>
 </figcaption>
 </figure>
+<figure class="align-default" id="id3">
+<img alt="../_images/image_to_list_of_centroids.png" src="../_images/image_to_list_of_centroids.png" />
+<figcaption>
+<p><span class="caption-text">prediction workflow, overview</span><a class="headerlink" href="#id3" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+<p>Things to note:</p>
+<p>1. n4 calculation is calculated at third downsample (i.e. (8, 16, 16) times downsampled compared to original)
+level as the n4 bias correction is a smooth operation insensitive to small location change. It runs slowly
+on large images so easier to work with using a smaller input.</p>
+<p>2. The final step of prediction workflow involves 3 inputs: Original full resolution image, third downsampled
+bias image, and second downsampled negative mask prediction. The image is first masked by upsampled negative
+mask, then corrected by the upsampled bias image. Finally, the corrected image is used to compute the list
+of centroids.</p>
+<p>3. The goal of the training workflow is to obtain the model file; after which the model file may be uploaded
+to cloud to be downloaded somewhere else where prediction workflow needs to be run. Unlike other operations
+that can be done on cloud, nn-UNet predicts on local files and write to a local output location (though you
+can write a wrapper that wires the input and output to cloud locations).</p>
+<p>4. Rather than nearest neighbor, downsampling is done using max-pooling to avoid a shift in image origin
+location after downsampling. For up-sampling, this is not an issue.</p>
+</section>
+<section id="python-implementation">
+<h2>Python Implementation<a class="headerlink" href="#python-implementation" title="Permalink to this heading"></a></h2>
+<p>For more information about nn-UNet related annotation, training and prediction, refer to the
+<a class="reference external" href="GettingStarted/nnunet">nn-UNet</a> page.</p>
+<p>Below draws example from the file <code class="code docutils literal notranslate"><span class="pre">cvpl_tools/examples/mousebrain_processing.py</span></code> to explain how various
+steps in the above diagram is done via code. We start with an image on network in OME ZARR file and would
+like to obtain a final counting of list of centroids of where plaques are at.</p>
+<ul class="simple">
+<li><p>Downsampling</p></li>
+</ul>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;first downsample: from path </span><span class="si">{</span><span class="n">subject</span><span class="o">.</span><span class="n">OME_ZARR_PATH</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">first_downsample</span> <span class="o">=</span> <span class="n">lightsheet_preprocess</span><span class="o">.</span><span class="n">downsample</span><span class="p">(</span>
+    <span class="n">subject</span><span class="o">.</span><span class="n">OME_ZARR_PATH</span><span class="p">,</span> <span class="n">reduce_fn</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">,</span> <span class="n">ndownsample_level</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">ba_channel</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">BA_CHANNEL</span><span class="p">,</span>
+    <span class="n">write_loc</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">FIRST_DOWNSAMPLE_PATH</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;first downsample done. result is of shape </span><span class="si">{</span><span class="n">first_downsample</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="n">second_downsample</span> <span class="o">=</span> <span class="n">lightsheet_preprocess</span><span class="o">.</span><span class="n">downsample</span><span class="p">(</span>
+    <span class="n">first_downsample</span><span class="p">,</span> <span class="n">reduce_fn</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">,</span> <span class="n">ndownsample_level</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,)</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">write_loc</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">SECOND_DOWNSAMPLE_PATH</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Here, <code class="code docutils literal notranslate"><span class="pre">lightsheet_preprocess.downsample</span></code> is a function that outputs a dask array, and also writes to
+local disk at <code class="code docutils literal notranslate"><span class="pre">write_loc</span></code>. This location can be either local or on a gcs cloud bucket. Writing to cloud
+allow us to switch coiled cloud computing if needed, as the file location is not bound to our local laptop.</p>
+<p>BA_CHANNEL stands for beta-amyloid channel, which is an integer selecting the channel of the image we want
+to process. the downsample function takes this parameter for 4d images, but can skip for 3d images.</p>
+<ul class="simple">
+<li><p>n4</p></li>
+</ul>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.nnunet.n4</span> <span class="k">as</span> <span class="nn">n4</span>
+
+<span class="n">third_downsample_bias</span> <span class="o">=</span> <span class="k">await</span> <span class="n">n4</span><span class="o">.</span><span class="n">obtain_bias</span><span class="p">(</span><span class="n">third_downsample</span><span class="p">,</span> <span class="n">write_loc</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">THIRD_DOWNSAMPLE_BIAS_PATH</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;third downsample bias done.&#39;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;im.shape=</span><span class="si">{</span><span class="n">second_downsample</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s1">, bias.shape=</span><span class="si">{</span><span class="n">third_downsample_bias</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s1">; applying bias over image to obtain corrected image...&#39;</span><span class="p">)</span>
+<span class="n">second_downsample_bias</span> <span class="o">=</span> <span class="n">dask_ndinterp</span><span class="o">.</span><span class="n">scale_nearest</span><span class="p">(</span><span class="n">third_downsample_bias</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                                                     <span class="n">output_shape</span><span class="o">=</span><span class="n">second_downsample</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">output_chunks</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">))</span><span class="o">.</span><span class="n">persist</span><span class="p">()</span>
+
+<span class="n">second_downsample_corr</span> <span class="o">=</span> <span class="n">lightsheet_preprocess</span><span class="o">.</span><span class="n">apply_bias</span><span class="p">(</span><span class="n">second_downsample</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="n">second_downsample_bias</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span> <span class="o">*</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">ome_io</span><span class="o">.</span><span class="n">write_ome_zarr_image</span><span class="p">(</span><span class="n">subject</span><span class="o">.</span><span class="n">SECOND_DOWNSAMPLE_CORR_PATH</span><span class="p">,</span> <span class="n">da_arr</span><span class="o">=</span><span class="n">second_downsample_corr</span><span class="p">,</span> <span class="n">MAX_LAYER</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;second downsample corrected image done&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="code docutils literal notranslate"><span class="pre">coiled_run</span></code> can be used instead if local laptop can not install <code class="code docutils literal notranslate"><span class="pre">antspyx</span></code> library, as follows:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span> <span class="nf">compute_bias</span><span class="p">(</span><span class="n">dask_worker</span><span class="p">):</span>
+    <span class="n">third_downsample</span> <span class="o">=</span> <span class="n">ome_io</span><span class="o">.</span><span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="n">subject</span><span class="o">.</span><span class="n">THIRD_DOWNSAMPLE_PATH</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">n4</span><span class="o">.</span><span class="n">obtain_bias</span><span class="p">(</span><span class="n">third_downsample</span><span class="p">,</span> <span class="n">write_loc</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">THIRD_DOWNSAMPLE_BIAS_PATH</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">RDirFileSystem</span><span class="p">(</span><span class="n">subject</span><span class="o">.</span><span class="n">THIRD_DOWNSAMPLE_BIAS_PATH</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="n">cvpl_nnunet_api</span><span class="o">.</span><span class="n">coiled_run</span><span class="p">(</span><span class="n">fn</span><span class="o">=</span><span class="n">compute_bias</span><span class="p">,</span> <span class="n">nworkers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">local_testing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">third_downsample_bias</span> <span class="o">=</span> <span class="n">ome_io</span><span class="o">.</span><span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="n">subject</span><span class="o">.</span><span class="n">THIRD_DOWNSAMPLE_BIAS_PATH</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>upscale</p></li>
+</ul>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">second_downsample_bias</span> <span class="o">=</span> <span class="n">dask_ndinterp</span><span class="o">.</span><span class="n">scale_nearest</span><span class="p">(</span><span class="n">third_downsample_bias</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                                                     <span class="n">output_shape</span><span class="o">=</span><span class="n">second_downsample</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">output_chunks</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">))</span><span class="o">.</span><span class="n">persist</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This step takes apparently redundant <code class="code docutils literal notranslate"><span class="pre">output_shape</span></code> parameter alongside scale and the pre-scaled image. However, downscale and
+upscale often has to deal with integer division issues, while the scale is whole number, the larger image size may
+not be a perfect multiple of the size of the image to be scaled. <code class="code docutils literal notranslate"><span class="pre">output_shape</span></code> adjusts for this by crop or pad the
+resulting image with zeros.</p>
+<ul class="simple">
+<li><p>uploading bias and negative mask</p></li>
+</ul>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="ow">not</span> <span class="n">RDirFileSystem</span><span class="p">(</span><span class="n">subject</span><span class="o">.</span><span class="n">GCS_NEG_MASK_TGT</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="n">cvpl_nnunet_api</span><span class="o">.</span><span class="n">upload_negmask</span><span class="p">(</span>
+        <span class="n">subject</span><span class="o">.</span><span class="n">NNUNET_OUTPUT_TIFF_PATH</span><span class="p">,</span>
+        <span class="n">subject</span><span class="o">.</span><span class="n">GCS_NEG_MASK_TGT</span><span class="p">,</span>
+        <span class="n">subject</span><span class="o">.</span><span class="n">THIRD_DOWNSAMPLE_BIAS_PATH</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">subject</span><span class="o">.</span><span class="n">SUBJECT_FOLDER</span><span class="si">}</span><span class="s1">/.temp&#39;</span><span class="p">,</span>
+        <span class="n">subject</span><span class="o">.</span><span class="n">GCS_BIAS_PATH</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>This is an intermediate step not drawn in the diagram. It simply uploads the bias image and nn-UNet output
+negative mask to cloud, since those are computed locally in <code class="code docutils literal notranslate"><span class="pre">mousebrain_processing.py</span></code></p>
+<ul class="simple">
+<li><p>computing list of centroids</p></li>
+</ul>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">ppm_to_im_upscale</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">fn</span><span class="p">(</span><span class="n">dask_worker</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">cvpl_nnunet_api</span><span class="o">.</span><span class="n">mousebrain_forward</span><span class="p">(</span>
+        <span class="n">dask_worker</span><span class="o">=</span><span class="n">dask_worker</span><span class="p">,</span>
+        <span class="n">CACHE_DIR_PATH</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">COILED_CACHE_DIR_PATH</span><span class="p">,</span>
+        <span class="n">ORIG_IM_PATH</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">OME_ZARR_PATH</span><span class="p">,</span>
+        <span class="n">NEG_MASK_PATH</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">GCS_NEG_MASK_TGT</span><span class="p">,</span>
+        <span class="n">GCS_BIAS_PATH</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">GCS_BIAS_PATH</span><span class="p">,</span>
+        <span class="n">BA_CHANNEL</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">BA_CHANNEL</span><span class="p">,</span>
+        <span class="n">MAX_THRESHOLD</span><span class="o">=</span><span class="n">subject</span><span class="o">.</span><span class="n">MAX_THRESHOLD</span><span class="p">,</span>
+        <span class="n">ppm_to_im_upscale</span><span class="o">=</span><span class="n">ppm_to_im_upscale</span>
+    <span class="p">)</span>
+<span class="n">cvpl_nnunet_api</span><span class="o">.</span><span class="n">coiled_run</span><span class="p">(</span><span class="n">fn</span><span class="o">=</span><span class="n">fn</span><span class="p">,</span> <span class="n">nworkers</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">local_testing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="code docutils literal notranslate"><span class="pre">ppm_to_im_upscale</span></code> is the scale from negative mask image to the size of the original image. This is
+the final step of the prediction workflow, where we will obtain our list of centroids from gcs after running
+this. In a local test (without coiled, but still using gcs), we may set <code class="code docutils literal notranslate"><span class="pre">local_testing=True</span></code></p>
+<p>Here, the MAX_THRESHOLD variable specifies the threshold above which objects will be counted as plaque. This
+threshold is applied over corrected ome zarr image based on the original image and bias image provided.</p>
+</section>
 </section>
 
 
