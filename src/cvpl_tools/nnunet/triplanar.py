@@ -391,6 +391,8 @@ def predict_triplanar_volume(model_dir: str, volume: npt.NDArray[np.uint8], stac
             args += ['-tr', trainer_name.strip()]
         if probabilities:
             args += ['--save_probabilities']
+        if not torch.cuda.is_available():
+            args += ['-device', 'cpu']
         nnunet_cmd.run(args)
     else:
         print(f'Predicted results already exist, directly retrieve...')
@@ -548,5 +550,8 @@ def predict_triplanar(predict_args: dict):
 
         if output_path == "":
             output_path = f'{predict_cdir}/{i}.tiff'
+        else:
+            predict_cdir_fs.rm('', recursive=True)
         tifffile.imwrite(output_path, seg_vol)
+
     assert has_any, f'No volume found under path {input_cdir}'

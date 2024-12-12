@@ -78,14 +78,15 @@ def get_subject(SUBJECT_ID):
     subject.OME_ZARR_PATH = OME_ZARR_PATH
     subject.BA_CHANNEL = BA_CHANNEL
 
-    subject.SUBJECT_FOLDER = f'C:/Users/than83/Documents/progtools/datasets/subjects/subject_{SUBJECT_ID}'  # **CHANGE THIS**
-    subject.NNUNET_CACHE_DIR = 'C:/Users/than83/Documents/progtools/datasets/nnunet/Cache_250epoch_Run20241126'  # **CHANGE THIS**
+    FOLDER = 'C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp/mousebrain_processing'
+    subject.SUBJECT_FOLDER = f'{FOLDER}/subjects/subject_{SUBJECT_ID}'  # **CHANGE THIS**
+    subject.NNUNET_CACHE_DIR = f'{FOLDER}/nnunet_250epoch_Run20241126'  # **CHANGE THIS**
 
     subject.FIRST_DOWNSAMPLE_PATH = f'{subject.SUBJECT_FOLDER}/first_downsample.ome.zarr'
     subject.SECOND_DOWNSAMPLE_PATH = f'{subject.SUBJECT_FOLDER}/second_downsample.ome.zarr'
-    subject.THIRD_DOWNSAMPLE_PATH = f'{subject.SUBJECT_FOLDER}/third_downsample.ome.zarr'
+    subject.THIRD_DOWNSAMPLE_PATH = f'gcs://khanlab-scratch/tmp/{SUBJECT_ID}/third_downsample.ome.zarr'
 
-    subject.THIRD_DOWNSAMPLE_BIAS_PATH = f'{subject.SUBJECT_FOLDER}/third_downsample_bias.ome.zarr'
+    subject.THIRD_DOWNSAMPLE_BIAS_PATH = f'gcs://khanlab-scratch/tmp/{SUBJECT_ID}/third_downsample_bias.ome.zarr'
     subject.SECOND_DOWNSAMPLE_CORR_PATH = f'{subject.SUBJECT_FOLDER}/second_downsample_corr.ome.zarr'
     subject.FIRST_DOWNSAMPLE_CORR_PATH = f'{subject.SUBJECT_FOLDER}/first_downsample_corr.ome.zarr'
 
@@ -105,6 +106,7 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
     import cvpl_tools.im.algs.dask_ndinterp as dask_ndinterp
     import asyncio
     import cvpl_tools.nnunet.triplanar as triplanar
+    import cvpl_tools.nnunet.api as cvpl_nnunet_api
 
     print(f'first downsample: from path {subject.OME_ZARR_PATH}')
     first_downsample = lightsheet_preprocess.downsample(
@@ -123,8 +125,12 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
     )
     print(f'second and third downsample done. second_downsample.shape={second_downsample.shape}, third_downsample.shape={third_downsample.shape}')
 
-    third_downsample_bias = n4.obtain_bias(third_downsample,
-                                           write_loc=subject.THIRD_DOWNSAMPLE_BIAS_PATH)
+    async def compute_bias(dask_worker):
+        third_downsample = ome_io.load_dask_array_from_path(subject.THIRD_DOWNSAMPLE_PATH, mode='r', level=0)
+        await n4.obtain_bias(third_downsample, write_loc=subject.THIRD_DOWNSAMPLE_BIAS_PATH)
+    if not RDirFileSystem(subject.THIRD_DOWNSAMPLE_BIAS_PATH).exists(''):
+        cvpl_nnunet_api.coiled_run(fn=compute_bias, nworkers=1, local_testing=False)
+    third_downsample_bias = ome_io.load_dask_array_from_path(subject.THIRD_DOWNSAMPLE_BIAS_PATH, mode='r', level=0)
     print('third downsample bias done.')
 
     print(f'im.shape={second_downsample.shape}, bias.shape={third_downsample_bias.shape}; applying bias over image to obtain corrected image...')
@@ -134,13 +140,6 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
     second_downsample_corr = lightsheet_preprocess.apply_bias(second_downsample, (1,) * 3, second_downsample_bias, (1,) * 3)
     asyncio.run(ome_io.write_ome_zarr_image(subject.SECOND_DOWNSAMPLE_CORR_PATH, da_arr=second_downsample_corr, MAX_LAYER=1))
     print('second downsample corrected image done')
-
-    # first_downsample_correct_path = f'C:/Users/than83/Documents/progtools/datasets/lightsheet_downsample/sub-{SUBJECT_ID}_corrected.ome.zarr'
-    # first_downsample_bias = dask_ndinterp.scale_nearest(third_downsample_bias, scale=(4, 4, 4),
-    #                                                     output_shape=first_downsample.shape,
-    #                                                     output_chunks=(4, 4096, 4096)).persist()
-    # first_downsample_corr = lightsheet_preprocess.apply_bias(first_downsample, (1,) * 3, first_downsample_bias, (1,) * 3)
-    # asyncio.run(ome_io.write_ome_zarr_image(first_downsample_correct_path, da_arr=first_downsample_corr, MAX_LAYER=2))
 
     if run_nnunet is False:
         return
@@ -162,8 +161,6 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
 
     if run_coiled_process is False:
         return
-
-    import cvpl_tools.nnunet.api as cvpl_nnunet_api
 
     if not RDirFileSystem(subject.GCS_NEG_MASK_TGT).exists(''):
         cvpl_nnunet_api.upload_negmask(

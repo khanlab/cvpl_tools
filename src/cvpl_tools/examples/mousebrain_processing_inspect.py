@@ -28,16 +28,22 @@ def inspect_negmask(SUBJECT_ID):
 
 def inspect_corrected(SUBJECT_ID):
     import magicgui
+    import cvpl_tools.ome_zarr.napari.add as nozadd
 
     subject = mp.get_subject(SUBJECT_ID)
 
     viewer = napari.Viewer(ndisplay=2)
 
+    print(subject.SECOND_DOWNSAMPLE_PATH)
+    print(subject.SECOND_DOWNSAMPLE_CORR_PATH)
     im = ome_io.load_dask_array_from_path(subject.SECOND_DOWNSAMPLE_PATH, mode='r',
                                                      level=0).compute()
     corr = ome_io.load_dask_array_from_path(subject.SECOND_DOWNSAMPLE_CORR_PATH, mode='r',
                                                      level=0).compute()
     viewer.add_image(corr, name='corr', contrast_limits=[0., subject.MAX_THRESHOLD])
+    nozadd.group_from_path(viewer, subject.THIRD_DOWNSAMPLE_BIAS_PATH, kwargs=dict(
+        name='bias',
+    ))
     viewer.add_image(im, name='im', visible=False, contrast_limits=[0., subject.MAX_THRESHOLD])
 
     @magicgui.magicgui(value={'max': 100000})
@@ -116,18 +122,18 @@ def annotate_neg_mask(SUBJECT_ID):
     annotate.annotate(viewer,
                       first_downsample_corr,
                       canvas_path=subject.NNUNET_OUTPUT_TIFF_PATH,
-                      canvas_shape=canvas_shape)
+                      ndownsample_level=(2,) * 3)
     viewer.show(block=True)
 
 
 if __name__ == '__main__':
-    for ID in mp.ALL_SUBJECTS:
+    for ID in ('M7A1Te4Blaze',):
         if ID in ('M4A2Te3Blaze', 'o22', 'o23'):
             continue
         print(f'Starting inspection on subject {ID}')
 
         inspect_corrected(ID)
-        annotate_neg_mask(ID)
-        inspect_os(ID)
+        # annotate_neg_mask(ID)
+        # inspect_os(ID)
 
 

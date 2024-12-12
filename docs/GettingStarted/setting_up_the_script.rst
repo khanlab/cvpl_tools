@@ -122,8 +122,8 @@ accidentally close the command window. Below is an example:
 After running this program, you should see outputs in both the command window and the log_stdout.txt and
 log_stderr.txt files under your working directory.
 
-CacheDirectory
-**************
+cache directory
+***************
 
 Different from Dask's temporary directory, cvpl_tools.tools.fs provides intermediate result
 caching APIs. A multi-step segmentation pipeline may produce many intermediate results, for some of them we

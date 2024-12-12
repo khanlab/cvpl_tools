@@ -6,6 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import cvpl_tools.ome_zarr.io as ome_io
 from cvpl_tools.fsspec import RDirFileSystem
+import dask.array as da
 
 
 def bias_correct(im: npt.NDArray, spline_param, shrink_factor, return_bias_field: bool = False) -> npt.NDArray:
@@ -29,7 +30,7 @@ def bias_correct(im: npt.NDArray, spline_param, shrink_factor, return_bias_field
     return imn4
 
 
-def obtain_bias(im: npt.NDArray, write_loc=None) -> npt.NDArray:
+async def obtain_bias(im: npt.NDArray | da.Array, write_loc=None, asynchronous: bool = False) -> npt.NDArray:
     """Returns a bias field numpy array that is of the same size and shape as the input
 
     Corrected image can be obtained by computing im / obtain_bias(im)
@@ -43,11 +44,11 @@ def obtain_bias(im: npt.NDArray, write_loc=None) -> npt.NDArray:
         bias = bias_correct(im, spline_param=(8,) * 3, shrink_factor=4, return_bias_field=True)
         assert isinstance(bias, np.ndarray), f'{bias}'
         if write_loc is not None:
-            asyncio.run(ome_io.write_ome_zarr_image(write_loc,
-                                                    da_arr=da.from_array(bias),
-                                                    MAX_LAYER=1))
+            await ome_io.write_ome_zarr_image(write_loc,
+                                              da_arr=da.from_array(bias),
+                                              MAX_LAYER=1,
+                                              asynchronous=asynchronous)
     if write_loc is not None:
         bias = ome_io.load_dask_array_from_path(write_loc, mode='r', level=0).compute()
 
     return bias
-
