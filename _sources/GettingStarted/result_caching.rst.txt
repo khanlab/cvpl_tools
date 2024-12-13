@@ -9,9 +9,9 @@ In many cases it's useful to cache some of the intermediate results instead of d
 all at once. Think of the following cases where you may have encountered when writing a long-running image processing
 workflow:
 
-1. The cell density for each region in the scan is computed but the number does not match up with what's expected,
-so you want to display a heatmap in a graphical viewer showing cell density. The final results you got is text
-output in the console, requiring redoing the computation to display.
+1. The cell density for each region in the scan is computed, but the number does not match up with what's expected,
+so you want to debug by displaying a heatmap in a graphical viewer showing cell density. However,
+the intermediate result is lost so you need to recompute the density in order to draw the heatmap.
 
 2. Some error occurs and you need to find out why a step in the computation causes the issue, but it's rather
 difficult to understand what went wrong without displaying some intermediate results to aid debugging.
@@ -21,7 +21,7 @@ issues, but requires saving all the results onto disk and chunked in a viewer-fr
 
 In all cases above, caching all the intermediate results help reduce headaches and risks of unknown errors coming
 from the difficulty of debugging in an image processing and distributed computing environment. The basic strategy
-we use to overcome these is to cache all the results inside a directory tree. Each step saves all its
+is to cache all the results inside a directory tree. Each step saves all its
 intermediate and final results onto a node in the tree. The node's children are directories saved by its
 sub-steps.
 
@@ -30,10 +30,10 @@ Here, the outputs of a processing step (function) may contain intermediate image
 
 We describe the CacheDirectory interface in details below.
 
-cache root directory
-********************
-Every cache directory tree starts with a CacheRootDirectory node at its root, which is the only node of that class in
-the tree. In order to create a cache directory tree you need a url to the root directory location, as follows:
+cache directory
+***************
+Every cache directory tree starts with a root directory. In order to create a cache directory tree you
+need a url to the root directory location:
 
 .. code-block:: Python
 
@@ -41,16 +41,13 @@ the tree. In order to create a cache directory tree you need a url to the root d
     loc = f'path/to/root'  # a remote url will work as well
     query = tlfs.cdir_init(loc)
     # Now a directory is created at the given path, so you can start writing cache files to it
+    # ...
+    tlfs.cidr_commit(loc)
 
-This creates two directories 'path/to/root' on the first run,
-the naming of the subfolder indicates that it is :code:`dir` a directory and :code:`cache` a
-persistent cache instead of a temporary folder in that location.
+This creates a directory 'path/to/root' on the first run.
 The next time the program is run, it will not create new folders but return a query object with
-:code:`query.commit=True`
-
-cache directory
-***************
-A cache directory can be a child directory of a cache root directory or other cache directories.
+:code:`query.commit=True`. A cache directory can be a child directory of a cache root directory
+or other cache directories.
 
 .. code-block:: Python
 
@@ -63,6 +60,9 @@ A cache directory can be a child directory of a cache root directory or other ca
             print('subdirectory is already created')
         else:
             print('subdirectory created successfully')
+        # put your code here that writes to the subdir...
+        tlfs.cidr_commit(f'{loc}/subdir')
+    tlfs.cidr_commit(loc)
 
 Tips
 ****

@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Beta-Amyloid Plaque Detection &mdash; cvpl_tools 0.8.1 documentation</title>
+  <title>Beta-Amyloid Plaque Detection &mdash; cvpl_tools 0.8.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ce6c0465"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=f9948e0f"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
@@ -230,6 +230,18 @@ the final step of the prediction workflow, where we will obtain our list of cent
 this. In a local test (without coiled, but still using gcs), we may set <code class="code docutils literal notranslate"><span class="pre">local_testing=True</span></code></p>
 <p>Here, the MAX_THRESHOLD variable specifies the threshold above which objects will be counted as plaque. This
 threshold is applied over corrected ome zarr image based on the original image and bias image provided.</p>
+<p>After running the above code, a numpy file will be written to <code class="code docutils literal notranslate"><span class="pre">f'{subject.COILED_CACHE_DIR_PATH}/final_lc.npy'</span></code>,
+which contains the results in a N * 5 matrix of type np.float64. First three columns are the Z, Y, X locations of
+the plaques, and the fourth and fifth column are sizes (in voxels) and a unique ID for the plaque. To retrieve:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cvpl_tools.fsspec</span> <span class="kn">import</span> <span class="n">RDirFileSystem</span>
+<span class="n">cdir_fs</span> <span class="o">=</span> <span class="n">RDirFileSystem</span><span class="p">(</span><span class="n">subject</span><span class="o">.</span><span class="n">COILED_CACHE_DIR_PATH</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">cdir_fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;final_lc.npy&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fd</span><span class="p">:</span>
+    <span class="n">lc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">cdir_fs</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;First 10 rows of lc:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lc</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Alternatively, use <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.fsspec.copyfile</span></code> function to obtain the .npy file locally.</p>
 </section>
 </section>
 

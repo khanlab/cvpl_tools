@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OME_ZARR &mdash; cvpl_tools 0.8.1 documentation</title>
+  <title>OME_ZARR &mdash; cvpl_tools 0.8.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ce6c0465"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=f9948e0f"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
@@ -103,36 +103,26 @@
 <p>3.After that, type in the command window to invoke functions that add more images as layers.
 To view an ome-zarr file this way with <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code>, use the command</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.ome_zarr.napari.add</span> <span class="k">as</span> <span class="nn">napari_add_ome_zarr</span>
-<span class="n">napari_add_ome_zarr</span><span class="o">.</span><span class="n">subarray</span><span class="p">(</span><span class="n">viewer</span><span class="p">,</span> <span class="s2">&quot;/absolute/path/to/your/ome.zarr&quot;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;displayed_name_in_ui&quot;</span><span class="p">))</span>
+<span class="n">napari_add_ome_zarr</span><span class="o">.</span><span class="n">subarray_from_path</span><span class="p">(</span><span class="n">viewer</span><span class="p">,</span> <span class="s2">&quot;/absolute/path/to/your/ome.zarr&quot;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;displayed_name_in_ui&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 <ul class="simple">
 <li><p>This will create a new layer named <strong>displayed_name_in_ui</strong> which displays your ome zarr array.
-The underlying implementation uses Napari add_image’s multiscale array display</p></li>
+<code class="code docutils literal notranslate"><span class="pre">subarray</span></code> uses Napari’s <code class="code docutils literal notranslate"><span class="pre">add_image</span></code> function’s <code class="code docutils literal notranslate"><span class="pre">multiscale</span></code> argument for this,
+which loads different resolution based on viewer’s current zoom factor</p></li>
 <li><p>To open a <strong>.zip</strong> file, specify ome.zarr.zip in the path (and optionally set use_zip=True to
 open the file as zip regardless of its suffix)</p></li>
 <li><p>To open both the <strong>ome.zarr</strong> file and any label files located at <strong>ome.zarr/labels/label_name</strong>
 as specified by the ome zarr standard, use cvpl_zarr.add_ome_zarr_group_from_path instead.</p></li>
 <li><p>To specify additional arguments passed to Napari’s add_image function, pass your arguments in
 the kwargs as a dictionary.</p></li>
-<li><p>To open an ome zarr image on Google cloud storage, use the following code instead</p></li>
-</ul>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cvpl_tools.ome_zarr.napari.add</span> <span class="k">as</span> <span class="nn">napari_add_ome_zarr</span>
-<span class="kn">import</span> <span class="nn">gcsfs</span>
-<span class="kn">import</span> <span class="nn">zarr</span>
-<span class="n">gfs</span> <span class="o">=</span> <span class="n">gcsfs</span><span class="o">.</span><span class="n">GCSFileSystem</span><span class="p">(</span><span class="n">token</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-<span class="n">store</span> <span class="o">=</span> <span class="n">gfs</span><span class="o">.</span><span class="n">get_mapper</span><span class="p">(</span><span class="s1">&#39;gs://path_to_your.ome.zarr&#39;</span><span class="p">)</span>
-<span class="n">zarr_group</span> <span class="o">=</span> <span class="n">zarr</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
-<span class="n">napari_add_ome_zarr</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="n">viewer</span><span class="p">,</span> <span class="n">zarr_group</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;displayed_name_in_ui&quot;</span><span class="p">))</span>
-</pre></div>
-</div>
-<ul class="simple">
 <li><p>An extra argument <code class="code docutils literal notranslate"><span class="pre">is_label</span></code> can be passed into the function via <code class="code docutils literal notranslate"><span class="pre">kwargs</span></code> dictionary.
 This is a boolean value that specifies whether to use <code class="code docutils literal notranslate"><span class="pre">viewer.add_labels</span></code>
 (if <code class="code docutils literal notranslate"><span class="pre">True</span></code>) or <code class="code docutils literal notranslate"><span class="pre">viewer.add_image</span></code> (if <code class="code docutils literal notranslate"><span class="pre">False</span></code>) function. This is useful for
 displaying instance segmentaion masks, where each segmented object has a distinct color.</p></li>
 </ul>
-<p>Similarly, you can open a zip, or an image with multiple labels this way.</p>
+<p>The zip loading feature does not work with remote location on gcs, because of the limitations of
+ZipStore.</p>
 </section>
 <section id="reading-and-writing-ome-zarr-files">
 <h2>Reading and Writing ome zarr files<a class="headerlink" href="#reading-and-writing-ome-zarr-files" title="Permalink to this heading"></a></h2>
@@ -141,7 +131,7 @@ ome zarr file. A basic ome zarr file (which is what we work with) is a directory
 the following:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">image</span><span class="o">.</span><span class="n">OME</span><span class="o">.</span><span class="n">ZARR</span><span class="o">/</span>  <span class="c1"># The ome zarr image, which is a directory in Windows/Linux</span>
     <span class="o">-</span> <span class="mi">0</span><span class="o">/</span>  <span class="c1"># The original image, in ZARR format</span>
-        <span class="o">+</span> <span class="mi">0</span><span class="o">/</span>  <span class="c1"># Slice of image at first axis X=0</span>
+        <span class="o">+</span> <span class="mi">0</span><span class="o">/</span>  <span class="c1"># Slice of image at first axis Z=0</span>
         <span class="o">+</span> <span class="mi">1</span><span class="o">/</span>
         <span class="o">...</span>
         <span class="o">.</span><span class="n">zarray</span>  <span class="c1"># .zarray is meta attribute for the ZARR image</span>
@@ -156,11 +146,11 @@ the following:</p>
 <p>Above + denotes collapsed folder and - denotes expanded folder. A few things to note here:</p>
 <ul class="simple">
 <li><p>An image does not have to end with .OME.ZARR suffix</p></li>
-<li><p>The image is multiscaled if the maximum downsample level is 0 instead of 4, in which case there
+<li><p>The image is not multiscaled if the maximum downsample level is 0 instead of 4, in which case there
 will only be one 0/ folder</p></li>
-<li><p>You may confuse an ome zarr image with a single ZARR image. An ome zarr image
+<li><p>An ome zarr image is easily confused with a ZARR image. An ome zarr image
 is not a standard ZARR directory and contains no <strong>.zarray</strong> meta file. Loading an ome zarr
-image as ZARR will crash, if you forget to specify <strong>0/</strong> subfolder as the path to load</p></li>
+image as ZARR will crash if you forget to specify <strong>0/</strong> subfolder as the path to load</p></li>
 <li><p>When saved as a zip file instead of a directory, the directory structure is the same except that
 the root is zipped. Loading a zipped ome zarr, cvpl_tools uses <code class="code docutils literal notranslate"><span class="pre">ZipStore</span></code>’s features to
 directly reading individual chunks without having to unpack
@@ -185,10 +175,9 @@ ZARR files, respectively.</p>
 <h2>Specifying slices in path<a class="headerlink" href="#specifying-slices-in-path" title="Permalink to this heading"></a></h2>
 <p><code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code> allows specifying the channel, or x/y/z slices to use in the path string when
 reading or viewing an ome zarr file for convenience.</p>
-<p>The functions <code class="code docutils literal notranslate"><span class="pre">load_dask_array_from_path</span></code> in <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.ome_zarr.io</span></code>, and
-<code class="code docutils literal notranslate"><span class="pre">load_zarr_group_from_path</span></code> as well as <code class="code docutils literal notranslate"><span class="pre">load_ome_zarr_array_from_path</span></code> from
-<code class="code docutils literal notranslate"><span class="pre">cvpl_tools.ome_zarr.napari.add</span></code> support specifying the slices in the following
-syntax, much similar to torch or numpy array slicing:</p>
+<p>The functions <code class="code docutils literal notranslate"><span class="pre">cvpl_tools.ome_zarr.io.load_dask_array_from_path</span></code>, and
+<code class="code docutils literal notranslate"><span class="pre">cvpl_tools.ome_zarr.napari.add.group_from_path/subarray_from_path</span></code>
+support specifying the slices in the following syntax, much similar to torch or numpy array slicing:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">arr_original</span> <span class="o">=</span> <span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="s1">&#39;file.ome.zarr&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># shape=(2, 200, 1000, 1000)</span>
 <span class="n">arr1</span> <span class="o">=</span> <span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="s1">&#39;file.ome.zarr?slices=[0]&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># shape=(200, 1000, 1000)</span>
 <span class="n">arr2</span> <span class="o">=</span> <span class="n">load_dask_array_from_path</span><span class="p">(</span><span class="s1">&#39;file.ome.zarr?slices=[:, :100]&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># shape=(2, 100, 1000, 1000)</span>

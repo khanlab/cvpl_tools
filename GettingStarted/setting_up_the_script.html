@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Setting Up the Script &mdash; cvpl_tools 0.8.1 documentation</title>
+  <title>Setting Up the Script &mdash; cvpl_tools 0.8.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ce6c0465"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=f9948e0f"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
@@ -97,11 +97,11 @@
   <section id="setting-up-the-script">
 <span id="id1"></span><h1>Setting Up the Script<a class="headerlink" href="#setting-up-the-script" title="Permalink to this heading"></a></h1>
 <p>Writing code using cvpl_tools requires some setup code that configures the dask library and other
-utilities we need for our image processing pipeline. Below gives a brief description for the setup of these
-utilities.</p>
+utilities we need for our image processing pipeline. Below briefly describes the setup.</p>
 <section id="dask-cluster-and-temporary-directory">
 <h2>Dask Cluster and temporary directory<a class="headerlink" href="#dask-cluster-and-temporary-directory" title="Permalink to this heading"></a></h2>
-<p>cvpl_tools depends on Dask.</p>
+<p>cvpl_tools depends on <a class="reference external" href="https://github.com/dask/dask">dask</a> library, where many functions of
+cvpl_tools takes dask array as input or output.</p>
 <p>Dask is a multithreaded and distributed computing library, in which temporary results may not fit in
 memory. In such cases, they are written in the temporary directory set in
 the dask config’s <code class="code docutils literal notranslate"><span class="pre">temporary_directory</span></code> variable. When working on HPC system on Compute Canada,
@@ -125,10 +125,9 @@ in the quickstart guide.</p>
 </pre></div>
 </div>
 <p>The line <code class="code docutils literal notranslate"><span class="pre">if</span> <span class="pre">__name__</span> <span class="pre">==</span> <span class="pre">'__main__':</span></code> ensures only the main thread executes the task creation
-code. The line of the <code class="code docutils literal notranslate"><span class="pre">Client()</span></code> call spawns worker threads that executes exactly the same script back from
-the top. If the guarding statement is not present, the worker re-executes the Client creation code and which
-leads to into an infinite loop. However, some complications may stem from this, one of which is described in the
-following example: (I encountered this when displaying large multiscale images):</p>
+code. <code class="code docutils literal notranslate"><span class="pre">Client()</span></code> spawns worker threads that executes the code from top. If the guard if is absent,
+re-execution of the Client creation will crash the program.</p>
+<p>Next problem is relevant to contention of thread resources between dask and Napari:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">dask</span>
     <span class="kn">import</span> <span class="nn">dask.config</span>
@@ -140,26 +139,24 @@ following example: (I encountered this when displaying large multiscale images):
     <span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s1">&#39;temporary_directory&#39;</span><span class="p">:</span> <span class="n">TMP_PATH</span><span class="p">}):</span>
         <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">threads_per_worker</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">viewer</span> <span class="o">=</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">(</span><span class="n">ndisplay</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-        <span class="n">viewer</span><span class="o">.</span><span class="n">add_ome_zarr_array_from_path</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># add a large ome zarr image</span>
+        <span class="n">viewer</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># add a large ome zarr image</span>
         <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># here all threads available will be used to fetch data to show image</span>
 </pre></div>
 </div>
-<p>Napari utilizes all threads on the current process to load chunks from the image when we drag mouse to navigation
-across chunks. With typical dask setup, however, worker threads spawned by the <code class="code docutils literal notranslate"><span class="pre">Client()</span></code> call take up all
-threads except one for the main thread. If viewer.show(block=True) is called
-on the main thread, then Napari viewer does not get the rest of the threads, and the loading speed is slow
-(working but with some lagging). The issue is not in adding the image to the viewer, but in the call to
-viewer.show() where the loading happens. I also found that the loading speed is slow regardless if the value
-of threads_per_worker is set to 1 or more in the Client() initialization.</p>
-<p>My solution: Since a running dask Client object seems to be the cause of the problem, calling client.close()
-before viewer.show(block=True) solves the problem:</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span><span class="o">.</span><span class="n">add_ome_zarr_array_from_path</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># adding image itself does not take too much time</span>
+<p>Napari utilizes all threads on the current process to load image chunks when we navigation camera
+across chunks. With typical dask setup, however, threads spawned by the <code class="code docutils literal notranslate"><span class="pre">Client()</span></code> take up all
+threads except the main thread. If <code class="code docutils literal notranslate"><span class="pre">viewer.show(block=True)</span></code> is called
+on the main thread, then Napari viewer does not get the rest of the threads, and loading speed is slow.
+The issue is not in adding the image to the viewer, but in the call to
+<code class="code docutils literal notranslate"><span class="pre">viewer.show()</span></code> where the loading happens. It’s slow regardless if the value
+of <code class="code docutils literal notranslate"><span class="pre">threads_per_worker</span></code> is 1 or more.</p>
+<p>Calling <code class="code docutils literal notranslate"><span class="pre">client.close()</span></code> to release threads before <code class="code docutils literal notranslate"><span class="pre">viewer.show(block=True)</span></code>
+solves the problem:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># adding image itself does not take too much time</span>
 <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># here resources are freed up</span>
 <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># threads are now available to fetch data to show image</span>
 </pre></div>
 </div>
-<p>This does mean any Napari will not use the cluster if images are added as dask arrays, though Dask arrays
-are processed multithreaded by default without the need of a cluster.</p>
 </section>
 <section id="dask-logging-setup">
 <h2>Dask Logging Setup<a class="headerlink" href="#dask-logging-setup" title="Permalink to this heading"></a></h2>

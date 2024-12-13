@@ -80,16 +80,16 @@ results in the following segmentation workflow we use:
 
 2. Then select one of N scans, say M1
 
-2. Downsample M1 and use a GUI to paint a binary mask, which contains 1 on regions of edges and 0 on plaques and
+3. Downsample M1 and use a GUI to paint a binary mask, which contains 1 on regions of edges and 0 on plaques and
    elsewhere
 
-3. Split the M1 volume and its binary mask annotation vertically to Z slices, and train an nnUNet model on these slices
+4. Split the M1 volume and its binary mask annotation vertically to Z slices, and train an nnUNet model on these slices
 
-4. Above produces a model that can predict negative masks on any mousebrain scans of the same format; for the rest N-1
+5. Above produces a model that can predict negative masks on any mousebrain scans of the same format; for the rest N-1
    mouse brains, they are down-sampled and we use this model to predict on them to obtain their corresponding negative
    masks
 
-5. These masks are used to remove edge areas of the image before we apply thresholding to find plaque objects.
+6. These masks are used to remove edge areas of the image before we apply thresholding to find plaque objects.
    Algorithmically, we compute M' where :code:`M'[z, y, x] = M[z, y, x] * (1 - NEG_MASK[z, y, x]`) for each
    voxel location (z, y, x); then, we apply threshold on M' and take connected component of value of 1 as individual
    plaque objects; their centroid locations and sizes (in number of voxels) are summarized in a numpy table and

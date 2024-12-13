@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Segmentation Pipeline &mdash; cvpl_tools 0.8.1 documentation</title>
+  <title>Segmentation Pipeline &mdash; cvpl_tools 0.8.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ce6c0465"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=f9948e0f"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
@@ -50,7 +50,7 @@
 <li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
 <li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Defining Segmentation Pipeline</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#motivation-microscope-cell-counting-atlas-map-and-object-segmentation">Motivation: Microscope, Cell Counting, Atlas map and Object Segmentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#motivation">Motivation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#segprocess">SegProcess</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#extending-the-pipeline">Extending the Pipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#running-the-pipeline">Running the Pipeline</a></li>
@@ -96,23 +96,21 @@
              
   <section id="segmentation-pipeline">
 <span id="id1"></span><h1>Segmentation Pipeline<a class="headerlink" href="#segmentation-pipeline" title="Permalink to this heading"></a></h1>
-<section id="motivation-microscope-cell-counting-atlas-map-and-object-segmentation">
-<h2>Motivation: Microscope, Cell Counting, Atlas map and Object Segmentation<a class="headerlink" href="#motivation-microscope-cell-counting-atlas-map-and-object-segmentation" title="Permalink to this heading"></a></h2>
+<section id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this heading"></a></h2>
 <p>In our use case, lightsheet microscopy of mouse brain produces several hundreds of GBs of
-data, represented as a 3-dimensional array. This array is stored as an OME
-ZARR file in our case. Distributed processing of the data is necessary to make the analysis time
+data, represented as 3-dimensional arrays with an extra channel axis. This array is stored as an OME
+ZARR file. Distributed computation is necessary to make the analysis time
 trackable, and we choose to use Dask as the distributed computing library for our project.</p>
-<p>As part of our research, we need to use automated method to count different types of visible objects in
-the image. After counting cells, we use a map that maps from pixel location of
-the image to brain regions (this is the <strong>atlas map</strong>) to obtain the density of cells in each region of
+<p>As part of our research, we need to use automated method to count objects in
+the image. Afterwards, we use a map that maps from pixel location of
+the image to brain region segmentation (this is the <strong>atlas map</strong>) to obtain the density of cells in each region of
 the mouse brain. We need to test several methods and find one that would give the most
 accurate counts, and for new incoming data volumes, we want to be able to quickly find a set of parameters
 that works on the new data.</p>
-<p>On the algorithm side, object counting consists of performing a sequence of steps to process an input image
-into densities over regions of the brain, and is relatively simple to understand and implement on a Numpy
-array with small dataset size. On larger datasets, we need to do long-running distributed computation
-that are hard to debug and requires tens of minutes or hours if we need to rerun the computation
-(often just to display the results again).</p>
+<p>On the algorithm side, object counting is easy on a Numpy array with small dataset size.
+On larger datasets, we need to long-running distributed computation
+that are hard to debug and requires hours to run the computation.</p>
 </section>
 <section id="segprocess">
 <h2>SegProcess<a class="headerlink" href="#segprocess" title="Permalink to this heading"></a></h2>
@@ -129,9 +127,9 @@ data analysis.</p>
     <span class="k">return</span> <span class="n">cell_cnt</span>
 </pre></div>
 </div>
-<p>This code may seem complete, but it has a few issues:</p>
-<p>1. Lack of interpretability. Often when we first run this function some bug will show up, for example
-when the output cell count is unexpectedly large. Debugging this becomes a problem since we don’t know
+<p>This code is complete, but notice that:</p>
+<p>1. Lack of interpretability. Often the first run is when some bug shows up.
+Debugging this becomes a problem without some way to look into intermediate results since we don’t know
 if one of the three steps in the cell_count function did not work as expected, or if the algorithm does
 not work well on the input data for some reason. In either case, if we want to find the root cause of
 the problem we very often end up adding code and rerun the pipeline to display the output of each step
@@ -139,9 +137,10 @@ to see if they match with our expectations.</p>
 <p>2. Result is not cached. Ideally the pipeline is run once and we get the result, but more often than
 not the result may need to be used in different places (visualization, analysis etc.). Caching these
 results makes sure computation is done only once, which is necessary when we work with costly algorithms
-on hundreds of GBs of data.</p>
+on hundreds of GBs of data (of course it’s still best to first test on a slice of &lt;1GB of data).</p>
 <p>The basic idea to address 1) is to put visualization as part of the cell_count function, and to address
-2) is to cache the result of each step into a file in a <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code>. It will provide:</p>
+2) is to cache the result of each step into a file in a <code class="code docutils literal notranslate"><span class="pre">CacheDirectory</span></code>. In more details, we
+want a image processing pipeline that provide:</p>
 <p>1. dask-support. Inputs are expected to be either numpy array, dask array, or
 <code class="code docutils literal notranslate"><span class="pre">cvpl.im.ndblock.NDBlock</span></code> objects. In particular, dask.Array and NDBlock are suitable for
 parallel or distributed image processing workflows</p>
@@ -185,14 +184,20 @@ which takes arbitrary inputs and one parameter: <code class="code docutils liter
 <ul>
 <li><p>cache_url (str | RDirFileSystem, optional): Pointing to a directory to store the cached image; if not
 provided, then the image will be cached via dask’s persist() and its loaded copy will be returned</p></li>
-<li><p>storage_option (dict, optional): If provided, specifies the compression method to use for image chunks
-- preferred_chunksize (tuple, optional): Re-chunk before save; this rechunking will be undone in load
-- multiscale (int, optional): Specifies the number of downsampling levels on OME ZARR
-- compressor (numcodecs.abc.Codec, optional): Compressor used to compress the chunks</p></li>
-<li><p>viewer_args (dict, optional): If provided, an image will be displayed as a new layer in Napari viewer
-- viewer (napari.Viewer, optional): Only display if a viewer is provided
-- is_label (bool, optional): defaults to False; if True, use viewer’s add_labels() instead of
+<li><p>storage_option (dict, optional): If provided, specifies the compression method to use for image chunks</p>
+<ul class="simple">
+<li><p>preferred_chunksize (tuple, optional): Re-chunk before save; this rechunking will be undone in load</p></li>
+<li><p>multiscale (int, optional): Specifies the number of downsampling levels on OME ZARR</p></li>
+<li><p>compressor (numcodecs.abc.Codec, optional): Compressor used to compress the chunks</p></li>
+</ul>
+</li>
+<li><p>viewer_args (dict, optional): If provided, an image will be displayed as a new layer in Napari viewer</p>
+<ul class="simple">
+<li><p>viewer (napari.Viewer, optional): Only display if a viewer is provided</p></li>
+<li><p>is_label (bool, optional): defaults to False; if True, use viewer’s add_labels() instead of
 add_image() to display the array</p></li>
+</ul>
+</li>
 <li><p>layer_args (dict, optional): If provided, used along with viewer_args to specify add_image() kwargs</p></li>
 <li><p>As a convention, <code class="code docutils literal notranslate"><span class="pre">context_args</span></code> contains <code class="code docutils literal notranslate"><span class="pre">cache_url</span></code> which is required only if the function
 needs some place to store intermediate results:</p>
@@ -210,7 +215,7 @@ needs some place to store intermediate results:</p>
 </li>
 <li><p>The <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> parameter specifies the napari viewer to display the intermediate results. If not provided
 (<code class="code docutils literal notranslate"><span class="pre">viewer_args=None</span></code>), then no computation will be done to visualize the image. Within the forward() method, you
-should use <code class="code docutils literal notranslate"><span class="pre">viewer.add_labels()</span></code>, <code class="code docutils literal notranslate"><span class="pre">lc_interpretable_napari()</span></code> or <code class="code docutils literal notranslate"><span class="pre">temp_directory.cache_im()</span></code>
+should use <code class="code docutils literal notranslate"><span class="pre">viewer.add_labels()</span></code> or <code class="code docutils literal notranslate"><span class="pre">tlfs.cache_im()</span></code>
 while passing in <code class="code docutils literal notranslate"><span class="pre">viewer_args</span></code> argument to display your results:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">context_args</span><span class="p">):</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">compute_result</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
@@ -244,8 +249,8 @@ larger images, which the built-in persist() function of dask library does not pr
 <section id="running-the-pipeline">
 <h2>Running the Pipeline<a class="headerlink" href="#running-the-pipeline" title="Permalink to this heading"></a></h2>
 <p>See <a class="reference external" href="GettingStarted/setting_up_the_script">Setting Up the Script</a> to understand boilerplate code used below,
-which is required to understand the following example.</p>
-<p>Now we have defined a <code class="code docutils literal notranslate"><span class="pre">process</span></code> function, the next step is to write our script that uses the pipeline
+required to understand the following example.</p>
+<p>With a <code class="code docutils literal notranslate"><span class="pre">process</span></code> function defined, the next step is to write our script that uses the pipeline
 to segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
 <code class="code docutils literal notranslate"><span class="pre">forward()</span></code> method.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>  <span class="c1"># Only for main thread, worker threads will not run this</span>
@@ -269,8 +274,8 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
         <span class="n">viewer</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>If instead <code class="code docutils literal notranslate"><span class="pre">viewer_args=None</span></code> is passed the <code class="code docutils literal notranslate"><span class="pre">example_seg_process()</span></code> function will display
-nothing, process the image and cache it.</p>
+<p>If instead <code class="code docutils literal notranslate"><span class="pre">viewer_args=None</span></code> is passed the <code class="code docutils literal notranslate"><span class="pre">example_seg_process()</span></code> function will process
+the image and cache it, but displays nothing.</p>
 <ul class="simple">
 <li><p>A process function has signature <code class="code docutils literal notranslate"><span class="pre">process(arg1,</span> <span class="pre">...,</span> <span class="pre">argn,</span> <span class="pre">context_args)</span></code>, where
 arg1 to n are arbitrary arguments and <code class="code docutils literal notranslate"><span class="pre">context_args</span></code> is a dictionary</p></li>
