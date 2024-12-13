@@ -70,9 +70,9 @@ def get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR):
         OME_ZARR_PATH = f'Z:/projects/lightsheet_lifecanvas/bids/sub-{MINIMUM_SUBJECT_ID}/micr/sub-{MINIMUM_SUBJECT_ID}_sample-brain_acq-prestitched_SPIM.ome.zarr'
         BA_CHANNEL = np.s_[1]
 
-    RUN_ON_FULL_IM = False
-    if not RUN_ON_FULL_IM:
-        BA_CHANNEL = np.s_[BA_CHANNEL, 256:512, :, :]  # **CHANGE THIS**
+    # RUN_ON_FULL_IM = False
+    # if not RUN_ON_FULL_IM:
+    #     BA_CHANNEL = np.s_[BA_CHANNEL, 256:512, :, :]  # **CHANGE THIS**
 
     subject.MINIMUM_SUBJECT_ID = MINIMUM_SUBJECT_ID
     subject.OME_ZARR_PATH = OME_ZARR_PATH
