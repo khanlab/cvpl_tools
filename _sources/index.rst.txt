@@ -30,6 +30,7 @@ or on cloud.
    :caption: Contents:
 
    Introduction <self>
+   Quickstart <GettingStarted/quick_start>
    Viewing and IO of OME Zarr <GettingStarted/ome_zarr>
    Setting Up the Script <GettingStarted/setting_up_the_script>
    Defining Segmentation Pipeline <GettingStarted/segmentation_pipeline>
