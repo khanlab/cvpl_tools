@@ -91,194 +91,12 @@ async def mousebrain_forward(dask_worker,
     import cvpl_tools.tools.fs as tlfs
     import cvpl_tools.im.algs.dask_label as dask_label
     import cvpl_tools.im.process.base as seg_process
-    import cvpl_tools.im.process.bs_to_os as sp_bs_to_os
     import cvpl_tools.im.process.os_to_lc as sp_os_to_lc
-    import cvpl_tools.im.process.os_to_cc as sp_os_to_cc
     import cvpl_tools.im.process.lc_to_cc as sp_lc_to_cc
     import cvpl_tools.ome_zarr.io as cvpl_ome_zarr_io
     import dask.array as da
 
-    class CountingMethod(enum.Enum):
-        """Specifies the algorithm to use for cell counting"""
-        # thresholding removing darker area below threshold -> sum over the intensity of the rest
-        # works ok but not perfect
-        SUM_INTENSITY = 0
-
-        # simple thresholding -> watershed -> direct os to lc -> edge penalized count lc
-        # does not work well because large clumps of cells are counted as one
-        BORDER_PENALIZED_THRES_WATERSHED = 1
-
-        # simple thresholding -> watershed -> count instance segmentation by contour size
-        # this works better than sum intensity
-        THRES_WATERSHED_BYSIZE = 2
-
-        # use # of centroids found by blobdog to give a direct cell count
-        # will overestimate the number of cells by a lot, due to over-counting cells around the edge of the image
-        BLOBDOG = 3
-
-        # same as above, but penalize the number of cells found around the edge
-        BORDER_PENALIZED_BLOBDOG = 4
-
-        # use blobdog centroids to split threshold masks into smaller contours
-        THRES_BLOBDOG_BYSIZE = 5
-
-        # Globally convert binary segmentation to ordinal segmentation, then to list of centroids
-        GLOBAL_LABEL = 6
-
     THRESHOLD = .45
-
-    def get_pipeline(no: CountingMethod):
-        match no:
-            case CountingMethod.SUM_INTENSITY:
-                async def fn(im, context_args):
-                    return await seg_process.in_to_cc_sum_scaled_intensity(im,
-                                                                           scale=.00766,
-                                                                           min_thres=.4,
-                                                                           spatial_box_width=None,
-                                                                           reduce=False,
-                                                                           context_args=context_args)
-
-            case CountingMethod.BORDER_PENALIZED_THRES_WATERSHED:
-                async def fn(im, context_args):
-                    fs = context_args['cache_url']
-                    mask = await seg_process.in_to_bs_simple_threshold(
-                        THRESHOLD, im, context_args=context_args | dict(cache_url=fs['mask']))
-                    os = await sp_bs_to_os.bs_to_os_watershed3sizes(mask,
-                                                                    size_thres=60.,
-                                                                    dist_thres=1.,
-                                                                    rst=None,
-                                                                    size_thres2=100.,
-                                                                    dist_thres2=1.5,
-                                                                    rst2=60.,
-                                                                    context_args=context_args | dict(
-                                                                        cache_url=fs['os']))
-                    lc = await sp_os_to_lc.os_to_lc_direct(os, min_size=8, reduce=False, is_global=False,
-                                                           context_args=context_args | dict(cache_url=fs['lc']))
-                    chunks = os.shape if isinstance(os, np.ndarray) else os.chunks
-                    cc = await sp_lc_to_cc.lc_to_cc_count_lc_edge_penalized(lc=lc,
-                                                                            chunks=chunks,
-                                                                            border_params=(3., -.5, 2.),
-                                                                            reduce=False,
-                                                                            context_args=context_args | dict(
-                                                                                cache_url=fs['count_lc']))
-                    return cc
-
-            case CountingMethod.THRES_WATERSHED_BYSIZE:
-                async def fn(im, context_args):
-                    fs = context_args['cache_url']
-                    mask = await seg_process.in_to_bs_simple_threshold(
-                        THRESHOLD, im, context_args=context_args | dict(cache_url=fs['mask']))
-                    os = await sp_bs_to_os.bs_to_os_watershed3sizes(mask,
-                                                                    size_thres=60.,
-                                                                    dist_thres=1.,
-                                                                    rst=None,
-                                                                    size_thres2=100.,
-                                                                    dist_thres2=1.5,
-                                                                    rst2=60.,
-                                                                    context_args=context_args | dict(
-                                                                        cache_url=fs['os']))
-                    cc = await sp_os_to_cc.os_to_cc_count_os_by_size(os,
-                                                                     size_threshold=200.,
-                                                                     volume_weight=5.15e-3,
-                                                                     border_params=(3., -.5, 2.),
-                                                                     min_size=8,
-                                                                     reduce=False,
-                                                                     context_args=context_args | dict(
-                                                                         cache_url=fs['cc']))
-                    return cc
-
-            case CountingMethod.BLOBDOG:
-                async def fn(im, context_args):
-                    fs = context_args['cache_url']
-                    lc = await seg_process.in_to_lc_blobdog_forward(im,
-                                                                    min_sigma=2.,
-                                                                    max_sigma=4.,
-                                                                    threshold=.1,
-                                                                    reduce=False,
-                                                                    context_args=context_args | dict(
-                                                                        cache_url=fs['blobdog']))
-                    chunks = im.shape if isinstance(im, np.ndarray) else im.chunks
-                    cc = await sp_lc_to_cc.lc_to_cc_count_lc_edge_penalized(lc,
-                                                                            chunks,
-                                                                            border_params=(1., 0., 1.),
-                                                                            reduce=False,
-                                                                            context_args=context_args | dict(
-                                                                                cache_url=fs['count_lc']))
-                    return cc
-
-            case CountingMethod.BORDER_PENALIZED_BLOBDOG:
-                async def fn(im, context_args):
-                    fs = context_args['cache_url']
-                    lc = await seg_process.in_to_lc_blobdog_forward(im,
-                                                                    min_sigma=2.,
-                                                                    max_sigma=4.,
-                                                                    threshold=.1,
-                                                                    reduce=False,
-                                                                    context_args=context_args | dict(
-                                                                        cache_url=fs['blobdog']))
-                    chunks = im.shape if isinstance(im, np.ndarray) else im.chunks
-                    cc = await sp_lc_to_cc.lc_to_cc_count_lc_edge_penalized(lc,
-                                                                            chunks,
-                                                                            border_params=(3., -.5, 2.1),
-                                                                            reduce=False,
-                                                                            context_args=context_args | dict(
-                                                                                cache_url=fs['count_lc']))
-                    return cc
-
-            case CountingMethod.THRES_BLOBDOG_BYSIZE:
-                async def fn(im, context_args):
-                    fs = context_args['cache_url']
-                    bs = await seg_process.in_to_bs_simple_threshold(threshold=THRESHOLD,
-                                                                     im=im,
-                                                                     context_args=context_args | dict(
-                                                                         cache_url=fs['bs']))
-                    lc = await seg_process.in_to_lc_blobdog_forward(im,
-                                                                    min_sigma=2.,
-                                                                    max_sigma=4.,
-                                                                    threshold=.1,
-                                                                    reduce=False,
-                                                                    context_args=context_args | dict(
-                                                                        cache_url=fs['blobdog']))
-                    os = await seg_process.bs_lc_to_os_forward(bs, lc, max_split=int(1e6),
-                                                               context_args=context_args | dict(cache_url=fs['os']))
-                    cc = await sp_os_to_cc.os_to_cc_count_os_by_size(os, size_threshold=200., volume_weight=5.15e-3,
-                                                                     border_params=(3., -.5, 2.3), min_size=8,
-                                                                     reduce=False,
-                                                                     context_args=context_args | dict(
-                                                                         cache_url=fs['cc']))
-                    return cc
-
-            case CountingMethod.GLOBAL_LABEL:
-                async def fn(im, context_args):
-                    fs = context_args['cache_url']
-                    bs = await seg_process.in_to_bs_simple_threshold(threshold=THRESHOLD, im=im,
-                                                                     context_args=context_args | dict(
-                                                                         cache_url=fs['bs']))
-                    os, nlbl = await dask_label.label(bs, output_dtype=np.int32,
-                                                      context_args=context_args | dict(cache_url=fs['os']))
-
-                    if context_args is None:
-                        context_args = {}
-                    viewer_args = context_args.get('viewer_args', {})
-                    lc = await sp_os_to_lc.os_to_lc_direct(os, min_size=8, reduce=False, is_global=True,
-                                                           ex_statistics=['nvoxel', 'edge_contact'], context_args=dict(
-                            cache_url=fs['lc'],
-                            viewer_args=viewer_args
-                        ))
-                    cc = await sp_lc_to_cc.lc_to_cc_count_lc_by_size(lc,
-                                                                     os.ndim,
-                                                                     min_size=8,
-                                                                     size_threshold=200.,
-                                                                     volume_weight=5.15e-3,
-                                                                     border_params=(3., -.5, 2.3),
-                                                                     reduce=False,
-                                                                     context_args=dict(
-                                                                         cache_url=fs['cc'],
-                                                                         viewer_args=viewer_args
-                                                                     ))
-                    return lc, cc
-
-        return fn
 
     import cvpl_tools.im.algs.dask_ndinterp as dask_ndinterp
     import tifffile
@@ -352,14 +170,40 @@ async def mousebrain_forward(dask_worker,
         layer_args=im_layer_args
     ))).astype(np.float32)
 
-    item = CountingMethod(CountingMethod.GLOBAL_LABEL)
-    alg = get_pipeline(item)
+    async def alg(im, context_args):
+        fs = context_args['cache_url']
+        bs = await seg_process.in_to_bs_simple_threshold(threshold=THRESHOLD, im=im,
+                                                         context_args=context_args | dict(
+                                                             cache_url=fs['bs']))
+        os, nlbl = await dask_label.label(bs, output_dtype=np.int32,
+                                          context_args=context_args | dict(cache_url=fs['os']))
+
+        if context_args is None:
+            context_args = {}
+        viewer_args = context_args.get('viewer_args', {})
+        lc = await sp_os_to_lc.os_to_lc_direct(os, min_size=8, reduce=False, is_global=True,
+                                               ex_statistics=['nvoxel', 'edge_contact'], context_args=dict(
+                cache_url=fs['lc'],
+                viewer_args=viewer_args
+            ))
+        cc = await sp_lc_to_cc.lc_to_cc_count_lc_by_size(lc,
+                                                         os.ndim,
+                                                         min_size=8,
+                                                         size_threshold=200.,
+                                                         volume_weight=5.15e-3,
+                                                         border_params=(3., -.5, 2.3),
+                                                         reduce=False,
+                                                         context_args=dict(
+                                                             cache_url=fs['cc'],
+                                                             viewer_args=viewer_args
+                                                         ))
+        return lc, cc
 
     import time
     stime = time.time()
     lc, cc = await alg(
         cur_im,
-        context_args=context_args | dict(cache_url=cache_dir_fs[item.name])
+        context_args=context_args | dict(cache_url=cache_dir_fs['GLOBAL_LABEL'])
     )
     midtime = time.time()
     print(f'forward elapsed: {midtime - stime}')
@@ -368,4 +212,7 @@ async def mousebrain_forward(dask_worker,
 
     print(f'ending  elapsed: {time.time() - midtime}')
     cnt = ncell_list.sum().item()
-    print(f'{item.name}:', cnt)
+
+    with cache_dir_fs.open('final_lc.npy', mode='wb') as fd:
+        np.save(fd, lc)
+

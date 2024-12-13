@@ -185,6 +185,12 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
         )
     cvpl_nnunet_api.coiled_run(fn=fn, nworkers=10, local_testing=False)
 
+    cdir_fs = RDirFileSystem(subject.COILED_CACHE_DIR_PATH)
+    with cdir_fs.open('final_lc.npy', mode='rb') as fd:
+        lc = np.load(cdir_fs)
+    print(f'First 10 rows of lc:\n')
+    print(lc[:10])
+
 
 if __name__ == '__main__':
     for ID in ('M7A1Te4Blaze',):

@@ -3,26 +3,24 @@
 Segmentation Pipeline
 #####################
 
-Motivation: Microscope, Cell Counting, Atlas map and Object Segmentation
-************************************************************************
+Motivation
+**********
 
 In our use case, lightsheet microscopy of mouse brain produces several hundreds of GBs of
-data, represented as a 3-dimensional array. This array is stored as an OME
-ZARR file in our case. Distributed processing of the data is necessary to make the analysis time
+data, represented as 3-dimensional arrays with an extra channel axis. This array is stored as an OME
+ZARR file. Distributed computation is necessary to make the analysis time
 trackable, and we choose to use Dask as the distributed computing library for our project.
 
-As part of our research, we need to use automated method to count different types of visible objects in
-the image. After counting cells, we use a map that maps from pixel location of
-the image to brain regions (this is the **atlas map**) to obtain the density of cells in each region of
+As part of our research, we need to use automated method to count objects in
+the image. Afterwards, we use a map that maps from pixel location of
+the image to brain region segmentation (this is the **atlas map**) to obtain the density of cells in each region of
 the mouse brain. We need to test several methods and find one that would give the most
 accurate counts, and for new incoming data volumes, we want to be able to quickly find a set of parameters
 that works on the new data.
 
-On the algorithm side, object counting consists of performing a sequence of steps to process an input image
-into densities over regions of the brain, and is relatively simple to understand and implement on a Numpy
-array with small dataset size. On larger datasets, we need to do long-running distributed computation
-that are hard to debug and requires tens of minutes or hours if we need to rerun the computation
-(often just to display the results again).
+On the algorithm side, object counting is easy on a Numpy array with small dataset size.
+On larger datasets, we need to long-running distributed computation
+that are hard to debug and requires hours to run the computation.
 
 SegProcess
 **********
@@ -43,10 +41,10 @@ Consider a function that counts the number of cells in a 3d-block of brightness 
         cell_cnt = count_inst(inst)  # count each contour as a cell
         return cell_cnt
 
-This code may seem complete, but it has a few issues:
+This code is complete, but notice that:
 
-1. Lack of interpretability. Often when we first run this function some bug will show up, for example
-when the output cell count is unexpectedly large. Debugging this becomes a problem since we don't know
+1. Lack of interpretability. Often the first run is when some bug shows up.
+Debugging this becomes a problem without some way to look into intermediate results since we don't know
 if one of the three steps in the cell_count function did not work as expected, or if the algorithm does
 not work well on the input data for some reason. In either case, if we want to find the root cause of
 the problem we very often end up adding code and rerun the pipeline to display the output of each step
@@ -55,10 +53,11 @@ to see if they match with our expectations.
 2. Result is not cached. Ideally the pipeline is run once and we get the result, but more often than
 not the result may need to be used in different places (visualization, analysis etc.). Caching these
 results makes sure computation is done only once, which is necessary when we work with costly algorithms
-on hundreds of GBs of data.
+on hundreds of GBs of data (of course it's still best to first test on a slice of <1GB of data).
 
 The basic idea to address 1) is to put visualization as part of the cell_count function, and to address
-2) is to cache the result of each step into a file in a :code:`CacheDirectory`. It will provide:
+2) is to cache the result of each step into a file in a :code:`CacheDirectory`. In more details, we
+want a image processing pipeline that provide:
 
 1. dask-support. Inputs are expected to be either numpy array, dask array, or
 :code:`cvpl.im.ndblock.NDBlock` objects. In particular, dask.Array and NDBlock are suitable for
@@ -111,14 +110,16 @@ which takes arbitrary inputs and one parameter: :code:`context_args`, which will
   provided, then the image will be cached via dask's persist() and its loaded copy will be returned
 
 - storage_option (dict, optional): If provided, specifies the compression method to use for image chunks
+
   - preferred_chunksize (tuple, optional): Re-chunk before save; this rechunking will be undone in load
   - multiscale (int, optional): Specifies the number of downsampling levels on OME ZARR
   - compressor (numcodecs.abc.Codec, optional): Compressor used to compress the chunks
 
 - viewer_args (dict, optional): If provided, an image will be displayed as a new layer in Napari viewer
+
   - viewer (napari.Viewer, optional): Only display if a viewer is provided
   - is_label (bool, optional): defaults to False; if True, use viewer's add_labels() instead of
-  add_image() to display the array
+    add_image() to display the array
 
 - layer_args (dict, optional): If provided, used along with viewer_args to specify add_image() kwargs
 
@@ -139,7 +140,7 @@ which takes arbitrary inputs and one parameter: :code:`context_args`, which will
 
 - The :code:`viewer_args` parameter specifies the napari viewer to display the intermediate results. If not provided
   (:code:`viewer_args=None`), then no computation will be done to visualize the image. Within the forward() method, you
-  should use :code:`viewer.add_labels()`, :code:`lc_interpretable_napari()` or :code:`temp_directory.cache_im()`
+  should use :code:`viewer.add_labels()` or :code:`tlfs.cache_im()`
   while passing in :code:`viewer_args` argument to display your results:
 
   .. code-block:: Python
@@ -174,9 +175,9 @@ Running the Pipeline
 ********************
 
 See `Setting Up the Script <GettingStarted/setting_up_the_script>`_ to understand boilerplate code used below,
-which is required to understand the following example.
+required to understand the following example.
 
-Now we have defined a :code:`process` function, the next step is to write our script that uses the pipeline
+With a :code:`process` function defined, the next step is to write our script that uses the pipeline
 to segment an input dataset. Note we need a dask cluster and a temporary directory setup before running the
 :code:`forward()` method.
 
@@ -202,8 +203,8 @@ to segment an input dataset. Note we need a dask cluster and a temporary directo
             client.close()
             viewer.show(block=True)
 
-If instead :code:`viewer_args=None` is passed the :code:`example_seg_process()` function will display
-nothing, process the image and cache it.
+If instead :code:`viewer_args=None` is passed the :code:`example_seg_process()` function will process
+the image and cache it, but displays nothing.
 
 - A process function has signature :code:`process(arg1, ..., argn, context_args)`, where
   arg1 to n are arbitrary arguments and :code:`context_args` is a dictionary

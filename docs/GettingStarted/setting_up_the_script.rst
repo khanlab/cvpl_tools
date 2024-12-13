@@ -4,13 +4,13 @@ Setting Up the Script
 #####################
 
 Writing code using cvpl_tools requires some setup code that configures the dask library and other
-utilities we need for our image processing pipeline. Below gives a brief description for the setup of these
-utilities.
+utilities we need for our image processing pipeline. Below briefly describes the setup.
 
 Dask Cluster and temporary directory
 ************************************
 
-cvpl_tools depends on Dask.
+cvpl_tools depends on `dask <https://github.com/dask/dask>`_ library, where many functions of
+cvpl_tools takes dask array as input or output.
 
 Dask is a multithreaded and distributed computing library, in which temporary results may not fit in
 memory. In such cases, they are written in the temporary directory set in
@@ -38,10 +38,10 @@ in the quickstart guide.
             print((da.zeros((3, 3)) + 1).compute().sum().item())  # will output 9
 
 The line :code:`if __name__ == '__main__':` ensures only the main thread executes the task creation
-code. The line of the :code:`Client()` call spawns worker threads that executes exactly the same script back from
-the top. If the guarding statement is not present, the worker re-executes the Client creation code and which
-leads to into an infinite loop. However, some complications may stem from this, one of which is described in the
-following example: (I encountered this when displaying large multiscale images):
+code. :code:`Client()` spawns worker threads that executes the code from top. If the guard if is absent,
+re-execution of the Client creation will crash the program.
+
+Next problem is relevant to contention of thread resources between dask and Napari:
 
 .. code-block:: Python
 
@@ -56,28 +56,25 @@ following example: (I encountered this when displaying large multiscale images):
         with dask.config.set({'temporary_directory': TMP_PATH}):
             client = Client(threads_per_worker=6, n_workers=1)
             viewer = napari.Viewer(ndisplay=2)
-            viewer.add_ome_zarr_array_from_path(...)  # add a large ome zarr image
+            viewer.add_image(...)  # add a large ome zarr image
             viewer.show(block=True)  # here all threads available will be used to fetch data to show image
 
-Napari utilizes all threads on the current process to load chunks from the image when we drag mouse to navigation
-across chunks. With typical dask setup, however, worker threads spawned by the :code:`Client()` call take up all
-threads except one for the main thread. If viewer.show(block=True) is called
-on the main thread, then Napari viewer does not get the rest of the threads, and the loading speed is slow
-(working but with some lagging). The issue is not in adding the image to the viewer, but in the call to
-viewer.show() where the loading happens. I also found that the loading speed is slow regardless if the value
-of threads_per_worker is set to 1 or more in the Client() initialization.
+Napari utilizes all threads on the current process to load image chunks when we navigation camera
+across chunks. With typical dask setup, however, threads spawned by the :code:`Client()` take up all
+threads except the main thread. If :code:`viewer.show(block=True)` is called
+on the main thread, then Napari viewer does not get the rest of the threads, and loading speed is slow.
+The issue is not in adding the image to the viewer, but in the call to
+:code:`viewer.show()` where the loading happens. It's slow regardless if the value
+of :code:`threads_per_worker` is 1 or more.
 
-My solution: Since a running dask Client object seems to be the cause of the problem, calling client.close()
-before viewer.show(block=True) solves the problem:
+Calling :code:`client.close()` to release threads before :code:`viewer.show(block=True)`
+solves the problem:
 
 .. code-block:: Python
 
-    viewer.add_ome_zarr_array_from_path(...)  # adding image itself does not take too much time
+    viewer.add_image(...)  # adding image itself does not take too much time
     client.close()  # here resources are freed up
     viewer.show(block=True)  # threads are now available to fetch data to show image
-
-This does mean any Napari will not use the cluster if images are added as dask arrays, though Dask arrays
-are processed multithreaded by default without the need of a cluster.
 
 Dask Logging Setup
 ******************

@@ -152,3 +152,19 @@ this. In a local test (without coiled, but still using gcs), we may set :code:`l
 
 Here, the MAX_THRESHOLD variable specifies the threshold above which objects will be counted as plaque. This
 threshold is applied over corrected ome zarr image based on the original image and bias image provided.
+
+After running the above code, a numpy file will be written to :code:`f'{subject.COILED_CACHE_DIR_PATH}/final_lc.npy'`,
+which contains the results in a N * 5 matrix of type np.float64. First three columns are the Z, Y, X locations of
+the plaques, and the fourth and fifth column are sizes (in voxels) and a unique ID for the plaque. To retrieve:
+
+.. code-block:: Python
+
+    from cvpl_tools.fsspec import RDirFileSystem
+    cdir_fs = RDirFileSystem(subject.COILED_CACHE_DIR_PATH)
+    with cdir_fs.open('final_lc.npy', mode='rb') as fd:
+        lc = np.load(cdir_fs)
+    print(f'First 10 rows of lc:\n')
+    print(lc[:10])
+
+Alternatively, use :code:`cvpl_tools.fsspec.copyfile` function to obtain the .npy file locally.
+
