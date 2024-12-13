@@ -207,11 +207,8 @@ async def mousebrain_forward(dask_worker,
     )
     midtime = time.time()
     print(f'forward elapsed: {midtime - stime}')
-    lc = lc.reduce(force_numpy=True)
-    ncell_list = await cc.reduce(force_numpy=True)
 
-    print(f'ending  elapsed: {time.time() - midtime}')
-    cnt = ncell_list.sum().item()
+    lc = lc.reduce(force_numpy=True)
 
     with cache_dir_fs.open('final_lc.npy', mode='wb') as fd:
         np.save(fd, lc)

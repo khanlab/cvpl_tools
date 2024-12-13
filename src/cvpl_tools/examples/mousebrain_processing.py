@@ -49,7 +49,7 @@ THRESHOLD_TABLE = {
 }
 ALL_SUBJECTS = list(THRESHOLD_TABLE.keys())
 
-def get_subject(SUBJECT_ID):
+def get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR):
     subject = Subject()
     subject.SUBJECT_ID = SUBJECT_ID
 
@@ -78,9 +78,8 @@ def get_subject(SUBJECT_ID):
     subject.OME_ZARR_PATH = OME_ZARR_PATH
     subject.BA_CHANNEL = BA_CHANNEL
 
-    FOLDER = 'C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp/mousebrain_processing'
-    subject.SUBJECT_FOLDER = f'{FOLDER}/subjects/subject_{SUBJECT_ID}'  # **CHANGE THIS**
-    subject.NNUNET_CACHE_DIR = f'{FOLDER}/nnunet_250epoch_Run20241126'  # **CHANGE THIS**
+    subject.SUBJECT_FOLDER = f'{SUBJECTS_DIR}/subject_{SUBJECT_ID}'
+    subject.NNUNET_CACHE_DIR = NNUNET_CACHE_DIR
 
     subject.FIRST_DOWNSAMPLE_PATH = f'{subject.SUBJECT_FOLDER}/first_downsample.ome.zarr'
     subject.SECOND_DOWNSAMPLE_PATH = f'{subject.SUBJECT_FOLDER}/second_downsample.ome.zarr'
@@ -197,7 +196,10 @@ if __name__ == '__main__':
         if ID in ('M4A2Te3Blaze', 'o22', 'o23'):
             continue
         print(f'Starting prediction on subject {ID}')
-        subject = get_subject(ID)
+        FOLDER = 'C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp/mousebrain_processing'
+        SUBJECTS_DIR = f'{FOLDER}/subjects'
+        NNUNET_CACHE_DIR = f'{FOLDER}/nnunet_250epoch_Run20241126'
+        subject = get_subject(ID, SUBJECTS_DIR, NNUNET_CACHE_DIR)
 
         main(subject=subject, run_nnunet=True, run_coiled_process=True)
         print(f'Finished predicting on subject {ID}')
