@@ -187,7 +187,7 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
 
     cdir_fs = RDirFileSystem(subject.COILED_CACHE_DIR_PATH)
     with cdir_fs.open('final_lc.npy', mode='rb') as fd:
-        lc = np.load(cdir_fs)
+        lc = np.load(fd)
     print(f'First 10 rows of lc:\n')
     print(lc[:10])
 
