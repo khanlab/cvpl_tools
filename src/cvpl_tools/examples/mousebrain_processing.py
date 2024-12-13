@@ -183,7 +183,7 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
             MAX_THRESHOLD=subject.MAX_THRESHOLD,
             ppm_to_im_upscale=ppm_to_im_upscale
         )
-    cvpl_nnunet_api.coiled_run(fn=fn, nworkers=10, local_testing=False)
+    cvpl_nnunet_api.coiled_run(fn=fn, nworkers=5, local_testing=False)
 
     cdir_fs = RDirFileSystem(subject.COILED_CACHE_DIR_PATH)
     with cdir_fs.open('final_lc.npy', mode='rb') as fd:
