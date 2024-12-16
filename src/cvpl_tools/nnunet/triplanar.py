@@ -335,7 +335,7 @@ def train_triplanar(train_args: dict):
             towrite = trainer_name
         outfile.write(towrite)
         outfile.write('\n')
-        outfile.write(max_threshold)
+        outfile.write(str(max_threshold))
     for i in range(len(axes_names)):
         nnunet_dir = train_cache_dirs[i]
 
