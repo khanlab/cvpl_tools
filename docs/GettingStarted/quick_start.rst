@@ -7,10 +7,12 @@ Installation
 ************
 
 Create an Anaconda environment, and install `torch <https://pytorch.org/get-started/locally/>`_ (with GPU
-if you need training besides prediction). Check the following environment are installed as well
-(use Python 3.11 if you work with SPIMquant environment):
+if you need training besides prediction). Check the following environment are installed as well (below list
+is for :code:`cvpl_tools` version 0.8.2; also use Python 3.11 if you are working with SPIMquant
+environment):
 
-.. code-block::
+.. code-block:: Python
+
     python = ">=3.9"
     numpy = ">=1.23"
     nibabel = ">=5.2.1"
@@ -34,6 +36,7 @@ OME ZARR
 Create an example OME ZARR, write it to disk and read back:
 
 .. code-block:: Python
+
     import dask.array as da
     import cvpl_tools.ome_zarr.io as ome_io
     import napari
@@ -52,6 +55,7 @@ Create an example OME ZARR, write it to disk and read back:
 Read and write can be done on network location. An example of read and display:
 
 .. code-block:: Python
+
     import cvpl_tools.ome_zarr.io as ome_io
     import cvpl_tools.ome_zarr.napari.add as nadd  # read but only for display purpose
     import napari
@@ -72,7 +76,7 @@ Download the training (o22)/testing (o23) annotations from Google Drive as follo
 
 2. `o23 <https://drive.google.com/file/d/1xhxLA0RnxoL3c1ojSGTCAIB5yp-Wfrgh/view?usp=drive_link>`_
 
-Put the canvas_o22.tiff file in the same folder as your script, then pair o22 annotation tiff file with the
+Put the canvas_o22.tiff file in the same folder as below script. Then pair o22 annotation tiff file with the
 corresponding training input image volume and start training:
 
 .. code-block:: Python
@@ -99,4 +103,53 @@ corresponding training input image volume and start training:
     }
     triplanar.train_triplanar(train_args)
 
+When training is finished, you can start predicting on the o23 image volume and compare the results. Training
+may take several hours, and if you want to skip this step, then you can download the result model from
+`Zenodo <https://zenodo.org/records/14419797>`_ and extract the folder to rename it as :code:`'nnunet_250epoch'`.
+Prediction code is as follows:
+
+.. code-block:: Python
+
+    from cvpl_tools.examples.mousebrain_processing import main, get_subject
+    import cvpl_tools.nnunet.triplanar as triplanar
+
+    SUBJECT_ID = 'o23'  # now predict on o23
+    SUBJECTS_DIR = f'subjects'
+    NNUNET_CACHE_DIR = f'nnunet_250epoch'
+    subject = get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR)
+    main(subject=subject, run_nnunet=False, run_coiled_process=False)
+
+    pred_args = {
+        "cache_url": NNUNET_CACHE_DIR,
+        "test_im": subject.SECOND_DOWNSAMPLE_CORR_PATH,
+        "test_seg": None,
+        "output": 'canvas_o23_pred.tiff',
+        "dataset_id": 1,
+        "fold": '0',
+        "triplanar": False,
+        "penalize_edge": False,
+        "weights": None,
+    }
+    triplanar.predict_triplanar(pred_args)
+
+After prediction, load up two tiffs and compute an overlap measure like IOU or DICE score:
+
+.. code-block:: Python
+
+    import tifffile
+    import napari
+    import cvpl_tools.ome_zarr.napari.add as nadd
+
+    mask_manual = tifffile.imread('canvas_o23.tiff') > 0
+    mask_pred = tifffile.imread('canvas_o23_pred.tiff') > 0
+    intersect = mask_manual & mask_pred
+    dice = intersect.sum().astype(np.float64) * 2 / (mask_manual.sum() + mask_pred.sum())
+    print(f'DICE score obtained: {dice.item(): .4f}')
+
+    # display the results in napari
+    viewer = napari.Viewer()
+    nadd.group_from_path(viewer, subject.SECOND_DOWNSAMPLE_CORR_PATH, kwargs=dict(name='image_volume'))
+    viewer.add_labels(mask_manual, name='mask_manual')
+    viewer.add_labels(mask_pred, name='mask_predicted')
+    viewer.show(block=True)
 

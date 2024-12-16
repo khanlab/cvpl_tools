@@ -412,7 +412,7 @@ def predict_triplanar(predict_args: dict):
     dataset_id = predict_args["dataset_id"]
     fold = predict_args["fold"]
     output_path = predict_args["output"]
-    use_cache = predict_args["use_cache"]
+    use_cache = predict_args.get('use_cache', False)
 
     print('globbing OME ZARR images')
     test_im = predict_args.pop('test_im')
