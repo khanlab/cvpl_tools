@@ -162,14 +162,15 @@ environment):</p>
 </ol>
 <p>Put the canvas_o22.tiff file in the same folder as below script. Then pair o22 annotation tiff file with the
 corresponding training input image volume and start training:</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cvpl_tools.examples.mousebrain_processing</span> <span class="kn">import</span> <span class="n">main</span><span class="p">,</span> <span class="n">get_subject</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cvpl_tools.examples.mousebrain_processing</span> <span class="kn">import</span> <span class="n">mousebrain_processing</span><span class="p">,</span> <span class="n">get_subject</span>
 <span class="kn">import</span> <span class="nn">cvpl_tools.nnunet.triplanar</span> <span class="k">as</span> <span class="nn">triplanar</span>
 
 <span class="n">SUBJECT_ID</span> <span class="o">=</span> <span class="s1">&#39;o22&#39;</span>
 <span class="n">SUBJECTS_DIR</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;subjects&#39;</span>
 <span class="n">NNUNET_CACHE_DIR</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;nnunet_250epoch&#39;</span>
-<span class="n">subject</span> <span class="o">=</span> <span class="n">get_subject</span><span class="p">(</span><span class="n">SUBJECT_ID</span><span class="p">,</span> <span class="n">SUBJECTS_DIR</span><span class="p">,</span> <span class="n">NNUNET_CACHE_DIR</span><span class="p">)</span>
-<span class="n">main</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">run_nnunet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">run_coiled_process</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">GCS_PARENT_PATH</span> <span class="o">=</span> <span class="s1">&#39;gcs://khanlab-scratch/tmp&#39;</span>
+<span class="n">subject</span> <span class="o">=</span> <span class="n">get_subject</span><span class="p">(</span><span class="n">SUBJECT_ID</span><span class="p">,</span> <span class="n">SUBJECTS_DIR</span><span class="p">,</span> <span class="n">NNUNET_CACHE_DIR</span><span class="p">,</span> <span class="n">GCS_PARENT_PATH</span><span class="p">)</span>
+<span class="n">mousebrain_processing</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">run_nnunet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">run_coiled_process</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="n">train_args</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;cache_url&quot;</span><span class="p">:</span> <span class="n">NNUNET_CACHE_DIR</span><span class="p">,</span>
@@ -189,14 +190,15 @@ corresponding training input image volume and start training:</p>
 may take several hours, and if you want to skip this step, then you can download the result model from
 <a class="reference external" href="https://zenodo.org/records/14419797">Zenodo</a> and extract the folder to rename it as <code class="code docutils literal notranslate"><span class="pre">'nnunet_250epoch'</span></code>.
 Prediction code is as follows:</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cvpl_tools.examples.mousebrain_processing</span> <span class="kn">import</span> <span class="n">main</span><span class="p">,</span> <span class="n">get_subject</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cvpl_tools.examples.mousebrain_processing</span> <span class="kn">import</span> <span class="n">mousebrain_processing</span><span class="p">,</span> <span class="n">get_subject</span>
 <span class="kn">import</span> <span class="nn">cvpl_tools.nnunet.triplanar</span> <span class="k">as</span> <span class="nn">triplanar</span>
 
 <span class="n">SUBJECT_ID</span> <span class="o">=</span> <span class="s1">&#39;o23&#39;</span>  <span class="c1"># now predict on o23</span>
 <span class="n">SUBJECTS_DIR</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;subjects&#39;</span>
 <span class="n">NNUNET_CACHE_DIR</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;nnunet_250epoch&#39;</span>
-<span class="n">subject</span> <span class="o">=</span> <span class="n">get_subject</span><span class="p">(</span><span class="n">SUBJECT_ID</span><span class="p">,</span> <span class="n">SUBJECTS_DIR</span><span class="p">,</span> <span class="n">NNUNET_CACHE_DIR</span><span class="p">)</span>
-<span class="n">main</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">run_nnunet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">run_coiled_process</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">GCS_PARENT_PATH</span> <span class="o">=</span> <span class="s1">&#39;gcs://khanlab-scratch/tmp&#39;</span>
+<span class="n">subject</span> <span class="o">=</span> <span class="n">get_subject</span><span class="p">(</span><span class="n">SUBJECT_ID</span><span class="p">,</span> <span class="n">SUBJECTS_DIR</span><span class="p">,</span> <span class="n">NNUNET_CACHE_DIR</span><span class="p">,</span> <span class="n">GCS_PARENT_PATH</span><span class="p">)</span>
+<span class="n">mousebrain_processing</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">run_nnunet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">run_coiled_process</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="n">pred_args</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;cache_url&quot;</span><span class="p">:</span> <span class="n">NNUNET_CACHE_DIR</span><span class="p">,</span>
