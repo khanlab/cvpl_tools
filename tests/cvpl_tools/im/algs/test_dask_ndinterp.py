@@ -1,7 +1,7 @@
 import dask.array as da
 import numpy as np
 import numpy.typing as npt
-from cvpl_tools.im.algs.dask_ndinterp import affine_transform_nearest, scale_nearest
+from cvpl_tools.im.algs.dask_ndinterp import affine_transform_nearest, scale_nearest, measure_block_reduce
 
 
 class DaskNDInterpTest:
@@ -43,6 +43,7 @@ class DaskNDInterpTest:
         arr: da.Array = da.from_array(arr, chunks=(2, 2))
 
         # transpose (mirror along 135 degrees line)
+        print('transpose')
         matrix = np.array(
             ((0, 1, 0),
              (1, 0, 0),
@@ -56,14 +57,32 @@ class DaskNDInterpTest:
                                 ))
 
         # horizontal mirroring
+        print('horizontal mirroring')
         matrix = np.array(
-            ((0, 1, 0),
-             (1, 0, 0),
+            ((1, 0, 0),
+             (0, -1, 2),
              (0, 0, 1)), dtype=np.float32
         )
-        arr2 = affine_transform_nearest(arr, matrix, output_shape=(2, 2), output_chunks=(2, 2))
-        np.testing.assert_equal(arr2,
+        arr3 = affine_transform_nearest(arr, matrix, output_shape=(2, 2), output_chunks=(2, 2))
+        np.testing.assert_equal(arr3,
                                 np.array(
-                                    ((1, 3),
-                                     (2, 4)), dtype=np.int32
+                                    ((2, 1),
+                                     (4, 3)), dtype=np.int32
                                 ))
+
+    def test_block_reduce(self):
+        im = da.from_array(np.zeros((3, 2), dtype=np.int32))
+        im[1, 1] = 2
+        im[2, 0] = 1
+        im = measure_block_reduce(im, block_size=(2, 3), reduce_fn=np.max)
+
+        # chunk would be chosen to fit IDEAL_SIZE which covers the entire image in this case
+        assert im.compute().size == 0, im.compute()
+
+        im = da.from_array(np.ones((3, 3, 6), dtype=np.float32))
+        im = measure_block_reduce(im, block_size=(2, 3, 3), reduce_fn=np.min)
+        np.testing.assert_equal(im.compute(), np.array((((1, 1),),), dtype=np.float32))
+
+        im = da.from_array(np.array((1, 2, 3, 4, 5), dtype=np.float32))
+        im = measure_block_reduce(im, block_size=(2,), reduce_fn=np.mean)
+        np.testing.assert_almost_equal(im.compute(), np.array((1.5, 3.5), dtype=np.float32))

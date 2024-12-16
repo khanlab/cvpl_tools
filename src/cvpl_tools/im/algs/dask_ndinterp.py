@@ -186,11 +186,11 @@ def affine_transform_nearest(
 
         out_chunk_shape = [normalized_chunks[dim][block_ind[dim]]
                            for dim in range(NDIM)]
-        out_chunk_offset = [block_offsets[dim][block_ind[dim]]
-                            for dim in range(NDIM)]
+        out_chunk_offset = np.array([block_offsets[dim][block_ind[dim]]
+                                     for dim in range(NDIM)])
 
         out_chunk_edges = np.array([i for i in np.ndindex((2,) * NDIM)]) \
-                          * np.array(out_chunk_shape) + np.array(out_chunk_offset)
+                          * np.array(out_chunk_shape) + out_chunk_offset
 
         rel_image_edges = np.dot(matrix, out_chunk_edges.T).T + offset
 
@@ -231,7 +231,10 @@ def affine_transform_nearest(
         o' = o + Mx0 - y0
         """
 
-        offset_prime = offset + np.dot(matrix, out_chunk_offset) - rel_image_i - .5
+        offset_prime = offset + np.dot(matrix, out_chunk_offset) - rel_image_i
+        fixed_point = np.array((-.5,) * NDIM, dtype=offset_prime.dtype)
+        corr_offset = fixed_point - matrix @ fixed_point
+        offset_prime += corr_offset  # np.dot(matrix / (norm / np.sqrt(ndim)), (-.5,) * ndim)
 
         output_layer[(output_name,) + block_ind] = (
             affine_transform_method,
@@ -352,7 +355,6 @@ def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
     ndim = image.ndim
     if isinstance(block_size, int):
         block_size = (block_size,) * ndim
-    print('block_size=', block_size)
 
     def process_block(block, block_info=None):
         eff_block_range = tuple((block.shape[i] // block_size[i]) * block_size[i]
@@ -365,7 +367,7 @@ def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
 
     if input_chunks is None:
         IDEAL_SIZE = 1000000  # a block size to aim for
-        nexpand = max(int(np.power((IDEAL_SIZE / np.prod(block_size)), 1/ndim).item()), 1)
+        nexpand = max(int(np.power((IDEAL_SIZE / np.prod(block_size)), 1 / ndim).item()), 1)
         input_chunks = tuple(nexpand * s for s in block_size)
     image = image.rechunk(input_chunks)
 
@@ -373,24 +375,3 @@ def measure_block_reduce(image: da.Array, block_size: int | tuple[int, ...],
 
     result.compute_chunk_sizes()
     return result
-
-
-if __name__ == '__main__':
-    import dask.array as da
-    from numpy.testing import assert_equal, assert_almost_equal
-
-    im = da.from_array(np.zeros((3, 2), dtype=np.int32))
-    im[1, 1] = 2
-    im[2, 0] = 1
-    im = measure_block_reduce(im, block_size=(2, 3), reduce_fn=np.max)
-
-    # chunk would be chosen to fit IDEAL_SIZE which covers the entire image in this case
-    assert im.compute().size == 0, im.compute()
-
-    im = da.from_array(np.ones((3, 3, 6), dtype=np.float32))
-    im = measure_block_reduce(im, block_size=(2, 3, 3), reduce_fn=np.min)
-    assert_equal(im.compute(), np.array((((1, 1),),), dtype=np.float32))
-
-    im = da.from_array(np.array((1, 2, 3, 4, 5), dtype=np.float32))
-    im = measure_block_reduce(im, block_size=(2,), reduce_fn=np.mean)
-    assert_almost_equal(im.compute(), np.array((1.5, 3.5), dtype=np.float32))
