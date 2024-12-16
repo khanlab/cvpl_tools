@@ -1,3 +1,9 @@
+"""
+monai_wrapper command line utilities (named for legacy reasons, since this file has been moved
+from monai_wrapper to cvpl_tools)
+"""
+
+
 import subprocess
 import os
 

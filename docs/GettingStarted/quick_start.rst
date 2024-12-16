@@ -81,14 +81,15 @@ corresponding training input image volume and start training:
 
 .. code-block:: Python
 
-    from cvpl_tools.examples.mousebrain_processing import main, get_subject
+    from cvpl_tools.examples.mousebrain_processing import mousebrain_processing, get_subject
     import cvpl_tools.nnunet.triplanar as triplanar
 
     SUBJECT_ID = 'o22'
     SUBJECTS_DIR = f'subjects'
     NNUNET_CACHE_DIR = f'nnunet_250epoch'
-    subject = get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR)
-    main(subject=subject, run_nnunet=False, run_coiled_process=False)
+    GCS_PARENT_PATH = 'gcs://khanlab-scratch/tmp'
+    subject = get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR, GCS_PARENT_PATH)
+    mousebrain_processing(subject=subject, run_nnunet=False, run_coiled_process=False)
 
     train_args = {
         "cache_url": NNUNET_CACHE_DIR,
@@ -110,14 +111,15 @@ Prediction code is as follows:
 
 .. code-block:: Python
 
-    from cvpl_tools.examples.mousebrain_processing import main, get_subject
+    from cvpl_tools.examples.mousebrain_processing import mousebrain_processing, get_subject
     import cvpl_tools.nnunet.triplanar as triplanar
 
     SUBJECT_ID = 'o23'  # now predict on o23
     SUBJECTS_DIR = f'subjects'
     NNUNET_CACHE_DIR = f'nnunet_250epoch'
-    subject = get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR)
-    main(subject=subject, run_nnunet=False, run_coiled_process=False)
+    GCS_PARENT_PATH = 'gcs://khanlab-scratch/tmp'
+    subject = get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR, GCS_PARENT_PATH)
+    mousebrain_processing(subject=subject, run_nnunet=False, run_coiled_process=False)
 
     pred_args = {
         "cache_url": NNUNET_CACHE_DIR,

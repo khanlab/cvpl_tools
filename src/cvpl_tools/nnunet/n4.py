@@ -1,5 +1,8 @@
-import os.path
-from os import write
+"""
+n4.py provides a simple wrapper around the antspyx library's n4_bias_field_correction function, for brightness
+correction in an image which has regions imaged brighter and darker due to technical limits
+"""
+
 
 import ants
 import numpy as np

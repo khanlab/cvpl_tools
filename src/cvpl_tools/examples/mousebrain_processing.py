@@ -49,7 +49,27 @@ THRESHOLD_TABLE = {
 }
 ALL_SUBJECTS = list(THRESHOLD_TABLE.keys())
 
-def get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR):
+
+def get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR, GCS_PARENT_PATH):
+    """Setup the paths that point to locations where intermediate results are stored
+
+    This is an example, you may write your own function to setup the paths for intermediate results instead
+    of using this one
+
+    These paths include:
+    - A local subject folder for initial preprocessing and downsampling
+    - A nnunet folder for (training and) prediction of negative masking
+    - A GCS location for final coiled cloud processing of the whole mouse brain to obtain centroids
+
+    Args:
+        SUBJECT_ID: ID of the subject to process
+        SUBJECTS_DIR: Local subject folder for initial preprocessing and downsampling
+        NNUNET_CACHE_DIR: nnunet folder for (training and) prediction of negative masking
+        GCS_PARENT_PATH: GCS location for final coiled cloud processing of the whole mouse brain to obtain centroids
+
+    Returns:
+        A Subject object contains paths derived from all the above information
+    """
     subject = Subject()
     subject.SUBJECT_ID = SUBJECT_ID
 
@@ -83,21 +103,32 @@ def get_subject(SUBJECT_ID, SUBJECTS_DIR, NNUNET_CACHE_DIR):
 
     subject.FIRST_DOWNSAMPLE_PATH = f'{subject.SUBJECT_FOLDER}/first_downsample.ome.zarr'
     subject.SECOND_DOWNSAMPLE_PATH = f'{subject.SUBJECT_FOLDER}/second_downsample.ome.zarr'
-    subject.THIRD_DOWNSAMPLE_PATH = f'gcs://khanlab-scratch/tmp/{SUBJECT_ID}/third_downsample.ome.zarr'
+    subject.THIRD_DOWNSAMPLE_PATH = f'{GCS_PARENT_PATH}/{SUBJECT_ID}/third_downsample.ome.zarr'
 
-    subject.THIRD_DOWNSAMPLE_BIAS_PATH = f'gcs://khanlab-scratch/tmp/{SUBJECT_ID}/third_downsample_bias.ome.zarr'
+    subject.THIRD_DOWNSAMPLE_BIAS_PATH = f'{GCS_PARENT_PATH}/{SUBJECT_ID}/third_downsample_bias.ome.zarr'
     subject.SECOND_DOWNSAMPLE_CORR_PATH = f'{subject.SUBJECT_FOLDER}/second_downsample_corr.ome.zarr'
     subject.FIRST_DOWNSAMPLE_CORR_PATH = f'{subject.SUBJECT_FOLDER}/first_downsample_corr.ome.zarr'
 
     subject.NNUNET_OUTPUT_TIFF_PATH = f'{subject.SUBJECT_FOLDER}/second_downsample_nnunet.tiff'
-    subject.GCS_NEG_MASK_TGT = f'gcs://khanlab-scratch/tmp/{SUBJECT_ID}_second_downsample_nnunet.tiff'
-    subject.GCS_BIAS_PATH = f'gcs://khanlab-scratch/tmp/{SUBJECT_ID}_second_downsample_corr.tiff'
-    subject.COILED_CACHE_DIR_PATH = f'gcs://khanlab-scratch/tmp/CacheDirectory_{SUBJECT_ID}'
+    subject.GCS_NEG_MASK_TGT = f'{GCS_PARENT_PATH}/{SUBJECT_ID}_second_downsample_nnunet.tiff'
+    subject.GCS_BIAS_PATH = f'{GCS_PARENT_PATH}/{SUBJECT_ID}_second_downsample_corr.tiff'
+    subject.COILED_CACHE_DIR_PATH = f'{GCS_PARENT_PATH}/CacheDirectory_{SUBJECT_ID}'
 
     return subject
 
 
-def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = True):
+def mousebrain_processing(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = True):
+    """Process the OME ZARR mouse brain image into a list of centroids
+
+    Args:
+        subject: contains information about paths to store the intermediate results
+        run_nnunet: if True, run nnUNet for prediction; otherwise stop before nnUNet starts (the function will not complete)
+        run_coiled_process: if True, run coiled (final step); otherwise stop (the function will not complete)
+
+    Returns:
+        List of centroids in numpy format
+    """
+
     import numpy as np
     import cvpl_tools.nnunet.lightsheet_preprocess as lightsheet_preprocess
     import cvpl_tools.nnunet.n4 as n4
@@ -122,22 +153,28 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
         second_downsample, reduce_fn=np.max, ndownsample_level=(1,) * 3,
         write_loc=subject.THIRD_DOWNSAMPLE_PATH
     )
-    print(f'second and third downsample done. second_downsample.shape={second_downsample.shape}, third_downsample.shape={third_downsample.shape}')
+    print(
+        f'second and third downsample done. second_downsample.shape={second_downsample.shape}, third_downsample.shape={third_downsample.shape}')
 
     async def compute_bias(dask_worker):
         third_downsample = ome_io.load_dask_array_from_path(subject.THIRD_DOWNSAMPLE_PATH, mode='r', level=0)
         await n4.obtain_bias(third_downsample, write_loc=subject.THIRD_DOWNSAMPLE_BIAS_PATH)
+
     if not RDirFileSystem(subject.THIRD_DOWNSAMPLE_BIAS_PATH).exists(''):
         cvpl_nnunet_api.coiled_run(fn=compute_bias, nworkers=1, local_testing=False)
     third_downsample_bias = ome_io.load_dask_array_from_path(subject.THIRD_DOWNSAMPLE_BIAS_PATH, mode='r', level=0)
     print('third downsample bias done.')
 
-    print(f'im.shape={second_downsample.shape}, bias.shape={third_downsample_bias.shape}; applying bias over image to obtain corrected image...')
+    print(
+        f'im.shape={second_downsample.shape}, bias.shape={third_downsample_bias.shape}; applying bias over image to obtain corrected image...')
     second_downsample_bias = dask_ndinterp.scale_nearest(third_downsample_bias, scale=(2, 2, 2),
-                                                         output_shape=second_downsample.shape, output_chunks=(4, 4096, 4096)).persist()
+                                                         output_shape=second_downsample.shape,
+                                                         output_chunks=(4, 4096, 4096)).persist()
 
-    second_downsample_corr = lightsheet_preprocess.apply_bias(second_downsample, (1,) * 3, second_downsample_bias, (1,) * 3)
-    asyncio.run(ome_io.write_ome_zarr_image(subject.SECOND_DOWNSAMPLE_CORR_PATH, da_arr=second_downsample_corr, MAX_LAYER=1))
+    second_downsample_corr = lightsheet_preprocess.apply_bias(second_downsample, (1,) * 3, second_downsample_bias,
+                                                              (1,) * 3)
+    asyncio.run(
+        ome_io.write_ome_zarr_image(subject.SECOND_DOWNSAMPLE_CORR_PATH, da_arr=second_downsample_corr, MAX_LAYER=1))
     print('second downsample corrected image done')
 
     if run_nnunet is False:
@@ -171,6 +208,7 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
         )
 
     ppm_to_im_upscale = (4, 8, 8)
+
     async def fn(dask_worker):
         await cvpl_nnunet_api.mousebrain_forward(
             dask_worker=dask_worker,
@@ -182,6 +220,7 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
             MAX_THRESHOLD=subject.MAX_THRESHOLD,
             ppm_to_im_upscale=ppm_to_im_upscale
         )
+
     cvpl_nnunet_api.coiled_run(fn=fn, nworkers=5, local_testing=False)
 
     cdir_fs = RDirFileSystem(subject.COILED_CACHE_DIR_PATH)
@@ -189,6 +228,8 @@ def main(subject: Subject, run_nnunet: bool = True, run_coiled_process: bool = T
         lc = np.load(fd)
     print(f'First 10 rows of lc:\n')
     print(lc[:10])
+
+    return lc
 
 
 if __name__ == '__main__':
@@ -199,9 +240,8 @@ if __name__ == '__main__':
         FOLDER = 'C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp/mousebrain_processing'
         SUBJECTS_DIR = f'{FOLDER}/subjects'
         NNUNET_CACHE_DIR = f'{FOLDER}/nnunet_250epoch_Run20241126'
-        subject = get_subject(ID, SUBJECTS_DIR, NNUNET_CACHE_DIR)
+        GCS_PARENT_PATH = 'gcs://khanlab-scratch/tmp'
+        subject = get_subject(ID, SUBJECTS_DIR, NNUNET_CACHE_DIR, GCS_PARENT_PATH)
 
-        main(subject=subject, run_nnunet=True, run_coiled_process=True)
+        mousebrain_processing(subject=subject, run_nnunet=True, run_coiled_process=True)
         print(f'Finished predicting on subject {ID}')
-
-

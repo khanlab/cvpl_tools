@@ -285,6 +285,10 @@ class NDBlock(Generic[ElementType], abc.ABC):
 
     @property
     def ndim(self) -> int:
+        """
+        Returns:
+            Integer indicating the dimensionality of the image contained in the NDBlock object
+        """
         return self.properties['ndim']
 
     def get_ndim(self) -> int:

@@ -7,11 +7,11 @@ import numpy as np
 from cvpl_tools.fsspec import RDirFileSystem
 
 
-def inspect_negmask(SUBJECT_ID):
+def inspect_negmask(SUBJECT_ID, *args):
     # second downsample negmask vs. second downsample original image; inspect local image
     import cvpl_tools.ome_zarr.napari.add as nozadd
 
-    subject = mp.get_subject(SUBJECT_ID)
+    subject = mp.get_subject(SUBJECT_ID, *args)
 
     viewer = napari.Viewer(ndisplay=2)
     nozadd.group_from_path(viewer, subject.SECOND_DOWNSAMPLE_PATH, kwargs=dict(
@@ -26,11 +26,11 @@ def inspect_negmask(SUBJECT_ID):
     viewer.show(block=True)
 
 
-def inspect_corrected(SUBJECT_ID):
+def inspect_corrected(SUBJECT_ID, *args):
     import magicgui
     import cvpl_tools.ome_zarr.napari.add as nozadd
 
-    subject = mp.get_subject(SUBJECT_ID)
+    subject = mp.get_subject(SUBJECT_ID, *args)
 
     viewer = napari.Viewer(ndisplay=2)
 
@@ -62,11 +62,11 @@ def inspect_corrected(SUBJECT_ID):
     viewer.show(block=True)
 
 
-def inspect_os(SUBJECT_ID):
+def inspect_os(SUBJECT_ID, *args):
     import cvpl_tools.ome_zarr.napari.add as nozadd
     import cvpl_tools.nnunet.lightsheet_preprocess as ci
 
-    subject = mp.get_subject(SUBJECT_ID)
+    subject = mp.get_subject(SUBJECT_ID, *args)
 
     display_shape = ome_io.load_dask_array_from_path(f'{subject.COILED_CACHE_DIR_PATH}/input_im/dask_im', mode='r', level=0).shape
 
@@ -97,13 +97,13 @@ def inspect_os(SUBJECT_ID):
     viewer.show(block=True)
 
 
-def annotate_neg_mask(SUBJECT_ID):
+def annotate_neg_mask(SUBJECT_ID, *args):
     import cvpl_tools.nnunet.annotate as annotate
     import cvpl_tools.im.algs.dask_ndinterp as dask_ndinterp
     import cvpl_tools.nnunet.lightsheet_preprocess as lightsheet_preprocess
     import asyncio
 
-    subject = mp.get_subject(SUBJECT_ID)
+    subject = mp.get_subject(SUBJECT_ID, *args)
 
     if not RDirFileSystem(subject.FIRST_DOWNSAMPLE_CORR_PATH).exists(''):
         first_downsample = ome_io.load_dask_array_from_path(subject.FIRST_DOWNSAMPLE_PATH, mode='r', level=0)
@@ -132,8 +132,13 @@ if __name__ == '__main__':
             continue
         print(f'Starting inspection on subject {ID}')
 
-        inspect_corrected(ID)
-        # annotate_neg_mask(ID)
-        # inspect_os(ID)
+        FOLDER = 'C:/ProgrammingTools/ComputerVision/RobartsResearch/data/lightsheet/tmp/mousebrain_processing'
+        SUBJECTS_DIR = f'{FOLDER}/subjects'
+        NNUNET_CACHE_DIR = f'{FOLDER}/nnunet_250epoch_Run20241126'
+        GCS_PARENT_PATH = 'gcs://khanlab-scratch/tmp'
+
+        inspect_corrected(ID, SUBJECTS_DIR, NNUNET_CACHE_DIR, GCS_PARENT_PATH)
+        # annotate_neg_mask(ID, SUBJECTS_DIR, NNUNET_CACHE_DIR, GCS_PARENT_PATH)
+        # inspect_os(ID, SUBJECTS_DIR, NNUNET_CACHE_DIR, GCS_PARENT_PATH)
 
 

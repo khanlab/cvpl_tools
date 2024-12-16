@@ -68,9 +68,9 @@ def np_unique(lbl_im: npt.NDArray[np.int32], return_index: bool = False,
               return_inverse: bool = False, return_counts: bool = False,
               axis=None, *,
               equal_nan: bool = False) -> npt.NDArray:
-    """Before 2.0.0, numpy will return an array of 1d regardless of input shape
+    """Before 2.0.0, np.unique will return an array of 1d regardless of input shape
     
-    This function fixes this by forcing the function signature working the same as version 2
+    This function fixes this by forcing the function signature working the same as 2.0.0
     """
     # this function fixes this by forcing the function signature working the same as version 2
     ret = np.unique(lbl_im, return_index, return_inverse, return_counts, axis, equal_nan=equal_nan)
