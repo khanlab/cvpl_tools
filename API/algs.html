@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>cvpl_tools/im/algs &mdash; cvpl_tools 0.8.2 documentation</title>
+  <title>cvpl_tools/im/algs &mdash; cvpl_tools 0.8.3 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=f9948e0f"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=5dec0a16"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
@@ -63,6 +63,8 @@
 <li class="toctree-l1"><a class="reference internal" href="seg_process.html">cvpl_tools.im.process</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">cvpl_tools.im.algs</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.algs.dask_label.label"><code class="docutils literal notranslate"><span class="pre">label()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.algs.dask_ndinterp.scale_nearest"><code class="docutils literal notranslate"><span class="pre">scale_nearest()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cvpl_tools.im.algs.dask_ndinterp.affine_transform_nearest"><code class="docutils literal notranslate"><span class="pre">affine_transform_nearest()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -112,6 +114,62 @@ found in the image</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Tuple (lbl_im, nlbl) where lbl_im is a globally labeled image of the same type/chunk size as the input</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.im.algs.dask_ndinterp.scale_nearest">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.algs.dask_ndinterp.</span></span><span class="sig-name descname"><span class="pre">scale_nearest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_chunks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Array</span></span></span><a class="headerlink" href="#cvpl_tools.im.algs.dask_ndinterp.scale_nearest" title="Permalink to this definition"></a></dt>
+<dd><p>Scaling the image without interpolation (order=0)</p>
+<p>Note this function may cause a noticeable positional shift when scaling down</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> – The image to be scaled by the given factor</p></li>
+<li><p><strong>scale</strong> – The scale to be applied to each axis; if float</p></li>
+<li><p><strong>output_shape</strong> – Shape of the output array</p></li>
+<li><p><strong>output_chunks</strong> – Shape of the chunks of the output array</p></li>
+<li><p><strong>**kwargs</strong> – arguments to be passed to affine_transform_nearest</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Scaled dask array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cvpl_tools.im.algs.dask_ndinterp.affine_transform_nearest">
+<span class="sig-prename descclassname"><span class="pre">cvpl_tools.im.algs.dask_ndinterp.</span></span><span class="sig-name descname"><span class="pre">affine_transform_nearest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_chunks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Array</span></span></span><a class="headerlink" href="#cvpl_tools.im.algs.dask_ndinterp.affine_transform_nearest" title="Permalink to this definition"></a></dt>
+<dd><p>Apply an affine transform using Dask. For every
+output chunk, only the slice containing the relevant part
+of the image is processed. Chunkwise processing is performed
+either using <cite>ndimage.affine_transform</cite> or
+<cite>cupyx.scipy.ndimage.affine_transform</cite>, depending on the input type.</p>
+<p>Position of each voxel in input and output is assumed to be the
+center of the cube e.g. for 3d this is (x + .5, y + .5, z + .5),
+note that this is different from scipy’s affine_transform where
+the position is (x, y, z)</p>
+<p class="rubric">Notes</p>
+<p>Differences to <cite>ndimage.affine_transformation</cite>:
+- modes ‘reflect’, ‘mirror’ and ‘wrap’ are not supported</p>
+<p>Arguments equal to <cite>ndimage.affine_transformation</cite>,
+except for <cite>output_chunks</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>array_like</em><em> (</em><em>Numpy Array</em><em>, </em><em>Cupy Array</em><em>, </em><em>Dask Array</em><em>...</em><em>)</em>) – The image array.</p></li>
+<li><p><strong>matrix</strong> (<em>array</em><em> (</em><em>ndim</em><em>, </em><em>ndim+1</em><em>) or </em><em>(</em><em>ndim+1</em><em>, </em><em>ndim+1</em><em>)</em>) – Transformation matrix.</p></li>
+<li><p><strong>output_shape</strong> (<em>tuple</em><em> of </em><em>ints</em><em>, </em><em>optional</em>) – The shape of the array to be returned.</p></li>
+<li><p><strong>output_chunks</strong> (<em>tuple</em><em> of </em><em>ints</em><em>, </em><em>optional</em>) – The shape of the chunks of the output Dask Array.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>affine_transform</strong> – A dask array representing the transformed output</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dask Array</p>
 </dd>
 </dl>
 </dd></dl>
