@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dev Setup &mdash; cvpl_tools 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=af2ce170"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cvpl_tools/ome_zarr/napari/add.py" href="../API/napari_zarr.html" />
+    <link rel="prev" title="Beta-Amyloid Plaque Detection" href="beta_amyloid_plaque_detection.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cvpl_tools
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quick_start.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ome_zarr.html">Viewing and IO of OME Zarr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setting_up_the_script.html">Setting Up the Script</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_pipeline.html">Defining Segmentation Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="result_caching.html">Result Caching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nnunet.html">nn-UNet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="beta_amyloid_plaque_detection.html">Beta-Amyloid Plaque Detection</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Dev Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#poetry">Poetry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#documentations">Documentations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#unit-testing">Unit Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#misc">Misc</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../API/napari_zarr.html">cvpl_tools.ome_zarr.napari.add.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ome_zarr_io.html">cvpl_tools.ome_zarr.io.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/tlfs.html">cvpl_tools.tools.fs.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/ndblock.html">cvpl_tools.im.ndblock.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/seg_process.html">cvpl_tools.im.process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/algs.html">cvpl_tools.im.algs</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cvpl_tools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Dev Setup</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/GettingStarted/dev_setup.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="dev-setup">
+<span id="id1"></span><h1>Dev Setup<a class="headerlink" href="#dev-setup" title="Permalink to this heading"></a></h1>
+<p>This page include notes for continued development of the library, on aspects such as package
+management, documentations and unit testing.</p>
+<section id="poetry">
+<h2>Poetry<a class="headerlink" href="#poetry" title="Permalink to this heading"></a></h2>
+<p>Poetry is used for managing pip packages and the build and publish of <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code>
+into PyPI. However, I find Poetry slow adding dependencies as it
+needs to search over versions of packages in resolving dependencies and generating lock file.
+In local development, I use an Anaconda environment to install the same list of
+packages in <code class="code docutils literal notranslate"><span class="pre">pyproject.toml</span></code></p>
+<p>Building and publishing the package to PyPI is done with the appropriate setup followed by running
+<code class="code docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">build</span></code> and <code class="code docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">publish</span></code>.</p>
+<p>The steps is as follows:</p>
+<ol class="arabic simple">
+<li><p>Modify your codebase</p></li>
+<li><p>Modify the version string in <code class="code docutils literal notranslate"><span class="pre">pyproject.toml</span></code></p></li>
+<li><p>Run <code class="code docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">build</span></code> then <code class="code docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">publish</span></code></p></li>
+</ol>
+</section>
+<section id="documentations">
+<h2>Documentations<a class="headerlink" href="#documentations" title="Permalink to this heading"></a></h2>
+<p>The documentation of <code class="code docutils literal notranslate"><span class="pre">cvpl_tools</span></code> has two aspects: within-source and on-line. In the source code, the
+library uses the convention that every API function includes a Python
+<a class="reference external" href="https://peps.python.org/pep-0257/">docstring</a> in
+<a class="reference external" href="https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html">Google Style</a> and also include
+comments when suitable at the start of a source code file.</p>
+<p>Related to Numpy: Numpy has a <code class="code docutils literal notranslate"><span class="pre">numpy.typing</span></code> module which allows documenting the APIs with Numpy
+typing hint such as <code class="code docutils literal notranslate"><span class="pre">np.typing.NDArray[np.float32]</span></code> representing an array of type float. This module
+requires <code class="code docutils literal notranslate"><span class="pre">mypy</span></code> package, with configuration file at “cvpl_tools/mypy.ini”.</p>
+<p>The on-line documentation locates at “cvpl_tools/docs” folder, which is a sphinx documentation that can be
+built using the command:</p>
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docs
+sphinx-build<span class="w"> </span>-M<span class="w"> </span>html<span class="w"> </span>.<span class="w"> </span>./_build
+</pre></div>
+</div>
+<p>The “docs” folder includes a “conf.py” file which imports the source code under “src” to support the
+“autoclass” and “autofunction” directives used in the documentations.</p>
+<p>The diagrams in “docs/assets” are generated using the diagram editor Dia, which is an open source software
+good for drawing programming diagrams.</p>
+</section>
+<section id="unit-testing">
+<h2>Unit Testing<a class="headerlink" href="#unit-testing" title="Permalink to this heading"></a></h2>
+<p><code class="code docutils literal notranslate"><span class="pre">pytest</span></code> is used for unit testing. Run unit tests with <code class="code docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">test</span></code> command in the root
+directory. Configuration file is at “cvpl_tools/pytest.ini”.</p>
+</section>
+<section id="misc">
+<h2>Misc<a class="headerlink" href="#misc" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>I use PyCharm as my development IDE</p></li>
+<li><p>The on-line documentation is hosted by Github Pages, which you can see the setting on GitHub by first go to
+the <a class="reference external" href="https://github.com/khanlab/cvpl_tools">main GitHub page</a> then visit Settings &gt; Pages.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="beta_amyloid_plaque_detection.html" class="btn btn-neutral float-left" title="Beta-Amyloid Plaque Detection" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../API/napari_zarr.html" class="btn btn-neutral float-right" title="cvpl_tools/ome_zarr/napari/add.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, KarlHanUW.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Introduction - cvpl_tools documentation &mdash; cvpl_tools 0.8.3 documentation</title>
+  <title>Introduction - cvpl_tools documentation &mdash; cvpl_tools 1.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="_static/jquery.js?v=5d32c60e"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=5dec0a16"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=af2ce170"></script>
         <script src="_static/doctools.js?v=888ff710"></script>
         <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/js/theme.js"></script>
@@ -53,6 +53,7 @@
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/result_caching.html">Result Caching</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/nnunet.html">nn-UNet</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/beta_amyloid_plaque_detection.html">Beta-Amyloid Plaque Detection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted/dev_setup.html">Dev Setup</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -101,7 +102,7 @@ top of:</p>
 conflicts in other places, let me know.</p>
 <p>Installation of <cite>cvpl_tools</cite> using pip (Note Napari viewer requires one of
 <a class="reference external" href="https://napari.org/stable/tutorials/fundamentals/installation.html">pyqt or pyside2</a> installed.)</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">cvpl_tools</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">cvpl_tools</span><span class="p">[</span><span class="n">nnunet</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>Now you can go to GettingStarted/ome_zarr to learn how to view an OME_ZARR image locally
@@ -148,11 +149,19 @@ or on cloud.</p>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/nnunet.html#annotation">Annotation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/nnunet.html#training">Training</a></li>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/nnunet.html#prediction">Prediction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/nnunet.html#annotation-using-syglass">Annotation Using Syglass</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted/beta_amyloid_plaque_detection.html">Beta-Amyloid Plaque Detection</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/beta_amyloid_plaque_detection.html#workflow-overview">Workflow Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="GettingStarted/beta_amyloid_plaque_detection.html#python-implementation">Python Implementation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted/dev_setup.html">Dev Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/dev_setup.html#poetry">Poetry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/dev_setup.html#documentations">Documentations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/dev_setup.html#unit-testing">Unit Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted/dev_setup.html#misc">Misc</a></li>
 </ul>
 </li>
 </ul>

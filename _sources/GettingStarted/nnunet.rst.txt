@@ -281,3 +281,33 @@ slightly but takes 5 times the computation resource to train or predict.
 the computation to train or predict. This significantly increases accuracy, but the result mask is often not
 desirable. This is because the ensembed mask often flickers in local areas and can affect contour counting in
 our application, and is harder to interpret when looking through yx cross-sectional plane.
+
+Annotation Using Syglass
+************************
+
+Alternative to Napari, you may use `Syglass <https://www.syglass.io/>`_ to annotate the volume. The steps are
+as follows:
+
+1. Acquire license key and prepare VR equipments and a VR platform such as SteamVR
+2. Open Syglass and create a new project from the ome zarr image, then right click the project to "Add Mask"
+   to the volume
+3. In the Syglass, click the VR button to turn on VR, connecting to SteamVR, at which point you should
+   see headset display the Syglass environment
+4. Open the project, and adjust the settings in the menu to optimize data display; use the ROI tool to
+   annotate the volume
+5. Click the save button in ROI tool menu to save annotation; the saved ROI can be exported as a stack of
+   tiff files using the Project > ROI tab
+
+Misc:
+
+- ROI tool has an important setting named resolution level; when painting, set this to max since we need
+  the highest mask resolution possible to accurately capture the edges of the brain region. Also turn on
+  the fixed resolution level setting just below it.
+- Cross sectioning tool has the function to display raw data patch, but this 2d view uses the same set of
+  settings as 3d view which often would not be able to optimize both. But you can save a separate setting
+  of threshold, window, brightness... etc. by using the "1" "2" "3" buttons located beside the save icon
+  in the settings menu.
+- The engineers at Syglass is very helpful and responsive to requests, contacted at "info@syglass.io". I
+  have solved a few issues with OME ZARR and Syglass usage by contacting support this way.
+
+

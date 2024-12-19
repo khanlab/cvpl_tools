@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>nn-UNet &mdash; cvpl_tools 0.8.3 documentation</title>
+  <title>nn-UNet &mdash; cvpl_tools 1.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=5dec0a16"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=af2ce170"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
@@ -58,9 +58,11 @@
 <li class="toctree-l2"><a class="reference internal" href="#annotation">Annotation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#training">Training</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#prediction">Prediction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#annotation-using-syglass">Annotation Using Syglass</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="beta_amyloid_plaque_detection.html">Beta-Amyloid Plaque Detection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev_setup.html">Dev Setup</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -339,6 +341,34 @@ slightly but takes 5 times the computation resource to train or predict.</p>
 the computation to train or predict. This significantly increases accuracy, but the result mask is often not
 desirable. This is because the ensembed mask often flickers in local areas and can affect contour counting in
 our application, and is harder to interpret when looking through yx cross-sectional plane.</p>
+</section>
+<section id="annotation-using-syglass">
+<h2>Annotation Using Syglass<a class="headerlink" href="#annotation-using-syglass" title="Permalink to this heading"></a></h2>
+<p>Alternative to Napari, you may use <a class="reference external" href="https://www.syglass.io/">Syglass</a> to annotate the volume. The steps are
+as follows:</p>
+<ol class="arabic simple">
+<li><p>Acquire license key and prepare VR equipments and a VR platform such as SteamVR</p></li>
+<li><p>Open Syglass and create a new project from the ome zarr image, then right click the project to “Add Mask”
+to the volume</p></li>
+<li><p>In the Syglass, click the VR button to turn on VR, connecting to SteamVR, at which point you should
+see headset display the Syglass environment</p></li>
+<li><p>Open the project, and adjust the settings in the menu to optimize data display; use the ROI tool to
+annotate the volume</p></li>
+<li><p>Click the save button in ROI tool menu to save annotation; the saved ROI can be exported as a stack of
+tiff files using the Project &gt; ROI tab</p></li>
+</ol>
+<p>Misc:</p>
+<ul class="simple">
+<li><p>ROI tool has an important setting named resolution level; when painting, set this to max since we need
+the highest mask resolution possible to accurately capture the edges of the brain region. Also turn on
+the fixed resolution level setting just below it.</p></li>
+<li><p>Cross sectioning tool has the function to display raw data patch, but this 2d view uses the same set of
+settings as 3d view which often would not be able to optimize both. But you can save a separate setting
+of threshold, window, brightness… etc. by using the “1” “2” “3” buttons located beside the save icon
+in the settings menu.</p></li>
+<li><p>The engineers at Syglass is very helpful and responsive to requests, contacted at “<a class="reference external" href="mailto:info&#37;&#52;&#48;syglass&#46;io">info<span>&#64;</span>syglass<span>&#46;</span>io</a>”. I
+have solved a few issues with OME ZARR and Syglass usage by contacting support this way.</p></li>
+</ul>
 </section>
 </section>
 

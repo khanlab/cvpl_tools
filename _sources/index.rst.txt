@@ -20,7 +20,7 @@ Installation of `cvpl_tools` using pip (Note Napari viewer requires one of
 `pyqt or pyside2 <https://napari.org/stable/tutorials/fundamentals/installation.html>`_ installed.)
 ::
 
-   pip install cvpl_tools
+   pip install cvpl_tools[nnunet]
 
 Now you can go to GettingStarted/ome_zarr to learn how to view an OME_ZARR image locally
 or on cloud.
@@ -37,6 +37,7 @@ or on cloud.
    Result Caching <GettingStarted/result_caching>
    nn-UNet <GettingStarted/nnunet>
    Beta-Amyloid Plaque Detection <GettingStarted/beta_amyloid_plaque_detection>
+   Dev Setup <GettingStarted/dev_setup>
 
 .. toctree::
    :maxdepth: 2
